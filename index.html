@@ -33,9 +33,14 @@
         
         .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
         .btn-main { background: var(--primary); width: 100%; margin-top: 10px; }
+        .btn-out { background: var(--danger); width: 100%; margin-bottom: 15px; }
+        
         .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
         .input-style { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); box-sizing: border-box; }
+        .input-rec { background: #e8f5e9; border: 2px solid var(--primary); font-weight: bold; color: var(--primary); }
         
+        .config-bar { background: #333; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; min-width: 1100px; }
         th { background: var(--primary); color: white; padding: 12px; text-transform: uppercase; font-size: 10px; }
         td { padding: 10px; border-bottom: 1px solid var(--border); text-align: center; }
@@ -72,6 +77,12 @@
             </div>
         </header>
 
+        <div class="config-bar">
+            <span>⚙️ Margem Alvo:</span>
+            <input type="number" id="config-margem" class="input-style" style="width: 80px; padding: 5px;" value="35" oninput="calcularRecomendado()"> 
+            <span>%</span>
+        </div>
+
         <div class="tabs">
             <button class="tab-btn active" id="tab-estoque" onclick="mudarTab('estoque')">📦 ESTOQUE</button>
             <button class="tab-btn" id="tab-vendas" onclick="mudarTab('vendas')">💰 FINANCEIRO</button>
@@ -88,18 +99,23 @@
         <div id="sec-estoque">
             <div class="card">
                 <div id="reader" style="width: 100%; max-width: 400px; margin: auto; display:none; border-radius: 10px; overflow: hidden; margin-bottom: 10px;"></div>
-                <button class="btn" style="background:var(--info); width:100%; margin-bottom:15px;" onclick="iniciarScanner()">📷 LER CÓDIGO DE BARRAS</button>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" style="background:var(--info); flex: 1; margin-bottom:15px;" onclick="iniciarScanner('entrada')">📷 BIPAR ENTRADA</button>
+                    <button class="btn btn-out" style="flex: 1;" onclick="iniciarScanner('saida')">⚡ BIPAR SAÍDA (VENDA)</button>
+                </div>
                 
                 <div class="grid-inputs">
                     <input type="hidden" id="edit-id">
                     <div><label>Modelo/Peça</label><input type="text" id="modelo" class="input-style"></div>
                     <div><label>Cód. Barras</label><input type="text" id="codigo" class="input-style"></div>
                     <div><label>Qtd</label><input type="number" id="qtd" class="input-style" value="1"></div>
-                    <div><label>Custo (Un)</label><input type="number" id="compra" class="input-style" step="0.01"></div>
+                    <div><label>Custo (Un)</label><input type="number" id="compra" class="input-style" step="0.01" oninput="calcularRecomendado()"></div>
                     <div><label>Venda (Un)</label><input type="number" id="repasse" class="input-style" step="0.01"></div>
-                    <div><label>Desc %</label><input type="number" id="desconto" class="input-style" value="20"></div>
-                    <div><label>Taxa Fixa</label><input type="number" id="taxa" class="input-style" value="4.00"></div>
+                    <div><label>Desc %</label><input type="number" id="desconto" class="input-style" value="20" oninput="calcularRecomendado()"></div>
+                    <div><label>Taxa Fixa</label><input type="number" id="taxa" class="input-style" value="4.00" oninput="calcularRecomendado()"></div>
                     <div><label>Mínimo</label><input type="number" id="minimo" class="input-style" value="2"></div>
+                    <div><label>Sugerido</label><input type="text" id="venda-rec" class="input-style input-rec" readonly placeholder="R$ 0,00"></div>
                 </div>
                 <button class="btn btn-main" id="btn-save" onclick="salvarProduto()">SALVAR PRODUTO</button>
                 <button class="btn" id="btn-cancel" style="display:none; width:100%; background:#777; margin-top:5px;" onclick="cancelarEdicao()">CANCELAR EDIÇÃO</button>
@@ -174,16 +190,48 @@
     function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
     function notify(m, t="success") { Toastify({text: m, duration: 2500, style: {background: t=="success"?"#2e7d32":"#ef5350"}}).showToast(); }
 
+    function calcularRecomendado() {
+        const custo = parseFloat(document.getElementById('compra').value) || 0;
+        const taxa = parseFloat(document.getElementById('taxa').value) || 0;
+        const desc = parseFloat(document.getElementById('desconto').value) || 0;
+        const margemConfig = parseFloat(document.getElementById('config-margem').value) || 0;
+        const fatorMargem = 1 + (margemConfig / 100);
+        const recomendado = ((custo + taxa) * fatorMargem) / (1 - (desc / 100));
+        document.getElementById('venda-rec').value = custo > 0 ? "R$ " + recomendado.toFixed(2) : "";
+    }
+
     let html5QrCode;
-    function iniciarScanner() {
+    function iniciarScanner(modo) {
         const r = document.getElementById('reader');
         r.style.display = 'block';
         html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (txt) => { 
-            document.getElementById('codigo').value = txt; 
-            notify("Lido: " + txt); 
-            html5QrCode.stop(); r.style.display='none';
+        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, async (txt) => { 
+            html5QrCode.stop(); 
+            r.style.display='none';
+            
+            if(modo === 'entrada') {
+                document.getElementById('codigo').value = txt;
+                notify("Código lido: " + txt);
+            } else {
+                processarSaidaBip(txt);
+            }
         }).catch(e => notify("Erro câmera", "error"));
+    }
+
+    async function processarSaidaBip(codigo) {
+        const snap = await db.collection("estoque_kell")
+                            .where("userId", "==", auth.currentUser.uid)
+                            .where("codigo", "==", codigo)
+                            .get();
+        
+        if(snap.empty) return notify("Produto não encontrado!", "error");
+        
+        const doc = snap.docs[0];
+        const item = doc.data();
+        
+        if(item.qtd <= 0) return notify("Estoque zerado!", "error");
+        
+        await registrarVenda(doc.id, item);
     }
 
     async function salvarProduto() {
@@ -228,11 +276,10 @@
     }
 
     async function registrarVenda(id, item) {
-        if(item.qtd <= 0) return notify("Sem estoque!", "error");
         const vFinal = item.repasse - (item.repasse * (item.desconto/100));
         await db.collection("vendas_kell").add({ peca: item.modelo, venda: vFinal, lucro: vFinal - item.taxa - item.compra, data: new Date().toLocaleDateString('pt-BR'), timestamp: Date.now(), userId: auth.currentUser.uid });
         await db.collection("estoque_kell").doc(id).update({ qtd: item.qtd - 1 });
-        notify("Vendido!");
+        notify("Venda de: " + item.modelo);
     }
 
     function carregarVendas() {
@@ -249,10 +296,11 @@
     }
 
     function prepararEdicao(id, d) {
-        document.getElementById('edit-id').value = id; document.getElementById('modelo').value = d.modelo; document.getElementById('codigo').value = d.codigo || ""; document.getElementById('qtd').value = d.qtd; document.getElementById('compra').value = d.compra; document.getElementById('repasse').value = d.repasse; document.getElementById('desconto').value = d.desconto; document.getElementById('taxa').value = d.taxa; document.getElementById('minimo').value = d.minimo; document.getElementById('btn-save').innerText = "ATUALIZAR"; document.getElementById('btn-cancel').style.display = "block"; window.scrollTo(0,0);
+        document.getElementById('edit-id').value = id; document.getElementById('modelo').value = d.modelo; document.getElementById('codigo').value = d.codigo || ""; document.getElementById('qtd').value = d.qtd; document.getElementById('compra').value = d.compra; document.getElementById('repasse').value = d.repasse; document.getElementById('desconto').value = d.desconto; document.getElementById('taxa').value = d.taxa; document.getElementById('minimo').value = d.minimo; document.getElementById('btn-save').innerText = "ATUALIZAR"; document.getElementById('btn-cancel').style.display = "block"; 
+        calcularRecomendado(); window.scrollTo(0,0);
     }
 
-    function cancelarEdicao() { document.getElementById('edit-id').value = ""; document.getElementById('btn-save').innerText = "SALVAR PRODUTO"; document.getElementById('btn-cancel').style.display = "none"; ["modelo", "codigo", "compra", "repasse"].forEach(id => document.getElementById(id).value = ""); }
+    function cancelarEdicao() { document.getElementById('edit-id').value = ""; document.getElementById('btn-save').innerText = "SALVAR PRODUTO"; document.getElementById('btn-cancel').style.display = "none"; ["modelo", "codigo", "compra", "repasse", "venda-rec"].forEach(id => document.getElementById(id).value = ""); }
     async function excluirVenda(id) { if(confirm("Apagar venda?")) await db.collection("vendas_kell").doc(id).delete(); }
     function gerarRelatorioPDF() { html2pdf().from(document.getElementById('relatorio-vendas')).save('Vendas_KellMotos.pdf'); }
     function compartilharLista() { window.open("https://wa.me/?text="+encodeURIComponent("LISTA DE COMPRAS KELL MOTOS:\n\n"+document.getElementById('lista-compra-texto').innerText.replace(/<br>/g, '\n'))); }
