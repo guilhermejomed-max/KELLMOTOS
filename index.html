@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KELL MOTOS - Sistema de Gestão</title>
+    <title>KELL MOTOS - Sistema de Gestão Profissional</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
@@ -28,59 +28,73 @@
         .logo-img { height: 50px; border-radius: 5px; }
         .app-title { font-size: 24px; font-weight: 800; color: var(--primary); letter-spacing: 1px; margin: 0; }
         
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 20px; }
-        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 10px; border-left: 5px solid var(--primary); border: 1px solid var(--border); border-left-width: 5px; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 10px; border-left: 5px solid var(--primary); border: 1px solid var(--border); }
         
-        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; text-align: center; }
         .btn-main { background: var(--primary); width: 100%; margin-top: 10px; }
         .btn-out { background: var(--danger); width: 100%; margin-bottom: 15px; }
         
+        /* Modal Scanner */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 15px; text-align: center; width: 90%; max-width: 400px; }
+        .modal-btns { display: grid; gap: 15px; margin-top: 20px; }
+
         .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
         .input-style { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); box-sizing: border-box; }
         .input-rec { background: #e8f5e9; border: 2px solid var(--primary); font-weight: bold; color: var(--primary); }
         
         .config-bar { background: #333; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; min-width: 1100px; }
-        th { background: var(--primary); color: white; padding: 12px; text-transform: uppercase; font-size: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; min-width: 900px; }
+        th { background: var(--primary); color: white; padding: 12px; text-transform: uppercase; }
         td { padding: 10px; border-bottom: 1px solid var(--border); text-align: center; }
         
         .tabs { display: flex; gap: 5px; margin-bottom: 15px; }
         .tab-btn { background: #555; flex: 1; padding: 12px; border-radius: 8px; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 11px; }
         .tab-btn.active { background: var(--primary); }
         .hidden { display: none; }
-        .badge { padding: 5px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; color: white; border: none; margin: 2px; }
+        .badge { padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; color: white; border: none; margin: 2px; }
+        .ranking-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 
         footer { text-align: center; padding: 20px; font-size: 13px; color: #777; border-top: 1px solid var(--border); margin-top: 20px; }
     </style>
 </head>
 <body>
 
+    <div id="modal-scanner" class="modal">
+        <div class="modal-content">
+            <h3>Saída de Produto</h3>
+            <p>Escolha como deseja ler o código:</p>
+            <div class="modal-btns">
+                <button class="btn" style="background:var(--info)" onclick="abrirCameraSaida()">📷 USAR CÂMERA DO CELULAR</button>
+                <button class="btn" style="background:var(--primary)" onclick="abrirLeitorFisico()">🔌 USAR LEITOR USB / SCANNER</button>
+                <button class="btn" style="background:#777" onclick="fecharModalScanner()">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
     <div id="login-screen" style="max-width:350px; margin: 100px auto; text-align: center;">
         <img src="Logo.jpg" class="logo-img" style="height:100px; margin-bottom: 10px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/7169/7169044.png'">
-        <h1 class="app-title" style="margin-bottom: 20px;">KELL MOTOS</h1>
+        <h1 class="app-title">KELL MOTOS</h1>
         <input type="email" id="email" class="input-style" placeholder="E-mail">
-        <input type="password" id="password" class="input-style" placeholder="Senha">
-        <button class="btn btn-main" onclick="fazerLogin()">ACESSAR SISTEMA</button>
+        <input type="password" id="password" class="input-style" placeholder="Senha" style="margin-top:10px">
+        <button class="btn btn-main" onclick="fazerLogin()">ACESSAR</button>
         <p id="msg-erro" style="color: var(--danger); font-size: 12px; margin-top: 10px;"></p>
     </div>
 
     <div class="container" id="main-app">
         <header class="header-app">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <img src="Logo.jpg" class="logo-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/7169/7169044.png'">
-                <h1 class="app-title">KELL MOTOS</h1>
-            </div>
+            <h1 class="app-title">KELL MOTOS</h1>
             <div>
-                <button class="btn" style="background:#555" onclick="toggleDarkMode()">🌓 TEMA</button>
+                <button class="btn" style="background:#555" onclick="toggleDarkMode()">🌓</button>
                 <button class="btn" style="background:var(--danger)" onclick="fazerLogout()">SAIR</button>
             </div>
         </header>
 
         <div class="config-bar">
             <span>⚙️ Margem Alvo:</span>
-            <input type="number" id="config-margem" class="input-style" style="width: 80px; padding: 5px;" value="35" oninput="calcularRecomendado()"> 
-            <span>%</span>
+            <input type="number" id="config-margem" class="input-style" style="width: 70px; padding: 5px;" value="35" oninput="calcularRecomendado()"> %
         </div>
 
         <div class="tabs">
@@ -90,62 +104,62 @@
         </div>
 
         <div class="dashboard">
-            <div class="stat-card"><small>INVESTIMENTO</small><br><strong id="dash-inv">R$ 0,00</strong></div>
+            <div class="stat-card"><small>INV. ATUAL</small><br><strong id="dash-inv">R$ 0,00</strong></div>
             <div class="stat-card"><small>LUCRO POTENCIAL</small><br><strong id="dash-lucro">R$ 0,00</strong></div>
-            <div class="stat-card"><small>VENDAS HOJE</small><br><strong id="dash-caixa" style="color:var(--primary)">R$ 0,00</strong></div>
+            <div class="stat-card"><small>VENDAS TOTAL</small><br><strong id="dash-caixa" style="color:var(--primary)">R$ 0,00</strong></div>
             <div class="stat-card"><small>ALERTAS</small><br><strong id="dash-alert" style="color:var(--warning)">0</strong></div>
         </div>
 
         <div id="sec-estoque">
             <div class="card">
                 <div id="reader" style="width: 100%; max-width: 400px; margin: auto; display:none; border-radius: 10px; overflow: hidden; margin-bottom: 10px;"></div>
-                
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn" style="background:var(--info); flex: 1; margin-bottom:15px;" onclick="iniciarScanner('entrada')">📷 BIPAR ENTRADA</button>
-                    <button class="btn btn-out" style="flex: 1;" onclick="iniciarScanner('saida')">⚡ BIPAR SAÍDA (VENDA)</button>
-                </div>
+                <button class="btn btn-out" style="width: 100%;" onclick="abrirModalScanner()">⚡ REGISTRAR SAÍDA (BIPAR)</button>
                 
                 <div class="grid-inputs">
                     <input type="hidden" id="edit-id">
-                    <div><label>Modelo/Peça</label><input type="text" id="modelo" class="input-style"></div>
-                    <div><label>Cód. Barras</label><input type="text" id="codigo" class="input-style"></div>
-                    <div><label>Qtd Inicial</label><input type="number" id="qtd" class="input-style" value="1"></div>
-                    <div><label>Custo (Un)</label><input type="number" id="compra" class="input-style" step="0.01" oninput="calcularRecomendado()"></div>
-                    <div><label>Taxa Envio</label><input type="number" id="taxa_envio" class="input-style" value="0.00" step="0.01" oninput="calcularRecomendado()"></div>
-                    <div><label>Venda (Un)</label><input type="number" id="repasse" class="input-style" step="0.01"></div>
+                    <div><label>Modelo</label><input type="text" id="modelo" class="input-style"></div>
+                    <div><label>Código</label><input type="text" id="codigo" class="input-style"></div>
+                    <div><label>Qtd</label><input type="number" id="qtd" class="input-style"></div>
+                    <div><label>Custo Un.</label><input type="number" id="compra" class="input-style" step="0.01" oninput="calcularRecomendado()"></div>
+                    <div><label>Envio</label><input type="number" id="taxa_envio" class="input-style" value="0.00" step="0.01" oninput="calcularRecomendado()"></div>
+                    <div><label>Venda Un.</label><input type="number" id="repasse" class="input-style" step="0.01"></div>
                     <div><label>Desc %</label><input type="number" id="desconto" class="input-style" value="20" oninput="calcularRecomendado()"></div>
                     <div><label>Mínimo</label><input type="number" id="minimo" class="input-style" value="2"></div>
-                    <div><label>Sugerido</label><input type="text" id="venda-rec" class="input-style input-rec" readonly placeholder="R$ 0,00"></div>
+                    <div><label>Sugerido</label><input type="text" id="venda-rec" class="input-style input-rec" readonly></div>
                 </div>
                 <button class="btn btn-main" id="btn-save" onclick="salvarProduto()">SALVAR PRODUTO</button>
-                <button class="btn" id="btn-cancel" style="display:none; width:100%; background:#777; margin-top:5px;" onclick="cancelarEdicao()">CANCELAR EDIÇÃO</button>
+                <button class="btn" id="btn-cancel" style="display:none; width:100%; background:#777; margin-top:5px;" onclick="cancelarEdicao()">CANCELAR</button>
             </div>
 
-            <div class="card">
-                <input type="text" id="busca" class="input-style" placeholder="🔍 Pesquisar por nome ou código..." onkeyup="listarProdutos()">
-                <div style="overflow-x: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>PEÇA / CÓDIGO</th><th>QTD</th><th>CUSTO+ENVIO</th><th>REPASSE UN.</th><th>DESC.</th><th>LUCRO UN.</th><th>LUCRO TOTAL</th><th>AÇÕES</th>
-                            </tr>
-                        </thead>
-                        <tbody id="corpo-estoque"></tbody>
-                    </table>
-                </div>
+            <div class="card" style="overflow-x:auto;">
+                <input type="text" id="busca" class="input-style" placeholder="🔍 Pesquisar por nome ou Bipar código..." onkeyup="listarProdutos()">
+                <table>
+                    <thead>
+                        <tr><th>PRODUTO</th><th>QTD</th><th>CUSTO TOTAL</th><th>VENDA</th><th>DESC.</th><th>LUCRO UN.</th><th>AÇÕES</th></tr>
+                    </thead>
+                    <tbody id="corpo-estoque"></tbody>
+                </table>
             </div>
         </div>
 
         <div id="sec-vendas" class="hidden">
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>Histórico de Vendas</h3>
-                    <button class="btn" style="background:#444" onclick="gerarRelatorioPDF()">📄 EXPORTAR PDF</button>
+            <div class="dashboard">
+                <div class="stat-card" style="border-left-color: var(--primary);"><small>LUCRO HOJE</small><br><strong id="venda-lucro-hoje" style="color:var(--primary)">R$ 0,00</strong></div>
+                <div class="stat-card" style="border-left-color: var(--info);"><small>LUCRO ACUMULADO</small><br><strong id="venda-lucro-total">R$ 0,00</strong></div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div class="card">
+                    <h3>🏆 Mais Vendidos</h3>
+                    <div id="top-produtos"></div>
                 </div>
-                <div style="overflow-x:auto" id="relatorio-vendas">
-                    <table>
+                <div class="card" style="overflow-x:auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3>Histórico</h3>
+                        <button class="btn" style="background:#444; font-size: 10px;" onclick="gerarRelatorioPDF()">📄 PDF</button>
+                    </div>
+                    <table id="tabela-vendas-pdf">
                         <thead>
-                            <tr><th>DATA</th><th>PEÇA</th><th>QTD</th><th>V. TOTAL</th><th>LUCRO</th><th>AÇÃO</th></tr>
+                            <tr><th>DATA</th><th>PEÇA</th><th>QTD</th><th>TOTAL</th><th>LUCRO</th><th>EXCLUIR</th></tr>
                         </thead>
                         <tbody id="corpo-vendas"></tbody>
                     </table>
@@ -156,17 +170,16 @@
         <div id="sec-reposicao" class="hidden">
             <div class="card">
                 <h3>🛒 Reposição Necessária</h3>
-                <div id="lista-compra-texto" style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px dashed var(--warning); margin-bottom: 15px; line-height: 1.6;"></div>
-                <button class="btn btn-main" onclick="compartilharLista()">📲 ENVIAR VIA WHATSAPP</button>
+                <div id="lista-compra-texto" style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px dashed var(--warning); margin-bottom: 15px;"></div>
+                <button class="btn btn-main" onclick="compartilharLista()">📲 ENVIAR WHATSAPP</button>
             </div>
         </div>
     </div>
 
-    <footer>
-        KELL MOTOS &copy; 2026
-    </footer>
+    <footer>KELL MOTOS &copy; 2026</footer>
 
 <script>
+    // CONFIGURAÇÃO FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyCDrwonWKHZ12zhzLKdFWTDgxHc-juX3F0",
       authDomain: "kellmotos.firebaseapp.com",
@@ -175,16 +188,15 @@
       messagingSenderId: "244705542944",
       appId: "1:244705542944:web:ff7464334b36ecaa464d45"
     };
-
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    // UTILITÁRIOS
     function mudarTab(tab) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-'+tab).classList.add('active');
-        ['estoque', 'vendas', 'reposicao'].forEach(s => document.getElementById('sec-'+s).classList.add('hidden'));
-        document.getElementById('sec-'+tab).classList.remove('hidden');
+        ['estoque', 'vendas', 'reposicao'].forEach(s => document.getElementById('sec-'+s).classList.toggle('hidden', s !== tab));
     }
     function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
     function notify(m, t="success") { Toastify({text: m, duration: 2500, style: {background: t=="success"?"#2e7d32":"#ef5350"}}).showToast(); }
@@ -193,54 +205,60 @@
         const custo = parseFloat(document.getElementById('compra').value) || 0;
         const envio = parseFloat(document.getElementById('taxa_envio').value) || 0;
         const desc = parseFloat(document.getElementById('desconto').value) || 0;
-        const margemConfig = parseFloat(document.getElementById('config-margem').value) || 0;
-        
-        const custoTotal = custo + envio;
-        const fatorMargem = 1 + (margemConfig / 100);
-        const recomendado = (custoTotal * fatorMargem) / (1 - (desc / 100));
-        
-        document.getElementById('venda-rec').value = custoTotal > 0 ? "R$ " + recomendado.toFixed(2) : "";
+        const margem = parseFloat(document.getElementById('config-margem').value) || 0;
+        const total = custo + envio;
+        const rec = (total * (1 + (margem / 100))) / (1 - (desc / 100));
+        document.getElementById('venda-rec').value = total > 0 ? "R$ " + rec.toFixed(2) : "";
     }
+
+    // LÓGICA SCANNER
+    function abrirModalScanner() { document.getElementById('modal-scanner').style.display = 'flex'; }
+    function fecharModalScanner() { document.getElementById('modal-scanner').style.display = 'none'; }
+    function abrirLeitorFisico() { fecharModalScanner(); document.getElementById('busca').focus(); notify("Aguardando bipagem do scanner...", "info"); }
 
     let html5QrCode;
-    function iniciarScanner(modo) {
+    function abrirCameraSaida() {
+        fecharModalScanner();
         const r = document.getElementById('reader');
         r.style.display = 'block';
+        if(html5QrCode) html5QrCode.stop();
         html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, async (txt) => { 
-            html5QrCode.stop(); 
-            r.style.display='none';
-            if(modo === 'entrada') {
-                document.getElementById('codigo').value = txt;
-                notify("Código lido: " + txt);
-            } else {
-                processarSaidaBip(txt);
-            }
-        }).catch(e => notify("Erro câmera", "error"));
+        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (txt) => {
+            html5QrCode.stop(); r.style.display = 'none';
+            processarSaidaBip(txt);
+        }).catch(() => notify("Câmera bloqueada", "error"));
     }
 
+    document.getElementById('busca').addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') { processarSaidaBip(e.target.value); e.target.value = ''; }
+    });
+
     async function processarSaidaBip(codigo) {
-        const snap = await db.collection("estoque_kell")
-                            .where("userId", "==", auth.currentUser.uid)
-                            .where("codigo", "==", codigo)
-                            .get();
-        
-        if(snap.empty) return notify("Produto não encontrado!", "error");
+        if(!codigo) return;
+        const snap = await db.collection("estoque_kell").where("userId", "==", auth.currentUser.uid).where("codigo", "==", codigo).get();
+        if(snap.empty) return notify("Código não encontrado!", "error");
         
         const doc = snap.docs[0];
         const item = doc.data();
+        const q = prompt(`PRODUTO: ${item.modelo}\nESTOQUE: ${item.qtd}\n\nQUANTIDADE VENDIDA:`, "1");
         
-        const qtdSair = prompt(`Produto: ${item.modelo}\nEstoque atual: ${item.qtd}\n\nQuantas unidades deseja dar saída?`, "1");
-        
-        if(qtdSair === null) return;
-        const qtdNum = parseInt(qtdSair);
-        
-        if(isNaN(qtdNum) || qtdNum <= 0) return notify("Quantidade inválida", "error");
-        if(qtdNum > item.qtd) return notify("Estoque insuficiente!", "error");
-        
-        await registrarVenda(doc.id, item, qtdNum);
+        if(q > 0 && q <= item.qtd) {
+            const custoT = (item.compra || 0) + (item.taxa_envio || 0);
+            const vendaU = (item.repasse || 0) - ((item.repasse || 0) * (item.desconto / 100));
+            const lucroV = (vendaU - custoT) * q;
+            
+            await db.collection("vendas_kell").add({
+                peca: item.modelo, qtd: parseInt(q), venda: vendaU * q, lucro: lucroV,
+                data: new Date().toLocaleDateString('pt-BR'), timestamp: Date.now(), userId: auth.currentUser.uid
+            });
+            await db.collection("estoque_kell").doc(doc.id).update({ qtd: item.qtd - q });
+            notify("Venda Registrada!");
+        } else if(q > item.qtd) {
+            notify("Estoque insuficiente!", "error");
+        }
     }
 
+    // ESTOQUE CRUD
     async function salvarProduto() {
         const id = document.getElementById('edit-id').value;
         const item = {
@@ -255,92 +273,121 @@
             userId: auth.currentUser.uid,
             timestamp: Date.now()
         };
-        if(!item.modelo) return notify("Nome obrigatório", "error");
+        if(!item.modelo) return notify("Preencha o nome!", "error");
         id ? await db.collection("estoque_kell").doc(id).update(item) : await db.collection("estoque_kell").add(item);
-        cancelarEdicao(); notify("Sucesso!");
+        cancelarEdicao(); notify("Estoque Atualizado!");
+    }
+
+    function prepararEdicao(id, d) {
+        document.getElementById('edit-id').value = id;
+        document.getElementById('modelo').value = d.modelo;
+        document.getElementById('codigo').value = d.codigo;
+        document.getElementById('qtd').value = d.qtd;
+        document.getElementById('compra').value = d.compra;
+        document.getElementById('taxa_envio').value = d.taxa_envio || 0;
+        document.getElementById('repasse').value = d.repasse;
+        document.getElementById('desconto').value = d.desconto;
+        document.getElementById('minimo').value = d.minimo;
+        document.getElementById('btn-save').innerText = "ATUALIZAR";
+        document.getElementById('btn-cancel').style.display = "block";
+        calcularRecomendado();
+    }
+
+    function cancelarEdicao() {
+        document.getElementById('edit-id').value = '';
+        ['modelo','codigo','qtd','compra','taxa_envio','repasse','desconto'].forEach(i => document.getElementById(i).value = '');
+        document.getElementById('btn-save').innerText = "SALVAR PRODUTO";
+        document.getElementById('btn-cancel').style.display = "none";
     }
 
     function listarProdutos() {
         const busca = document.getElementById('busca').value.toLowerCase();
         db.collection("estoque_kell").where("userId", "==", auth.currentUser.uid).onSnapshot(snap => {
-            let html = '', repHtml = '', inv=0, luc=0, alts=0;
+            let h = '', rep = '', inv = 0, lucP = 0, alts = 0;
             snap.forEach(doc => {
                 const i = doc.data();
                 if(!i.modelo.toLowerCase().includes(busca) && !i.codigo.includes(busca)) return;
                 
-                const cTotal = (i.compra || 0) + (i.taxa_envio || 0);
-                const vVendaReal = (i.repasse || 0) - ((i.repasse || 0) * (i.desconto / 100));
-                const lUnit = vVendaReal - cTotal;
-                const lTotal = lUnit * i.qtd;
+                const custoT = (i.compra || 0) + (i.taxa_envio || 0);
+                const vendaR = (i.repasse || 0) - ((i.repasse || 0) * (i.desconto / 100));
+                const lucroU = vendaR - custoT;
                 
-                inv += (i.compra * i.qtd); luc += lTotal;
-                if(i.qtd <= i.minimo) { alts++; repHtml += `• <b>${i.modelo}</b> (${i.qtd} un.)<br>`; }
-                
-                html += `<tr><td><b>${i.modelo}</b><br><small>${i.codigo || ''}</small></td><td>${i.qtd}</td><td>R$ ${cTotal.toFixed(2)}</td><td>R$ ${i.repasse.toFixed(2)}</td><td>${i.desconto}%</td><td>R$ ${lUnit.toFixed(2)}</td><td>R$ ${lTotal.toFixed(2)}</td><td><button class="badge" style="background:var(--info)" onclick="prepararEdicao('${doc.id}', ${JSON.stringify(i).replace(/"/g, '&quot;')})">Editar</button></td></tr>`;
+                inv += (i.compra * i.qtd);
+                lucP += (lucroU * i.qtd);
+                if(i.qtd <= i.minimo) { alts++; rep += `• ${i.modelo} (${i.qtd} un.)<br>`; }
+
+                h += `<tr><td><b>${i.modelo}</b><br><small>${i.codigo || ''}</small></td>
+                    <td>${i.qtd}</td><td>R$ ${custoT.toFixed(2)}</td><td>R$ ${i.repasse.toFixed(2)}</td><td>${i.desconto}%</td><td>R$ ${lucroU.toFixed(2)}</td>
+                    <td><button onclick="prepararEdicao('${doc.id}', ${JSON.stringify(i).replace(/"/g, '&quot;')})" class="badge" style="background:var(--info)">✎</button>
+                    <button onclick="excluirProd('${doc.id}')" class="badge" style="background:var(--danger)">🗑️</button></td></tr>`;
             });
-            document.getElementById('corpo-estoque').innerHTML = html;
+            document.getElementById('corpo-estoque').innerHTML = h;
             document.getElementById('dash-inv').innerText = "R$ " + inv.toFixed(2);
-            document.getElementById('dash-lucro').innerText = "R$ " + luc.toFixed(2);
+            document.getElementById('dash-lucro').innerText = "R$ " + lucP.toFixed(2);
             document.getElementById('dash-alert').innerText = alts;
-            document.getElementById('lista-compra-texto').innerHTML = repHtml || "Estoque OK!";
+            document.getElementById('lista-compra-texto').innerHTML = rep || "Tudo em dia!";
         });
     }
 
-    async function registrarVenda(id, item, qtdSair) {
-        const cTotal = (item.compra || 0) + (item.taxa_envio || 0);
-        const vFinalUn = (item.repasse || 0) - ((item.repasse || 0) * (item.desconto / 100));
-        const lucroTotalVenda = (vFinalUn - cTotal) * qtdSair;
-        
-        await db.collection("vendas_kell").add({ 
-            peca: item.modelo, 
-            qtd: qtdSair,
-            venda: vFinalUn * qtdSair, 
-            lucro: lucroTotalVenda, 
-            data: new Date().toLocaleDateString('pt-BR'), 
-            timestamp: Date.now(), 
-            userId: auth.currentUser.uid 
-        });
-        
-        await db.collection("estoque_kell").doc(id).update({ qtd: item.qtd - qtdSair });
-        notify(`Saída de ${qtdSair} un. de ${item.modelo}`);
-    }
+    async function excluirProd(id) { if(confirm("Remover este produto?")) await db.collection("estoque_kell").doc(id).delete(); }
 
+    // FINANCEIRO CARREGAMENTO
     function carregarVendas() {
-        db.collection("vendas_kell").where("userId", "==", auth.currentUser.uid).orderBy("timestamp", "desc").onSnapshot(snap => {
-            let html = '', totalH = 0;
-            snap.forEach(doc => {
-                const v = doc.data();
-                html += `<tr><td>${v.data}</td><td>${v.peca}</td><td>${v.qtd || 1}</td><td>R$ ${v.venda.toFixed(2)}</td><td>R$ ${v.lucro.toFixed(2)}</td><td><button onclick="excluirVenda('${doc.id}')" style="background:none; border:none; color:red; cursor:pointer">X</button></td></tr>`;
-                totalH += v.venda;
+        const hoje = new Date().toLocaleDateString('pt-BR');
+        db.collection("vendas_kell").where("userId", "==", auth.currentUser.uid).onSnapshot(snap => {
+            let h = '', totalV = 0, lucroA = 0, lucroH = 0;
+            const rank = {};
+            const lista = [];
+
+            snap.forEach(doc => { 
+                const d = doc.data();
+                lista.push({id: doc.id, ...d});
             });
-            document.getElementById('corpo-vendas').innerHTML = html;
-            document.getElementById('dash-caixa').innerText = "R$ " + totalH.toFixed(2);
+
+            lista.sort((a,b) => b.timestamp - a.timestamp);
+
+            lista.forEach(v => {
+                h += `<tr><td>${v.data}</td><td>${v.peca}</td><td>${v.qtd}</td><td>R$ ${v.venda.toFixed(2)}</td><td>R$ ${v.lucro.toFixed(2)}</td>
+                    <td><button onclick="excluirVenda('${v.id}')" style="border:none; background:none; cursor:pointer">❌</button></td></tr>`;
+                totalV += v.venda;
+                lucroA += v.lucro;
+                if(v.data === hoje) lucroH += v.lucro;
+                rank[v.peca] = (rank[v.peca] || 0) + v.qtd;
+            });
+
+            document.getElementById('corpo-vendas').innerHTML = h;
+            document.getElementById('dash-caixa').innerText = "R$ " + totalV.toFixed(2);
+            document.getElementById('venda-lucro-total').innerText = "R$ " + lucroA.toFixed(2);
+            document.getElementById('venda-lucro-hoje').innerText = "R$ " + lucroH.toFixed(2);
+
+            const top = Object.entries(rank).sort((a,b) => b[1] - a[1]).slice(0,5)
+                .map(([n, q]) => `<div class="ranking-item"><span>${n}</span><b>${q} un.</b></div>`).join('');
+            document.getElementById('top-produtos').innerHTML = top || "Sem vendas";
         });
     }
 
-    function prepararEdicao(id, d) {
-        document.getElementById('edit-id').value = id; 
-        document.getElementById('modelo').value = d.modelo; 
-        document.getElementById('codigo').value = d.codigo || ""; 
-        document.getElementById('qtd').value = d.qtd; 
-        document.getElementById('compra').value = d.compra; 
-        document.getElementById('taxa_envio').value = d.taxa_envio || 0;
-        document.getElementById('repasse').value = d.repasse; 
-        document.getElementById('desconto').value = d.desconto; 
-        document.getElementById('minimo').value = d.minimo; 
-        document.getElementById('btn-save').innerText = "ATUALIZAR"; 
-        document.getElementById('btn-cancel').style.display = "block"; 
-        calcularRecomendado(); window.scrollTo(0,0);
+    async function excluirVenda(id) { if(confirm("Apagar registro de venda?")) await db.collection("vendas_kell").doc(id).delete(); }
+    function gerarRelatorioPDF() { html2pdf().from(document.getElementById('tabela-vendas-pdf')).save('Financeiro_KellMotos.pdf'); }
+    function compartilharLista() { window.open("https://wa.me/?text="+encodeURIComponent("LISTA DE REPOSIÇÃO KELL MOTOS:\n\n"+document.getElementById('lista-compra-texto').innerText.replace(/<br>/g, '\n'))); }
+
+    // AUTH
+    function fazerLogin() {
+        const e = document.getElementById('email').value;
+        const s = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(e, s).catch(() => notify("Login Inválido", "error"));
     }
-
-    function cancelarEdicao() { document.getElementById('edit-id').value = ""; document.getElementById('btn-save').innerText = "SALVAR PRODUTO"; document.getElementById('btn-cancel').style.display = "none"; ["modelo", "codigo", "compra", "taxa_envio", "repasse", "venda-rec"].forEach(id => document.getElementById(id).value = ""); }
-    async function excluirVenda(id) { if(confirm("Apagar venda?")) await db.collection("vendas_kell").doc(id).delete(); }
-    function gerarRelatorioPDF() { html2pdf().from(document.getElementById('relatorio-vendas')).save('Vendas_KellMotos.pdf'); }
-    function compartilharLista() { window.open("https://wa.me/?text="+encodeURIComponent("LISTA DE COMPRAS KELL MOTOS:\n\n"+document.getElementById('lista-compra-texto').innerText.replace(/<br>/g, '\n'))); }
-
-    function fazerLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(e => document.getElementById('msg-erro').innerText = "Erro no login"); }
     function fazerLogout() { auth.signOut(); }
-    auth.onAuthStateChanged(u => { if(u) { document.getElementById('login-screen').style.display='none'; document.getElementById('main-app').style.display='block'; listarProdutos(); carregarVendas(); } else { document.getElementById('login-screen').style.display='block'; document.getElementById('main-app').style.display='none'; } });
+
+    auth.onAuthStateChanged(u => {
+        if(u) {
+            document.getElementById('login-screen').style.display='none';
+            document.getElementById('main-app').style.display='block';
+            listarProdutos(); carregarVendas();
+        } else {
+            document.getElementById('login-screen').style.display='block';
+            document.getElementById('main-app').style.display='none';
+        }
+    });
 </script>
 </body>
 </html>
