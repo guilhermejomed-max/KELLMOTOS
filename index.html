@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KELL MOTOS - Business Intelligence v5.1</title>
+    <title>KELL MOTOS - BI v15.0 PROTECTED</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
@@ -17,223 +17,256 @@
         :root { 
             --primary: #2e7d32; --danger: #ef5350; --warning: #ffa726; --info: #0288d1;
             --bg: #f4f7f6; --card-bg: #ffffff; --text: #333; --border: #ddd;
+            --sidebar-width: 260px;
         }
         body.dark-mode { 
             --bg: #121212; --card-bg: #1e1e1e; --text: #e0e0e0; --border: #333;
             --primary: #4caf50;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; transition: 0.3s; display: flex; flex-direction: column; min-height: 100vh; }
-        .container { max-width: 1400px; margin: auto; display: none; flex: 1; width: 100%; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; transition: 0.3s; display: flex; min-height: 100vh; overflow-x: hidden; }
+        
+        .sidebar { width: var(--sidebar-width); background: var(--card-bg); border-right: 1px solid var(--border); height: 100vh; position: fixed; left: 0; top: 0; transition: 0.3s; z-index: 1000; display: flex; flex-direction: column; }
+        .sidebar.hidden { left: calc(var(--sidebar-width) * -1); }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); text-align: center; }
+        .sidebar-menu { flex: 1; padding: 15px 0; }
+        .menu-item { padding: 15px 25px; cursor: pointer; display: flex; align-items: center; gap: 15px; font-weight: 600; color: var(--text); transition: 0.2s; border-left: 4px solid transparent; }
+        .menu-item:hover { background: rgba(0,0,0,0.05); }
+        .menu-item.active { background: rgba(46, 125, 50, 0.1); color: var(--primary); border-left: 4px solid var(--primary); }
+        
+        .main-content { flex: 1; margin-left: var(--sidebar-width); transition: 0.3s; padding: 20px; width: 100%; box-sizing: border-box; }
+        .main-content.full { margin-left: 0; }
+        
+        .header-app { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; gap: 10px; }
+        .nav-controls { display: flex; align-items: center; gap: 15px; }
+        .hamburger { font-size: 24px; cursor: pointer; background: none; border: none; color: var(--text); }
+        
+        .container { max-width: 1200px; margin: auto; display: none; }
         .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid var(--border); }
         
-        .header-app { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .brand-container { display: flex; align-items: center; gap: 12px; }
-        .logo-img { height: 50px; width: auto; border-radius: 8px; object-fit: contain; }
-        .app-title { font-size: 24px; font-weight: 800; color: var(--primary); margin: 0; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: var(--card-bg); padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); border: 1px solid var(--border); }
+        .stat-card small { font-size: 11px; text-transform: uppercase; opacity: 0.8; }
+        .stat-card strong { font-size: 20px; display: block; margin-top: 8px; }
         
-        .dashboard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-        @media (min-width: 768px) { .dashboard { grid-template-columns: repeat(4, 1fr); } }
-
-        .stat-card { background: var(--card-bg); padding: 15px; border-radius: 10px; border-left: 5px solid var(--primary); border: 1px solid var(--border); }
-        .stat-card small { font-size: 11px; text-transform: uppercase; }
-        .stat-card strong { font-size: 16px; display: block; margin-top: 5px; }
-        
-        .btn { padding: 12px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; text-align: center; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .btn { padding: 12px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-size: 14px; }
         .btn-main { background: var(--primary); width: 100%; margin-top: 10px; }
         
-        .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; padding: 10px; }
-        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 15px; width: 100%; max-width: 450px; text-align: center; color: var(--text); }
+        .input-style { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); box-sizing: border-box; font-size: 16px; margin-top: 5px; }
 
-        .input-style { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); box-sizing: border-box; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: var(--primary); color: white; padding: 12px; font-size: 13px; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid var(--border); text-align: center; font-size: 14px; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        th { background: var(--primary); color: white; padding: 12px; }
-        td { padding: 10px; border-bottom: 1px solid var(--border); text-align: center; }
+        .modal { display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; padding: 10px; }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 15px; width: 100%; max-width: 450px; text-align: center; }
+
+        .hidden { display: none !important; }
+        .badge { padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; color: white; border: none; font-weight: bold; }
+        body.privacy-mode .hidden-value { color: transparent; text-shadow: 0 0 10px var(--text); }
+
+        .moto-selector { height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--bg); margin-top: 8px; }
+        .moto-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+
+        #cupom-wrapper { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10002; overflow-y: auto; justify-content: center; padding: 20px; }
+        #cupom-print { background: #fff; width: 300px; padding: 30px 20px; color: #000; box-sizing: border-box; font-family: 'Courier New', Courier, monospace; }
+        .cp-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; }
+        .cp-title { font-size: 26px; font-weight: 900; margin: 0; }
+        .cp-row { display: flex; justify-content: space-between; font-size: 12px; margin: 5px 0; }
+        .cp-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .cp-table th { border-bottom: 1px solid #000; text-align: left; padding: 5px 0; color: #000; background: none; }
+        .cp-total { display: flex; justify-content: space-between; font-size: 22px; font-weight: 900; margin-top: 20px; padding-top: 10px; border-top: 2px solid #000; }
 
         @media (max-width: 768px) {
-            table thead { display: none; }
-            table tr { display: block; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-bg); padding: 10px; }
-            table td { display: flex; justify-content: space-between; align-items: center; text-align: right; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 10px 5px; }
-            table td::before { content: attr(data-label); font-weight: bold; text-align: left; font-size: 11px; text-transform: uppercase; color: var(--primary); }
-            table td:last-child { border-bottom: none; justify-content: center; gap: 15px; padding-top: 15px; }
+            .sidebar { left: calc(var(--sidebar-width) * -1); }
+            .sidebar.active { left: 0; }
+            .main-content { margin-left: 0; }
         }
-
-        .tabs { display: flex; gap: 5px; margin-bottom: 15px; }
-        .tab-btn { background: #555; flex: 1; padding: 14px; border-radius: 8px; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 11px; }
-        .tab-btn.active { background: var(--primary); }
-        .hidden { display: none; }
-        .badge { padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; color: white; border: none; }
-
-        /* MODO PRIVACIDADE */
-        .hidden-value { transition: 0.2s; }
-        body.privacy-mode .hidden-value { color: transparent; text-shadow: 0 0 8px var(--text); }
-
-        /* PAGINAÇÃO */
-        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 15px; }
-        .btn-pag { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 18px; }
-
-        .charts-grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 20px; }
-        @media (min-width: 900px) { .charts-grid { grid-template-columns: 1fr 1fr; } }
-        .chart-container { background: var(--card-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); min-height: 350px; }
-
-        /* CUPOM COM MARGEM */
-        #cupom-wrapper { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10001; overflow-y: auto; justify-content: center; align-items: flex-start; padding: 20px; }
-        #cupom-print { font-family: 'Courier New', Courier, monospace !important; width: 280px !important; padding: 15px !important; color: #000 !important; background: #ffffff !important; box-sizing: border-box; }
-        .cp-header { text-align: center; margin-bottom: 10px; }
-        .cp-title { font-size: 22px; font-weight: bold; margin: 0; text-transform: uppercase; }
-        .cp-divider { border-top: 1px dashed #000; margin: 8px 0; }
-        .cp-total-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-top: 10px; }
-        .cp-label-val { display: flex; font-size: 11px; margin: 4px 0; justify-content: space-between; }
-        .cp-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 10px 0; }
-        .cp-table th { border-bottom: 1px solid #000; text-align: left; padding: 5px 0; background: none; color: #000; }
-        .cp-table td { padding: 5px 0; color: #000; }
     </style>
 </head>
 <body>
 
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="Logo.jpg" style="width: 80px; border-radius: 10px;">
+            <h2 id="user-role-display" style="font-size: 12px; margin-top: 10px; color: var(--primary); text-transform: uppercase;">CARREGANDO...</h2>
+        </div>
+        <nav class="sidebar-menu">
+            <div class="menu-item active" id="m-estoque" onclick="mudarTab('estoque')"><span>📦</span> Estoque</div>
+            <div class="menu-item" id="m-motos" onclick="mudarTab('motos')"><span>🏍️</span> Motos</div>
+            <div class="menu-item" id="m-vendas" onclick="mudarTab('vendas')"><span>💰</span> Vendas</div>
+            <div class="menu-item" id="m-reposicao" onclick="mudarTab('reposicao')"><span>🛒</span> Reposição</div>
+            <div class="menu-item" id="m-dash" onclick="mudarTab('dash')"><span>📊</span> Dashboard</div>
+            <div class="menu-item" id="m-funcionarios" onclick="mudarTab('funcionarios')"><span>👥</span> Funcionários</div>
+        </nav>
+        <div style="padding: 20px; border-top: 1px solid var(--border);">
+            <button class="btn btn-main" style="background: var(--danger); width: 100%;" onclick="fazerLogout()">Sair</button>
+        </div>
+    </aside>
+
     <div id="modal-config" class="modal">
         <div class="modal-content">
             <h3>⚙️ Configurações</h3>
-            <div style="text-align: left; display: flex; flex-direction: column; gap: 12px;">
-                <label style="font-size:11px">MARGEM PADRÃO %</label>
-                <input type="number" id="config-margem" class="input-style" value="35" oninput="calcularRecomendado()">
-                <label style="font-size:11px">CNPJ DA LOJA</label>
-                <input type="text" id="config-cnpj" class="input-style" value="00.000.000/0001-00">
-                <label style="font-size:11px">SÉRIE</label>
-                <input type="text" id="config-serie" class="input-style" value="001">
+            <div style="text-align: left; display: flex; flex-direction: column; gap: 10px;">
+                <label>Margem de Lucro %</label><input type="number" id="config-margem" class="input-style" value="35">
+                <label>CNPJ da Loja</label><input type="text" id="config-cnpj" class="input-style" value="00.000.000/0001-00">
+                <label>Série Equipamento</label><input type="text" id="config-serie" class="input-style" value="KL-001">
             </div>
-            <button class="btn btn-main" onclick="fecharModais()">FECHAR</button>
+            <button class="btn btn-main" onclick="fecharModais()">Salvar</button>
         </div>
     </div>
 
     <div id="cupom-wrapper">
         <div id="cupom-print">
-            <div class="cp-header">
-                <p class="cp-title">KELL MOTOS</p>
-                <p style="font-size: 10px; margin: 5px 0;">COMPROVANTE DE VENDA</p>
-            </div>
-            <div style="font-size: 9px; text-align: center;">CNPJ: <span id="cp-cnpj"></span> | SÉRIE: <span id="cp-serie"></span></div>
-            <div class="cp-divider"></div>
-            <div class="cp-label-val"><span>Nº PEDIDO:</span> <span id="cp-num"></span></div>
-            <div class="cp-label-val"><span>DATA/HORA:</span> <span id="cp-data"></span></div>
-            <div class="cp-label-val"><span>CLIENTE:</span> <span id="cp-cliente"></span></div>
+            <div class="cp-header"><h1 class="cp-title">KELL MOTOS</h1><p style="font-size:10px">COMPROVANTE DE VENDA</p></div>
+            <div class="cp-row"><b>Nº PEDIDO:</b> <span id="cp-num"></span></div>
+            <div class="cp-row"><b>DATA/HORA:</b> <span id="cp-data"></span></div>
+            <div class="cp-row"><b>CLIENTE:</b> <span id="cp-cliente"></span></div>
             <table class="cp-table">
-                <thead><tr><th>ITEM</th><th style="text-align:center">QTD</th><th style="text-align:right">TOTAL</th></tr></thead>
+                <thead><tr><th>DESCRIÇÃO</th><th style="text-align:center">QTD</th><th style="text-align:right">TOTAL</th></tr></thead>
                 <tbody id="cp-itens"></tbody>
             </table>
-            <div class="cp-divider"></div>
-            <div class="cp-total-row"><span>TOTAL À PAGAR</span><span>R$ <span id="cp-total"></span></span></div>
-            <div id="qrcode-box" style="display: flex; justify-content: center; margin: 15px 0;"></div>
-            <div class="cp-divider"></div>
-            <div style="text-align: center; font-size: 10px; margin-top: 10px;">
-                <p>___________________________</p>
-                <p>ASSINATURA DO CLIENTE</p>
-                <p style="font-size: 8px; margin-top: 15px;">OBRIGADO PELA PREFERÊNCIA!</p>
-            </div>
+            <div class="cp-total"><span>TOTAL À PAGAR</span><span>R$ <span id="cp-total"></span></span></div>
+            <div id="qrcode-box" style="display: flex; justify-content: center; margin: 25px 0;"></div>
+            <p style="text-align:center; font-size:10px; font-weight: bold;">OBRIGADO PELA PREFERÊNCIA!</p>
         </div>
     </div>
 
-    <div id="login-screen" style="max-width:350px; margin: 80px auto; text-align: center; padding: 20px;">
-        <img src="Logo.jpg" style="width: 120px; border-radius: 12px; margin-bottom: 20px;">
-        <input type="email" id="email" class="input-style" placeholder="E-mail" style="margin-bottom:10px">
-        <input type="password" id="password" class="input-style" placeholder="Senha" style="margin-bottom:10px">
-        <button class="btn btn-main" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
+    <div id="login-screen" style="width: 100%; max-width: 350px; margin: 80px auto; text-align: center; padding: 20px;">
+        <img src="Logo.jpg" style="width: 120px; border-radius: 12px; margin-bottom: 25px;">
+        
+        <div id="login-form">
+            <input type="email" id="email" class="input-style" placeholder="E-mail">
+            <input type="password" id="password" class="input-style" placeholder="Senha" style="margin-top: 10px;">
+            <button class="btn btn-main" onclick="fazerLogin()">ACESSAR SISTEMA</button>
+            <p style="margin-top: 20px; font-size: 13px; cursor: pointer; color: var(--info);" onclick="toggleAcesso(true)">É seu primeiro acesso? Clique aqui.</p>
+        </div>
+
+        <div id="setup-form" class="hidden">
+            <h3>Primeiro Acesso</h3>
+            <p style="font-size: 12px; color: #777;">Digite seu e-mail autorizado e escolha sua senha.</p>
+            <input type="email" id="new-email" class="input-style" placeholder="Seu E-mail">
+            <input type="password" id="new-password" class="input-style" placeholder="Criar Senha" style="margin-top: 10px;">
+            <button class="btn btn-main" style="background: var(--info);" onclick="cadastrarPrimeiroAcesso()">CADASTRAR SENHA</button>
+            <p style="margin-top: 20px; font-size: 13px; cursor: pointer; color: var(--primary);" onclick="toggleAcesso(false)">Voltar para o Login</p>
+        </div>
     </div>
 
-    <div class="container" id="main-app">
+    <main class="main-content" id="main-content">
         <header class="header-app">
-            <div class="brand-container"><img src="Logo.jpg" class="logo-img"><h1 class="app-title">KELL MOTOS</h1></div>
-            <div style="display: flex; gap: 8px;">
-                <button class="btn" style="background:#444" onclick="abrirConfig()">⚙️</button>
-                <button class="btn" style="background:var(--info)" onclick="togglePrivacy()">👁️</button>
+            <div class="nav-controls">
+                <button class="hamburger" onclick="toggleSidebar()">☰</button>
+                <h1 id="page-title" style="margin: 0; font-size: 20px; font-weight: 800; color: var(--primary);">ESTOQUE</h1>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-config-adm" class="btn hidden" style="background:#444" onclick="abrirConfig()">⚙️</button>
+                <button id="btn-privacy-adm" class="btn hidden" style="background:var(--info)" onclick="togglePrivacy()">👁️</button>
                 <button class="btn" style="background:#555" onclick="toggleDarkMode()">🌓</button>
-                <button class="btn" style="background:var(--danger)" onclick="fazerLogout()">SAIR</button>
             </div>
         </header>
 
-        <div class="tabs">
-            <button class="tab-btn active" id="tab-estoque" onclick="mudarTab('estoque')">📦 ESTOQUE</button>
-            <button class="tab-btn" id="tab-vendas" onclick="mudarTab('vendas')">💰 FINANCEIRO</button>
-            <button class="tab-btn" id="tab-dash" onclick="mudarTab('dash')">📊 RELATÓRIOS</button>
-            <button class="tab-btn" id="tab-reposicao" onclick="mudarTab('reposicao')">🛒 COMPRAS</button>
-        </div>
-
-        <div class="dashboard">
-            <div class="stat-card"><small>FATURAMENTO HOJE</small><strong id="kpi-faturamento" class="hidden-value">R$ 0,00</strong></div>
-            <div class="stat-card"><small>LUCRO MENSAL</small><strong id="kpi-lucro" class="hidden-value">R$ 0,00</strong></div>
-            <div class="stat-card"><small>VALOR EM ESTOQUE</small><strong id="kpi-estoque" class="hidden-value">R$ 0,00</strong></div>
-            <div class="stat-card"><small>ALERTAS</small><strong id="kpi-alertas">0</strong></div>
-        </div>
-
-        <div id="sec-estoque">
-            <div class="card">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
-                    <input type="hidden" id="edit-id">
-                    <div><label style="font-size:10px">MODELO</label><input type="text" id="modelo" class="input-style"></div>
-                    <div><label style="font-size:10px">CÓDIGO</label><input type="text" id="codigo" class="input-style"></div>
-                    <div><label style="font-size:10px">QTD</label><input type="number" id="qtd" class="input-style"></div>
-                    <div><label style="font-size:10px">CUSTO UN.</label><input type="number" id="compra" class="input-style" oninput="calcularRecomendado()"></div>
-                    <div><label style="font-size:10px">ENVIO</label><input type="number" id="taxa_envio" class="input-style" value="0" oninput="calcularRecomendado()"></div>
-                    <div><label style="font-size:10px">VENDA UN.</label><input type="number" id="repasse" class="input-style"></div>
-                    <div><label style="font-size:10px">MIN.</label><input type="number" id="minimo" class="input-style" value="2"></div>
-                </div>
-                <button class="btn btn-main" onclick="salvarProduto()">SALVAR PRODUTO</button>
+        <div class="container" id="main-app" style="display: block;">
+            <div class="dashboard" id="dashboard-kpis">
+                <div id="kpi-fat-card" class="stat-card hidden"><small>Faturamento Hoje</small><strong id="kpi-faturamento" class="hidden-value">R$ 0,00</strong></div>
+                <div id="kpi-luc-card" class="stat-card hidden"><small>Lucro 30 dias</small><strong id="kpi-lucro" class="hidden-value">R$ 0,00</strong></div>
+                <div class="stat-card"><small>Custo de Estoque</small><strong id="kpi-estoque" class="hidden-value">R$ 0,00</strong></div>
+                <div class="stat-card"><small>Alertas Baixos</small><strong id="kpi-alertas">0</strong></div>
             </div>
-            <div class="card">
-                <input type="text" id="busca" class="input-style" placeholder="🔍 Buscar ou Bipar..." onkeyup="renderizarEstoque()">
-                <table>
-                    <thead><tr><th>PRODUTO</th><th>QTD</th><th>CUSTO</th><th>VENDA</th><th>AÇÕES</th></tr></thead>
-                    <tbody id="corpo-estoque"></tbody>
-                </table>
-                <div class="pagination-container">
-                    <button class="btn-pag" onclick="mudarPaginaEstoque(-1)">❮</button>
-                    <span id="pag-est-atual">1</span>
-                    <button class="btn-pag" onclick="mudarPaginaEstoque(1)">❯</button>
+
+            <div id="sec-estoque">
+                <button class="btn btn-main hidden" id="btn-abrir-cadastro" style="margin-bottom: 15px; background: var(--info);" onclick="toggleFormCadastro()">+ ADICIONAR NOVO PRODUTO</button>
+                
+                <div class="card" id="form-cadastro" style="display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <input type="hidden" id="edit-id">
+                        <div><label style="font-size:11px">PEÇA / COMPONENTE</label><input type="text" id="modelo" class="input-style"></div>
+                        <div><label style="font-size:11px">CÓDIGO EAN</label><input type="text" id="codigo" class="input-style"></div>
+                        <div><label style="font-size:11px">QTD INICIAL</label><input type="number" id="qtd" class="input-style"></div>
+                        <div><label style="font-size:11px">CUSTO UN.</label><input type="number" id="compra" class="input-style" oninput="calcularRecomendado()"></div>
+                        <div><label style="font-size:11px">TAXA ENVIO</label><input type="number" id="taxa_envio" class="input-style" value="0" oninput="calcularRecomendado()"></div>
+                        <div><label style="font-size:11px">VALOR VENDA</label><input type="number" id="repasse" class="input-style"></div>
+                    </div>
+                    <div style="margin-top:20px;">
+                        <label style="font-size:11px; font-weight: bold;">MOTOS COMPATÍVEIS:</label>
+                        <div id="moto-selector-list" class="moto-selector"></div>
+                    </div>
+                    <button class="btn btn-main" onclick="salvarProduto()">SALVAR NO INVENTÁRIO</button>
+                    <button class="btn" style="background: #777; width: 100%; margin-top: 5px;" onclick="toggleFormCadastro()">CANCELAR</button>
+                </div>
+
+                <div class="card">
+                    <input type="text" id="busca" class="input-style" placeholder="🔍 Buscar por peça ou compatibilidade..." onkeyup="renderizarEstoque()">
+                    <table>
+                        <thead><tr><th>PEÇA</th><th>COMPATIBILIDADE</th><th>QTD</th><th>VENDA</th><th id="th-acoes">AÇÕES</th></tr></thead>
+                        <tbody id="corpo-estoque"></tbody>
+                    </table>
                 </div>
             </div>
-        </div>
 
-        <div id="sec-vendas" class="hidden">
-            <div class="card">
-                <table>
-                    <thead><tr><th>PEDIDO</th><th>DATA</th><th>PRODUTO</th><th>TOTAL</th><th>CUPOM</th></tr></thead>
-                    <tbody id="corpo-vendas"></tbody>
-                </table>
-                <div class="pagination-container">
-                    <button class="btn-pag" onclick="mudarPaginaVendas(-1)">❮</button>
-                    <span id="pag-vendas-atual">1</span>
-                    <button class="btn-pag" onclick="mudarPaginaVendas(1)">❯</button>
+            <div id="sec-motos" class="hidden">
+                <div class="card">
+                    <h3>Gerenciar Modelos</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="nova-moto" class="input-style" placeholder="Ex: Honda CG 160 Titan">
+                        <button class="btn btn-main" onclick="salvarMoto()" style="margin-top:5px; width:auto;">ADICIONAR</button>
+                    </div>
+                    <button class="btn" style="background:var(--info); margin-top:15px; width:100%" onclick="importarModelosPadrao()">📥 IMPORTAR MODELOS PADRÃO</button>
+                    <div id="lista-motos-gerencia" style="margin-top:25px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;"></div>
+                </div>
+            </div>
+
+            <div id="sec-vendas" class="hidden">
+                <div class="card">
+                    <table>
+                        <thead><tr><th>Nº PEDIDO</th><th>DATA</th><th>DESCRIÇÃO</th><th>VALOR</th><th>AÇÕES</th></tr></thead>
+                        <tbody id="corpo-vendas"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-dash" class="hidden">
+                <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div class="card"><h3>Faturamento (7 Dias)</h3><canvas id="chart-fat"></canvas></div>
+                    <div class="card"><h3>Top 5 Mais Vendidos</h3><canvas id="chart-top"></canvas></div>
+                </div>
+            </div>
+
+            <div id="sec-reposicao" class="hidden">
+                <div class="card">
+                    <h3>🛒 Peças para Reposição</h3>
+                    <div id="lista-reposicao-txt" style="padding:15px; background:rgba(0,0,0,0.02); border-radius:8px; line-height:2; font-weight:bold; color:var(--danger)"></div>
+                    <button class="btn btn-main" onclick="enviarWhatsapp()">ENVIAR LISTA WHATSAPP</button>
+                </div>
+            </div>
+
+            <div id="sec-funcionarios" class="hidden">
+                <div class="card">
+                    <h3>👥 Gestão de Equipe</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <input type="email" id="func-email" class="input-style" placeholder="E-mail do Funcionário">
+                        <select id="func-nivel" class="input-style">
+                            <option value="JUNIOR">JUNIOR</option>
+                            <option value="PLENO">PLENO</option>
+                            <option value="SENIOR">SENIOR (ADM)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-main" onclick="salvarFuncionario()">AUTORIZAR ACESSO</button>
+                    <div id="lista-funcionarios" style="margin-top: 20px;"></div>
                 </div>
             </div>
         </div>
-
-        <div id="sec-dash" class="hidden">
-            <div class="charts-grid">
-                <div class="chart-container"><h3>Faturamento (7 dias)</h3><canvas id="chart-fat"></canvas></div>
-                <div class="chart-container"><h3>Top 5 Produtos</h3><canvas id="chart-top"></canvas></div>
-            </div>
-        </div>
-
-        <div id="sec-reposicao" class="hidden">
-            <div class="card">
-                <h3>🛒 Produtos para Reposição</h3>
-                <div id="lista-reposicao-txt" style="padding:15px; background:var(--bg); border-radius:8px; line-height:1.6;"></div>
-                <button class="btn btn-main" style="margin-top:15px" onclick="enviarWhatsapp()">📲 ENVIAR LISTA WHATSAPP</button>
-            </div>
-        </div>
-    </div>
+    </main>
 
     <div id="modal-qtd" class="modal"><div class="modal-content">
         <h3 id="m-qtd-titulo"></h3>
+        <label>Quantidade:</label>
         <input type="number" id="venda-qtd-input" class="input-style" value="1">
-        <button class="btn btn-main" onclick="abrirModalCliente()">PRÓXIMO</button>
-        <button class="btn" style="background:#777; width:100%; margin-top:10px" onclick="fecharModais()">CANCELAR</button>
+        <button class="btn btn-main" onclick="abrirModalCliente()">CONTINUAR</button>
     </div></div>
 
     <div id="modal-cliente" class="modal"><div class="modal-content">
-        <h3>Cliente</h3>
-        <input type="text" id="cli-nome" class="input-style" placeholder="Nome">
-        <button class="btn btn-main" onclick="confirmarVenda()">CONCLUIR</button>
+        <h3>Identificação do Cliente</h3>
+        <input type="text" id="cli-nome" class="input-style" placeholder="Nome do Cliente">
+        <button class="btn btn-main" onclick="confirmarVenda()">CONCLUIR E GERAR CUPOM</button>
     </div></div>
 
 <script>
@@ -242,20 +275,118 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    let cacheEstoque = [], cacheVendas = [], vendaPendente = null;
-    let pagEst = 1, pagVendas = 1, itensPag = 10;
+    let cacheEstoque = [], cacheVendas = [], cacheMotos = [], userNivel = 'JUNIOR', vendaPendente = null;
     let chartF = null, chartT = null;
+
+    function toggleAcesso(isNew) {
+        document.getElementById('login-form').classList.toggle('hidden', isNew);
+        document.getElementById('setup-form').classList.toggle('hidden', !isNew);
+    }
+
+    function toggleFormCadastro() {
+        const form = document.getElementById('form-cadastro');
+        const btn = document.getElementById('btn-abrir-cadastro');
+        form.style.display = (form.style.display === 'none') ? 'block' : 'none';
+        btn.style.display = (form.style.display === 'none') ? 'block' : 'none';
+    }
+
+    async function cadastrarPrimeiroAcesso() {
+        const emailInput = document.getElementById('new-email').value.toLowerCase().trim();
+        const pass = document.getElementById('new-password').value;
+        if(!emailInput || pass.length < 6) { alert("Preencha o e-mail e uma senha com no mínimo 6 caracteres."); return; }
+        try {
+            const doc = await db.collection("funcionarios_kell").doc(emailInput).get();
+            if(doc.exists) {
+                const cred = await auth.createUserWithEmailAndPassword(emailInput, pass);
+                await db.collection("funcionarios_kell").doc(emailInput).update({ uid: cred.user.uid, cadastradoEm: Date.now(), status: 'ativo' });
+                alert("CADASTRO REALIZADO COM SUCESSO!");
+                toggleAcesso(false);
+            } else { alert("ERRO: Este e-mail não está autorizado pelo administrador."); }
+        } catch(e) { console.error(e); alert("Erro ao cadastrar: " + e.message); }
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('hidden');
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('main-content').classList.toggle('full');
+    }
 
     function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
     function abrirConfig() { document.getElementById('modal-config').style.display = 'flex'; }
     function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
     function togglePrivacy() { document.body.classList.toggle('privacy-mode'); }
-    
+
     function mudarTab(t) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-'+t).classList.add('active');
-        ['estoque','vendas','dash','reposicao'].forEach(s => document.getElementById('sec-'+s).classList.toggle('hidden', s !== t));
+        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+        const tabBtn = document.getElementById('m-'+t);
+        if(tabBtn) tabBtn.classList.add('active');
+        ['estoque','motos','vendas','dash','reposicao','funcionarios'].forEach(s => {
+            const el = document.getElementById('sec-'+s);
+            if(el) el.classList.toggle('hidden', s !== t);
+        });
+        document.getElementById('page-title').innerText = t.toUpperCase();
         if(t === 'dash') renderizarGraficos();
+        if(window.innerWidth < 768) toggleSidebar();
+    }
+
+    function aplicarPermissoes(nivel) {
+        userNivel = nivel;
+        document.getElementById('user-role-display').innerText = "CARGO: " + nivel;
+        document.getElementById('m-motos').classList.toggle('hidden', nivel === 'JUNIOR');
+        document.getElementById('m-vendas').classList.toggle('hidden', nivel === 'JUNIOR');
+        document.getElementById('m-dash').classList.toggle('hidden', nivel !== 'SENIOR');
+        document.getElementById('m-funcionarios').classList.toggle('hidden', nivel !== 'SENIOR');
+        document.getElementById('btn-abrir-cadastro').classList.toggle('hidden', nivel === 'JUNIOR');
+        document.getElementById('btn-config-adm').classList.toggle('hidden', nivel !== 'SENIOR');
+        document.getElementById('btn-privacy-adm').classList.toggle('hidden', nivel !== 'SENIOR');
+        document.getElementById('kpi-fat-card').classList.toggle('hidden', nivel !== 'SENIOR');
+        document.getElementById('kpi-luc-card').classList.toggle('hidden', nivel !== 'SENIOR');
+        document.getElementById('th-acoes').classList.toggle('hidden', nivel === 'JUNIOR');
+        if(nivel === 'JUNIOR' && (['MOTOS','VENDAS','DASHBOARD'].includes(document.getElementById('page-title').innerText))) mudarTab('estoque');
+        renderizarEstoque();
+    }
+
+    async function salvarFuncionario() {
+        const email = document.getElementById('func-email').value.toLowerCase().trim();
+        const nivel = document.getElementById('func-nivel').value;
+        if(!email) return;
+        await db.collection("funcionarios_kell").doc(email).set({ email, nivel, criadoEm: Date.now() }, { merge: true });
+        document.getElementById('func-email').value = '';
+        Toastify({text: "E-mail autorizado!"}).showToast();
+    }
+
+    async function deletarFunc(id) { if(confirm("Remover autorização?")) await db.collection("funcionarios_kell").doc(id).delete(); }
+
+    function listarDados() {
+        const email = auth.currentUser.email.toLowerCase();
+        db.collection("funcionarios_kell").doc(email).onSnapshot(doc => {
+            if(doc.exists) aplicarPermissoes(doc.data().nivel);
+            else aplicarPermissoes('SENIOR');
+        });
+        db.collection("funcionarios_kell").onSnapshot(snap => {
+            let h = '';
+            snap.forEach(doc => {
+                const f = doc.data();
+                h += `<div class="card" style="margin-bottom:5px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>${f.email} <b>(${f.nivel})</b></span>
+                    <button class="badge" style="background:var(--danger)" onclick="deletarFunc('${doc.id}')">Remover</button>
+                </div>`;
+            });
+            document.getElementById('lista-funcionarios').innerHTML = h;
+        });
+        db.collection("motos_kell").onSnapshot(snap => {
+            cacheMotos = []; snap.forEach(doc => cacheMotos.push({ id: doc.id, ...doc.data() }));
+            renderizarListaMotos();
+        });
+        db.collection("estoque_kell").onSnapshot(snap => {
+            cacheEstoque = []; snap.forEach(doc => cacheEstoque.push({ id: doc.id, ...doc.data() }));
+            renderizarEstoque(); atualizarKPIs();
+        });
+        db.collection("vendas_kell").onSnapshot(snap => {
+            cacheVendas = []; snap.forEach(doc => cacheVendas.push(doc.data()));
+            cacheVendas.sort((a,b) => b.timestamp - a.timestamp);
+            renderizarVendas(); atualizarKPIs();
+        });
     }
 
     function calcularRecomendado() {
@@ -266,79 +397,88 @@
         document.getElementById('repasse').placeholder = "Sugerido: R$ " + rec.toFixed(2);
     }
 
+    async function salvarMoto() {
+        const nome = document.getElementById('nova-moto').value;
+        if(nome) await db.collection("motos_kell").add({ nome });
+        document.getElementById('nova-moto').value = '';
+    }
+
+    async function deletarMoto(id) { if(confirm("Excluir?")) await db.collection("motos_kell").doc(id).delete(); }
+
+    async function importarModelosPadrao() {
+        const padrao = ["Honda CG 160 Titan", "Honda CG 160 Fan", "Honda CG 160 Start", "Honda Biz 125", "Honda Biz 110i", "Honda NXR 160 Bros", "Honda XRE 300", "Honda XRE 190", "Honda CB 300F", "Yamaha Fazer FZ25", "Yamaha Lander 250", "Yamaha Crosser 150", "Yamaha Factor 150"];
+        for(let m of padrao) await db.collection("motos_kell").add({ nome: m });
+    }
+
     async function salvarProduto() {
         const id = document.getElementById('edit-id').value;
+        const selecionadas = [];
+        document.querySelectorAll('.moto-check:checked').forEach(c => selecionadas.push(c.value));
         const dados = {
             modelo: document.getElementById('modelo').value, codigo: document.getElementById('codigo').value,
             qtd: parseInt(document.getElementById('qtd').value) || 0, compra: parseFloat(document.getElementById('compra').value) || 0,
             taxa_envio: parseFloat(document.getElementById('taxa_envio').value) || 0, repasse: parseFloat(document.getElementById('repasse').value) || 0,
-            minimo: parseInt(document.getElementById('minimo').value) || 2, userId: auth.currentUser.uid, timestamp: Date.now()
+            compatibilidade: selecionadas, minimo: 2, timestamp: Date.now()
         };
         id ? await db.collection("estoque_kell").doc(id).update(dados) : await db.collection("estoque_kell").add(dados);
-        limparCampos();
+        limparCampos(); toggleFormCadastro();
     }
 
     function limparCampos() {
         document.getElementById('edit-id').value = '';
         ['modelo','codigo','qtd','compra','taxa_envio','repasse'].forEach(i => document.getElementById(i).value = '');
+        document.querySelectorAll('.moto-check').forEach(c => c.checked = false);
     }
 
-    function listarDados() {
-        db.collection("estoque_kell").where("userId", "==", auth.currentUser.uid).onSnapshot(snap => {
-            cacheEstoque = []; snap.forEach(doc => cacheEstoque.push({ id: doc.id, ...doc.data() }));
-            renderizarEstoque(); atualizarKPIs();
+    function renderizarListaMotos() {
+        let h_sel = '', h_ger = '';
+        cacheMotos.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(m => {
+            h_sel += `<div class="moto-item"><input type="checkbox" class="moto-check" value="${m.nome}"> ${m.nome}</div>`;
+            h_ger += `<div class="card" style="margin-bottom:5px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                <span>${m.nome}</span><button class="badge" style="background:var(--danger)" onclick="deletarMoto('${m.id}')">Excluir</button>
+            </div>`;
         });
-        db.collection("vendas_kell").where("userId", "==", auth.currentUser.uid).onSnapshot(snap => {
-            cacheVendas = []; snap.forEach(doc => cacheVendas.push(doc.data()));
-            cacheVendas.sort((a,b) => b.timestamp - a.timestamp);
-            renderizarVendas(); atualizarKPIs();
-        });
+        document.getElementById('moto-selector-list').innerHTML = h_sel;
+        document.getElementById('lista-motos-gerencia').innerHTML = h_ger;
     }
 
     function renderizarEstoque() {
         const busca = document.getElementById('busca').value.toLowerCase();
-        const filtrados = cacheEstoque.filter(i => i.modelo.toLowerCase().includes(busca) || i.codigo.includes(busca));
-        const inicio = (pagEst - 1) * itensPag;
-        const paginados = filtrados.slice(inicio, inicio + itensPag);
-        
+        const filtrados = cacheEstoque.filter(i => 
+            (i.modelo||"").toLowerCase().includes(busca) || 
+            (i.codigo||"").includes(busca) ||
+            (i.compatibilidade||[]).some(m => m.toLowerCase().includes(busca))
+        );
         let h = '', rep = '', alts = 0;
-        paginados.forEach(i => {
-            h += `<tr><td>${i.modelo}</td><td>${i.qtd}</td><td>R$ ${i.compra.toFixed(2)}</td><td>R$ ${i.repasse.toFixed(2)}</td>
-            <td><button class="badge" style="background:var(--primary)" onclick='abrirVenda("${i.id}", ${JSON.stringify(i)})'>🛒</button></td></tr>`;
+        filtrados.forEach(i => {
+            const comp = (i.compatibilidade || []).join(", ") || "Nenhuma";
+            const btnAcao = userNivel === 'JUNIOR' ? '' : `<td><button class="badge" style="background:var(--primary)" onclick='abrirVenda("${i.id}", ${JSON.stringify(i)})'>🛒 VENDER</button></td>`;
+            h += `<tr><td>${i.modelo}</td><td style="font-size:10px; color:var(--info)">${comp}</td><td>${i.qtd}</td><td>R$ ${i.repasse.toFixed(2)}</td>${btnAcao}</tr>`;
+            if(i.qtd <= 2) { alts++; rep += `🚨 ${i.modelo}<br>`; }
         });
-        
-        cacheEstoque.forEach(i => { if(i.qtd <= i.minimo) { alts++; rep += `• ${i.modelo} (Qtd: ${i.qtd})<br>`; } });
-        
         document.getElementById('corpo-estoque').innerHTML = h;
-        document.getElementById('pag-est-atual').innerText = pagEst;
         document.getElementById('kpi-alertas').innerText = alts;
-        document.getElementById('lista-reposicao-txt').innerHTML = rep || "Estoque em dia.";
+        document.getElementById('lista-reposicao-txt').innerHTML = rep || "ESTOQUE EM DIA";
     }
 
     function renderizarVendas() {
-        const inicio = (pagVendas - 1) * itensPag;
-        const paginados = cacheVendas.slice(inicio, inicio + itensPag);
         let h = '';
-        paginados.forEach(v => {
+        cacheVendas.forEach(v => {
             h += `<tr><td>#${v.numero}</td><td>${v.data}</td><td>${v.peca}</td><td>R$ ${v.venda.toFixed(2)}</td>
-            <td><button class="badge" style="background:var(--info)" onclick='gerarCupom(${JSON.stringify(v)})'>🎫</button></td></tr>`;
+            <td><button class="badge" style="background:var(--info)" onclick='gerarCupom(${JSON.stringify(v)})'>VER</button></td></tr>`;
         });
         document.getElementById('corpo-vendas').innerHTML = h;
-        document.getElementById('pag-vendas-atual').innerText = pagVendas;
     }
 
     function atualizarKPIs() {
         const hoje = new Date().toLocaleDateString('pt-BR');
         let fat = 0, luc = 0, est = 0;
-        cacheVendas.forEach(v => { if(v.data === hoje) fat += v.venda; luc += v.lucro; });
+        cacheVendas.forEach(v => { if(v.data === hoje) fat += v.venda; if(v.timestamp > (Date.now() - 2592000000)) luc += (v.lucro || 0); });
         cacheEstoque.forEach(i => est += ((i.compra + i.taxa_envio) * i.qtd));
         document.getElementById('kpi-faturamento').innerText = "R$ " + fat.toFixed(2);
         document.getElementById('kpi-lucro').innerText = "R$ " + luc.toFixed(2);
         document.getElementById('kpi-estoque').innerText = "R$ " + est.toFixed(2);
     }
-
-    function mudarPaginaEstoque(d) { pagEst = Math.max(1, pagEst + d); renderizarEstoque(); }
-    function mudarPaginaVendas(d) { pagVendas = Math.max(1, pagVendas + d); renderizarVendas(); }
 
     function abrirVenda(id, i) {
         vendaPendente = { docId: id, ...i };
@@ -351,42 +491,73 @@
         fecharModais(); document.getElementById('modal-cliente').style.display = 'flex'; 
     }
 
+    // 🔥 CORREÇÃO 1 e 3: TRANSACÇÃO ATÔMICA + CALCULO DE LUCRO NO BANCO
     async function confirmarVenda() {
-        const userId = auth.currentUser.uid;
-        const seqRef = db.collection("config_kell").doc(userId);
-        const novoNum = await db.runTransaction(async (t) => {
-            const doc = await t.get(seqRef);
-            let n = 1; if(doc.exists) n = (doc.data().ultimoPedido || 0) + 1;
-            t.set(seqRef, { ultimoPedido: n }, { merge: true }); return n;
-        });
+        const seqRef = db.collection("config_kell").doc("sequencial");
+        const estoqueRef = db.collection("estoque_kell").doc(vendaPendente.docId);
+        const vendaRef = db.collection("vendas_kell").doc();
 
-        const dados = {
-            numero: novoNum, peca: vendaPendente.modelo, qtd: vendaPendente.qtdVenda,
-            venda: vendaPendente.repasse * vendaPendente.qtdVenda,
-            lucro: (vendaPendente.repasse - (vendaPendente.compra + vendaPendente.taxa_envio)) * vendaPendente.qtdVenda,
-            cliente: document.getElementById('cli-nome').value || "Consumidor", data: new Date().toLocaleDateString('pt-BR'),
-            timestamp: Date.now(), userId: userId, cnpj: document.getElementById('config-cnpj').value, serie: document.getElementById('config-serie').value
-        };
+        try {
+            const resultado = await db.runTransaction(async (transaction) => {
+                const seqDoc = await transaction.get(seqRef);
+                const estDoc = await transaction.get(estoqueRef);
+                
+                if (!estDoc.exists) throw "Produto não existe!";
+                const dadosEstoque = estDoc.data();
+                if (dadosEstoque.qtd < vendaPendente.qtdVenda) throw "Estoque insuficiente!";
 
-        await db.collection("vendas_kell").add(dados);
-        await db.collection("estoque_kell").doc(vendaPendente.docId).update({ qtd: vendaPendente.qtd - vendaPendente.qtdVenda });
-        fecharModais(); gerarCupom(dados);
+                let n = 818558;
+                if(seqDoc.exists) n = (seqDoc.data().ultimoPedido || 818558) + 1;
+
+                // Cálculo de lucro baseado no custo REAL do banco de dados, não do front
+                const custoReal = (dadosEstoque.compra + (dadosEstoque.taxa_envio || 0));
+                const valorVendaReal = dadosEstoque.repasse;
+                const lucroCalculado = (valorVendaReal - custoReal) * vendaPendente.qtdVenda;
+
+                const vendaData = {
+                    numero: n, 
+                    peca: dadosEstoque.modelo, 
+                    qtd: vendaPendente.qtdVenda,
+                    venda: valorVendaReal * vendaPendente.qtdVenda,
+                    lucro: lucroCalculado,
+                    cliente: document.getElementById('cli-nome').value || "Consumidor Final", 
+                    data: new Date().toLocaleDateString('pt-BR'),
+                    timestamp: Date.now(), 
+                    cnpj: document.getElementById('config-cnpj').value, 
+                    serie: document.getElementById('config-serie').value,
+                    vendedor: auth.currentUser.email
+                };
+
+                transaction.set(vendaRef, vendaData);
+                transaction.update(seqRef, { ultimoPedido: n });
+                transaction.update(estoqueRef, { qtd: dadosEstoque.qtd - vendaPendente.qtdVenda });
+
+                return vendaData;
+            });
+
+            fecharModais(); 
+            gerarCupom(resultado);
+            Toastify({text: "Venda processada com sucesso!", style: {background: "green"}}).showToast();
+
+        } catch (e) {
+            console.error(e);
+            alert("Erro na transação: " + e);
+        }
     }
 
     function gerarCupom(v) {
         const wrapper = document.getElementById('cupom-wrapper');
-        document.getElementById('cp-cnpj').innerText = v.cnpj; document.getElementById('cp-serie').innerText = v.serie;
-        document.getElementById('cp-num').innerText = v.numero; document.getElementById('cp-data').innerText = v.data;
-        document.getElementById('cp-cliente').innerText = v.cliente; document.getElementById('cp-total').innerText = v.venda.toFixed(2);
+        document.getElementById('cp-num').innerText = v.numero; 
+        document.getElementById('cp-data').innerText = v.data;
+        document.getElementById('cp-cliente').innerText = v.cliente; 
+        document.getElementById('cp-total').innerText = v.venda.toFixed(2);
         document.getElementById('cp-itens').innerHTML = `<tr><td>${v.peca}</td><td style="text-align:center">${v.qtd}</td><td style="text-align:right">R$ ${v.venda.toFixed(2)}</td></tr>`;
         document.getElementById('qrcode-box').innerHTML = "";
-        new QRCode(document.getElementById('qrcode-box'), { text: "PEDIDO-"+v.numero, width: 100, height: 100 });
-        
+        new QRCode(document.getElementById('qrcode-box'), { text: "V:" + v.numero, width: 140, height: 140 });
         wrapper.style.display = 'flex';
         setTimeout(() => {
-            const el = document.getElementById('cupom-print');
-            html2pdf().from(el).set({ margin: 5, filename: `PEDIDO_${v.numero}.pdf`, html2canvas: { scale: 3 }, jsPDF: { unit: 'mm', format: [80, 150] } }).save().then(() => wrapper.style.display = 'none');
-        }, 800);
+            html2pdf().from(document.getElementById('cupom-print')).set({ margin: 5, filename: `KELL_${v.numero}.pdf`, jsPDF: { unit: 'mm', format: [80, 200] } }).save().then(() => wrapper.style.display = 'none');
+        }, 1200);
     }
 
     function renderizarGraficos() {
@@ -396,19 +567,23 @@
         const dF = ult7.map(dia => cacheVendas.filter(v => v.data === dia).reduce((acc, v) => acc + v.venda, 0));
         const prods = {}; cacheVendas.forEach(v => prods[v.peca] = (prods[v.peca]||0) + v.qtd);
         const top5 = Object.entries(prods).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
         if(chartF) chartF.destroy();
-        chartF = new Chart(ctxF, { type:'line', data:{ labels:ult7, datasets:[{label:'Vendas R$', data:dF, borderColor:'#2e7d32', fill:true, backgroundColor:'rgba(46,125,50,0.1)'}] } });
+        chartF = new Chart(ctxF, { type:'line', data:{ labels:ult7, datasets:[{label:'Vendas R$', data:dF, borderColor:'#2e7d32', fill:true, backgroundColor:'rgba(46,125,50,0.1)', tension:0.4}] } });
         if(chartT) chartT.destroy();
         chartT = new Chart(ctxT, { type:'bar', data:{ labels:top5.map(x=>x[0]), datasets:[{label:'Qtd', data:top5.map(x=>x[1]), backgroundColor:'#0288d1'}] }, options:{indexAxis:'y'} });
     }
 
-    function enviarWhatsapp() { window.open("https://wa.me/?text=" + encodeURIComponent("*LISTA REPOSIÇÃO KELL MOTOS*\n\n" + document.getElementById('lista-reposicao-txt').innerText.replace(/<br>/g, '\n'))); }
-    function fazerLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value); }
+    function enviarWhatsapp() { window.open("https://wa.me/?text=" + encodeURIComponent("*LISTA DE REPOSIÇÃO KELL MOTOS*\n\n" + document.getElementById('lista-reposicao-txt').innerText.replace(/<br>/g, '\n'))); }
+    function fazerLogin() { 
+        const email = document.getElementById('email').value.toLowerCase().trim();
+        const pass = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Erro: " + e.message));
+    }
     function fazerLogout() { auth.signOut(); }
+
     auth.onAuthStateChanged(u => {
-        if(u) { document.getElementById('login-screen').style.display='none'; document.getElementById('main-app').style.display='block'; listarDados(); }
-        else { document.getElementById('login-screen').style.display='block'; document.getElementById('main-app').style.display='none'; }
+        if(u) { document.getElementById('login-screen').style.display='none'; document.getElementById('sidebar').style.display='flex'; document.getElementById('main-content').style.display='block'; listarDados(); }
+        else { document.getElementById('login-screen').style.display='block'; document.getElementById('sidebar').style.display='none'; document.getElementById('main-content').style.display='none'; }
     });
 </script>
 </body>
