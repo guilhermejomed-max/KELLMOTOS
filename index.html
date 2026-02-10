@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KELL MOTOS - Sistema de Gestão Profissional</title>
+    <title>KELL MOTOS - Sistema Profissional v4.0</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
         :root { 
@@ -25,33 +25,26 @@
         .container { max-width: 1400px; margin: auto; display: none; flex: 1; width: 100%; }
         .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid var(--border); }
         
-        .brand-container { display: flex; align-items: center; gap: 10px; }
-        .logo-img { height: 40px; border-radius: 5px; object-fit: contain; }
-        .app-title { font-size: 22px; font-weight: 800; color: var(--primary); letter-spacing: 1px; margin: 0; }
-        
         .header-app { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .brand-container { display: flex; align-items: center; gap: 12px; }
+        .logo-img { height: 50px; width: auto; border-radius: 8px; }
+        .app-title { font-size: 24px; font-weight: 800; color: var(--primary); margin: 0; }
         
         .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
         .stat-card { background: var(--card-bg); padding: 15px; border-radius: 10px; border-left: 5px solid var(--primary); border: 1px solid var(--border); }
         
-        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; text-align: center; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; text-align: center; display: flex; align-items: center; justify-content: center; }
         .btn-main { background: var(--primary); width: 100%; margin-top: 10px; }
-        .btn-out { background: var(--danger); width: 100%; margin-bottom: 15px; }
         
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; }
-        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 15px; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; }
-        .modal-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 15px; width: 90%; max-width: 450px; text-align: center; color: var(--text); }
 
-        .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-        .input-style { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); box-sizing: border-box; }
-        .input-rec { background: #e8f5e9; border: 2px solid var(--primary); font-weight: bold; color: var(--primary); }
+        .input-style { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); box-sizing: border-box; }
         
-        .config-bar { background: #333; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; min-width: 900px; }
-        th { background: var(--primary); color: white; padding: 12px; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th { background: var(--primary); color: white; padding: 12px; }
         td { padding: 10px; border-bottom: 1px solid var(--border); text-align: center; }
-        
+
         .tabs { display: flex; gap: 5px; margin-bottom: 15px; }
         .tab-btn { background: #555; flex: 1; padding: 12px; border-radius: 8px; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 11px; }
         .tab-btn.active { background: var(--primary); }
@@ -61,98 +54,106 @@
         .hidden-value { filter: blur(0px); transition: 0.2s; }
         body.privacy-mode .hidden-value { color: transparent; text-shadow: 0 0 8px var(--text); }
 
-        /* ESTILO DO CUPOM - LARGURA FIXA 80MM (320PX) */
-        #cupom-print { 
-            font-family: 'Courier New', monospace; 
-            width: 320px; 
-            padding: 20px; 
-            color: #000; 
-            background: #fff; 
-            display: none;
-            margin: 0;
-        }
-        .cupom-header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-        .cupom-body { font-size: 14px; line-height: 1.4; }
-        .termo-garantia { 
-            font-size: 12px; 
-            text-align: left; 
-            margin-top: 15px; 
-            border: 1px solid #000; 
-            padding: 10px; 
-            line-height: 1.3;
-        }
-        .cupom-footer { text-align: center; border-top: 1px dashed #000; padding-top: 10px; margin-top: 15px; font-size: 12px; }
+        /* PAGINAÇÃO */
+        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px; }
+        .btn-pag { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 18px; line-height: 1; }
+        .btn-pag:disabled { background: #ccc; cursor: not-allowed; }
+        .pag-info { font-weight: bold; font-size: 14px; }
 
-        footer { text-align: center; padding: 20px; font-size: 13px; color: #777; border-top: 1px solid var(--border); margin-top: 20px; }
+        /* CUPOM OVERLAY */
+        #cupom-wrapper { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; overflow-y: auto; justify-content: center; align-items: flex-start; padding: 20px; }
+        #cupom-print { font-family: 'Courier New', Courier, monospace !important; width: 300px !important; padding: 20px !important; color: #000 !important; background: #ffffff !important; }
+        .cp-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
+        .cp-title { font-size: 20px; font-weight: bold; margin: 0; color: #000 !important; }
+        .cp-table { width: 100%; border-collapse: collapse; font-size: 12px; color: #000 !important; margin: 10px 0; }
+        .cp-table th { border-bottom: 1px solid #000; text-align: left; color: #000 !important; background: none; }
+        .cp-table td { padding: 8px 0; border-bottom: 0.5px solid #ccc; color: #000 !important; }
+        .cp-total-box { margin-top: 15px; border-top: 2px solid #000; padding-top: 5px; display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; color: #000 !important; }
+        .cp-qrcode { display: flex; justify-content: center; margin: 20px 0; background: #fff !important; }
+        .cp-footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px dashed #000; padding-top: 10px; color: #000 !important; }
+        .linha-assinatura { border-top: 1px solid #000; width: 80%; margin: 40px auto 5px auto; }
     </style>
 </head>
 <body>
 
-    <div id="modal-qtd" class="modal">
+    <div id="modal-config" class="modal">
         <div class="modal-content">
-            <h3 id="m-qtd-titulo">Quantidade</h3>
-            <p id="m-qtd-estoque" style="font-size: 12px; color: var(--info);"></p>
-            <input type="number" id="venda-qtd-input" class="input-style" value="1" min="1">
-            <div class="modal-btns">
-                <button class="btn btn-main" onclick="abrirModalCliente()">PRÓXIMO</button>
-                <button class="btn" style="background:#777" onclick="fecharModais()">CANCELAR</button>
+            <h3 style="margin-top:0">⚙️ Configurações Gerais</h3>
+            <div style="text-align: left; display: flex; flex-direction: column; gap: 12px;">
+                <div><label style="font-size:11px">MARGEM DE LUCRO (%)</label><input type="number" id="config-margem" class="input-style" value="35" oninput="calcularRecomendado()"></div>
+                <div><label style="font-size:11px">CNPJ DA LOJA</label><input type="text" id="config-cnpj" class="input-style" value="00.000.000/0001-00"></div>
+                <div><label style="font-size:11px">SÉRIE DO DOCUMENTO</label><input type="text" id="config-serie" class="input-style" value="001"></div>
+            </div>
+            <button class="btn btn-main" style="margin-top:20px" onclick="fecharModais()">SALVAR ALTERAÇÕES</button>
+        </div>
+    </div>
+
+    <div id="cupom-wrapper">
+        <div id="cupom-print">
+            <div class="cp-header">
+                <p class="cp-title">KELL MOTOS</p>
+                <div style="font-size:10px;">COMPROVANTE DE VENDA ELETRÔNICO</div>
+                <div style="font-size:9px;">CNPJ: <span id="cp-cnpj"></span> | SÉRIE: <span id="cp-serie"></span></div>
+            </div>
+            <div style="font-size:11px; color:#000;">
+                PEDIDO: #<span id="cp-num"></span><br>
+                DATA: <span id="cp-data"></span><br>
+                CLIENTE: <span id="cp-cliente"></span>
+            </div>
+            <table class="cp-table">
+                <thead><tr><th>DESCRIÇÃO</th><th style="text-align:center">QTD</th><th style="text-align:right">TOTAL</th></tr></thead>
+                <tbody id="cp-itens"></tbody>
+            </table>
+            <div class="cp-total-box">
+                <span>VALOR TOTAL</span>
+                <span>R$ <span id="cp-total"></span></span>
+            </div>
+            <div id="qrcode-box" class="cp-qrcode"></div>
+            <div class="cp-footer">
+                <div class="linha-assinatura"></div>
+                ASSINATURA DO CLIENTE
+                <p>Obrigado pela preferência!</p>
             </div>
         </div>
     </div>
 
-    <div id="modal-cliente" class="modal">
-        <div class="modal-content">
-            <h3>Dados do Cliente</h3>
-            <div style="text-align: left;">
-                <input type="text" id="cli-nome" class="input-style" placeholder="Nome completo">
-                <input type="text" id="cli-doc" class="input-style" placeholder="RG ou CPF" style="margin-top:5px">
-                <input type="text" id="cli-fone" class="input-style" placeholder="Telefone" style="margin-top:5px">
-            </div>
-            <div class="modal-btns">
-                <button class="btn btn-main" onclick="confirmarVendaTotal()">GERAR CUPOM</button>
-                <button class="btn" style="background:#777" onclick="pularDadosCliente()">PULAR</button>
-            </div>
-        </div>
-    </div>
+    <div id="modal-qtd" class="modal"><div class="modal-content">
+        <h3 id="m-qtd-titulo">Quantidade</h3>
+        <p id="m-qtd-estoque" style="font-size:12px; color:var(--info)"></p>
+        <input type="number" id="venda-qtd-input" class="input-style" value="1" min="1">
+        <button class="btn btn-main" onclick="abrirModalCliente()">PRÓXIMO</button>
+        <button class="btn" style="background:#777; width:100%; margin-top:5px" onclick="fecharModais()">CANCELAR</button>
+    </div></div>
 
-    <div id="modal-scanner" class="modal">
-        <div class="modal-content">
-            <h3>Saída de Produto</h3>
-            <div class="modal-btns">
-                <button class="btn" style="background:var(--info)" onclick="abrirCameraSaida()">📷 CÂMERA CELULAR</button>
-                <button class="btn" style="background:var(--primary)" onclick="abrirLeitorFisico()">🔌 LEITOR USB / SCANNER</button>
-                <button class="btn" style="background:#777" onclick="fecharModais()">FECHAR</button>
-            </div>
-        </div>
-    </div>
+    <div id="modal-cliente" class="modal"><div class="modal-content">
+        <h3>Dados do Cliente</h3>
+        <input type="text" id="cli-nome" class="input-style" placeholder="Nome Completo" style="margin-bottom:10px">
+        <input type="text" id="cli-doc" class="input-style" placeholder="CPF/RG" style="margin-bottom:10px">
+        <input type="text" id="cli-fone" class="input-style" placeholder="Telefone">
+        <button class="btn btn-main" onclick="confirmarVendaTotal()">GERAR COMPROVANTE</button>
+        <button class="btn" style="background:#777; width:100%; margin-top:5px" onclick="confirmarVendaTotal()">PULAR (CONSUMIDOR)</button>
+    </div></div>
 
     <div id="login-screen" style="max-width:350px; margin: 100px auto; text-align: center;">
-        <div class="brand-container" style="justify-content: center; margin-bottom: 20px;">
-            <img src="Logo.jpg" class="logo-img" style="height: 60px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/7169/7169044.png'">
-            <h1 class="app-title" style="font-size: 28px;">KELL MOTOS</h1>
-        </div>
-        <input type="email" id="email" class="input-style" placeholder="E-mail">
-        <input type="password" id="password" class="input-style" placeholder="Senha" style="margin-top:10px">
-        <button class="btn btn-main" onclick="fazerLogin()">ACESSAR</button>
+        <h1 class="app-title" style="font-size: 32px; margin-bottom: 20px;">KELL MOTOS</h1>
+        <input type="email" id="email" class="input-style" placeholder="E-mail" style="margin-bottom:10px">
+        <input type="password" id="password" class="input-style" placeholder="Senha" style="margin-bottom:10px">
+        <button class="btn btn-main" onclick="fazerLogin()">ACESSAR SISTEMA</button>
     </div>
 
     <div class="container" id="main-app">
         <header class="header-app">
             <div class="brand-container">
-                <img src="Logo.jpg" class="logo-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/7169/7169044.png'">
+                <img src="https://i.ibb.co/0yX0j0f/logo-kell.png" alt="Kell Motos" class="logo-img">
                 <h1 class="app-title">KELL MOTOS</h1>
             </div>
-            <div style="display: flex; gap: 5px;">
-                <button class="btn" id="btn-privacy" style="background:var(--info)" onclick="togglePrivacy()">👁️</button>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" style="background:#444" onclick="abrirConfig()">⚙️</button>
+                <button class="btn" style="background:var(--info)" onclick="togglePrivacy()">👁️</button>
                 <button class="btn" style="background:#555" onclick="toggleDarkMode()">🌓</button>
                 <button class="btn" style="background:var(--danger)" onclick="fazerLogout()">SAIR</button>
             </div>
         </header>
-
-        <div class="config-bar">
-            <span>⚙️ Margem Alvo:</span>
-            <input type="number" id="config-margem" class="input-style" style="width: 70px; padding: 5px;" value="35" oninput="calcularRecomendado()"> %
-        </div>
 
         <div class="tabs">
             <button class="tab-btn active" id="tab-estoque" onclick="mudarTab('estoque')">📦 ESTOQUE</button>
@@ -161,299 +162,289 @@
         </div>
 
         <div class="dashboard">
-            <div class="stat-card"><small>INV. ATUAL</small><br><strong id="dash-inv" class="hidden-value">R$ 0,00</strong></div>
-            <div class="stat-card"><small>LUCRO POTENCIAL</small><br><strong id="dash-lucro" class="hidden-value">R$ 0,00</strong></div>
-            <div class="stat-card"><small>VENDAS TOTAL</small><br><strong id="dash-caixa" class="hidden-value" style="color:var(--primary)">R$ 0,00</strong></div>
+            <div class="stat-card"><small>INVESTIMENTO</small><br><strong id="dash-inv" class="hidden-value">R$ 0,00</strong></div>
+            <div class="stat-card"><small>LUCRO REAL</small><br><strong id="dash-lucro" class="hidden-value">R$ 0,00</strong></div>
+            <div class="stat-card"><small>VENDAS TOTAL</small><br><strong id="dash-caixa" class="hidden-value">R$ 0,00</strong></div>
             <div class="stat-card"><small>ALERTAS</small><br><strong id="dash-alert">0</strong></div>
         </div>
 
         <div id="sec-estoque">
             <div class="card">
-                <div id="reader" style="width: 100%; max-width: 400px; margin: auto; display:none; border-radius: 10px; overflow: hidden; margin-bottom: 10px;"></div>
-                <button class="btn btn-out" onclick="abrirModalScanner()">⚡ REGISTRAR SAÍDA (BIPAR)</button>
-                <div class="grid-inputs">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
                     <input type="hidden" id="edit-id">
                     <div><label>Modelo</label><input type="text" id="modelo" class="input-style"></div>
                     <div><label>Código</label><input type="text" id="codigo" class="input-style"></div>
                     <div><label>Qtd</label><input type="number" id="qtd" class="input-style"></div>
-                    <div><label>Custo Un.</label><input type="number" id="compra" class="input-style" step="0.01" oninput="calcularRecomendado()"></div>
-                    <div><label>Envio</label><input type="number" id="taxa_envio" class="input-style" value="0.00" step="0.01" oninput="calcularRecomendado()"></div>
-                    <div><label>Venda Un.</label><input type="number" id="repasse" class="input-style" step="0.01"></div>
+                    <div><label>Custo Un.</label><input type="number" id="compra" class="input-style" oninput="calcularRecomendado()"></div>
+                    <div><label>Envio</label><input type="number" id="taxa_envio" class="input-style" value="0" oninput="calcularRecomendado()"></div>
+                    <div><label>Venda Un.</label><input type="number" id="repasse" class="input-style"></div>
                     <div><label>Desc %</label><input type="number" id="desconto" class="input-style" value="20" oninput="calcularRecomendado()"></div>
                     <div><label>Mínimo</label><input type="number" id="minimo" class="input-style" value="2"></div>
-                    <div><label>Sugerido</label><input type="text" id="venda-rec" class="input-style input-rec" readonly></div>
                 </div>
                 <button class="btn btn-main" id="btn-save" onclick="salvarProduto()">SALVAR PRODUTO</button>
-                <button class="btn" id="btn-cancel" style="display:none; width:100%; background:#777; margin-top:5px;" onclick="cancelarEdicao()">CANCELAR</button>
+                <button class="btn" id="btn-cancel" style="display:none; width:100%; background:#777; margin-top:5px;" onclick="cancelarEdicao()">CANCELAR EDIÇÃO</button>
             </div>
 
-            <div class="card" style="overflow-x:auto;">
-                <input type="text" id="busca" class="input-style" placeholder="🔍 Pesquisar por nome ou Bipar..." onkeyup="listarProdutos()">
+            <div class="card">
+                <input type="text" id="busca" class="input-style" placeholder="🔍 Pesquisar ou Bipar Código..." onkeyup="processarBuscaEstoque(event)">
                 <table>
-                    <thead>
-                        <tr><th>PRODUTO</th><th>QTD</th><th>CUSTO</th><th>VENDA</th><th>DESC%</th><th>LUCRO</th><th>AÇÕES</th></tr>
-                    </thead>
+                    <thead><tr><th>PRODUTO</th><th>QTD</th><th>CUSTO</th><th>VENDA</th><th>DESC%</th><th>LUCRO</th><th>AÇÕES</th></tr></thead>
                     <tbody id="corpo-estoque"></tbody>
                 </table>
+                <div class="pagination-container">
+                    <button class="btn-pag" id="pag-est-prev" onclick="mudarPaginaEstoque(-1)">❮</button>
+                    <span class="pag-info">Página <span id="pag-est-atual">1</span></span>
+                    <button class="btn-pag" id="pag-est-next" onclick="mudarPaginaEstoque(1)">❯</button>
+                </div>
             </div>
         </div>
 
         <div id="sec-vendas" class="hidden">
-            <div class="dashboard">
-                <div class="stat-card"><small>LUCRO HOJE</small><br><strong id="venda-lucro-hoje" class="hidden-value">R$ 0,00</strong></div>
-                <div class="stat-card"><small>LUCRO ACUMULADO</small><br><strong id="venda-lucro-total" class="hidden-value">R$ 0,00</strong></div>
-            </div>
             <div class="card">
-                <table id="tabela-vendas-pdf">
-                    <thead><tr><th>DATA</th><th>PEÇA</th><th>QTD</th><th>TOTAL</th><th>LUCRO</th><th>CUPOM</th></tr></thead>
+                <table>
+                    <thead><tr><th>PEDIDO</th><th>PRODUTO</th><th>QTD</th><th>TOTAL</th><th>LUCRO</th><th>CUPOM</th></tr></thead>
                     <tbody id="corpo-vendas"></tbody>
                 </table>
+                <div class="pagination-container">
+                    <button class="btn-pag" id="pag-fin-prev" onclick="mudarPaginaFinanceiro(-1)">❮</button>
+                    <span class="pag-info">Página <span id="pag-fin-atual">1</span></span>
+                    <button class="btn-pag" id="pag-fin-next" onclick="mudarPaginaFinanceiro(1)">❯</button>
+                </div>
             </div>
         </div>
 
         <div id="sec-reposicao" class="hidden">
             <div class="card">
-                <h3>🛒 Reposição Necessária</h3>
-                <div id="lista-compra-texto" style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px dashed var(--warning); margin-bottom: 15px;"></div>
-                <button class="btn btn-main" onclick="compartilharLista()">📲 ENVIAR WHATSAPP</button>
+                <h3>🛒 Lista de Reposição Crítica</h3>
+                <div id="lista-compra-texto" style="padding:15px; background:var(--bg); border-radius:8px; margin-bottom:15px; line-height:1.6;"></div>
+                <button class="btn btn-main" onclick="compartilharLista()">📲 ENVIAR PARA WHATSAPP</button>
             </div>
         </div>
     </div>
 
-    <div id="cupom-print">
-        <div class="cupom-header">
-            <strong>KELL MOTOS</strong><br>Recibo de Venda<br>
-            <small>Data: <span id="cp-data"></span></small>
-        </div>
-        <div class="cupom-body">
-            <strong>CLIENTE:</strong> <span id="cp-cliente"></span><br>
-            <strong>DOC:</strong> <span id="cp-doc"></span><br>
-            <strong>FONE:</strong> <span id="cp-fone"></span><br>
-            --------------------------<br>
-            <strong>ITEM:</strong> <span id="cp-item"></span><br>
-            <strong>QTD:</strong> <span id="cp-qtd"></span> | <strong>UN:</strong> R$ <span id="cp-un"></span><br>
-            --------------------------<br>
-            <strong>TOTAL: R$ <span id="cp-total"></span></strong>
-        </div>
-        <div class="termo-garantia">
-            <strong>TERMOS DE GARANTIA:</strong><br>
-            1. Garantia legal de 90 dias para defeitos de fabricação.<br>
-            2. A garantia NÃO cobre mau uso ou instalação incorreta.<br>
-            3. Trocas somente com a apresentação deste recibo.<br>
-            4. Peças elétricas não possuem troca após a instalação.<br>
-            5. O produto deve estar em sua embalagem original.
-        </div>
-        <div class="cupom-footer">Obrigado pela preferência!</div>
-    </div>
-
-    <footer>KELL MOTOS &copy; 2026</footer>
-
 <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCDrwonWKHZ12zhzLKdFWTDgxHc-juX3F0",
-      authDomain: "kellmotos.firebaseapp.com",
-      projectId: "kellmotos",
-      storageBucket: "kellmotos.firebasestorage.app",
-      messagingSenderId: "244705542944",
-      appId: "1:244705542944:web:ff7464334b36ecaa464d45"
-    };
+    const firebaseConfig = { apiKey: "AIzaSyCDrwonWKHZ12zhzLKdFWTDgxHc-juX3F0", authDomain: "kellmotos.firebaseapp.com", projectId: "kellmotos", storageBucket: "kellmotos.firebasestorage.app", messagingSenderId: "244705542944", appId: "1:244705542944:web:ff7464334b36ecaa464d45" };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
     let vendaPendente = null;
-    let html5QrCode;
+    const itensPorPagina = 10;
 
+    // CONTROLE ESTOQUE
+    let pagEstoque = 1;
+    let cacheEstoque = [];
+
+    // CONTROLE FINANCEIRO
+    let pagFinanceiro = 1;
+    let cacheFinanceiro = [];
+
+    function abrirConfig() { document.getElementById('modal-config').style.display = 'flex'; }
+    function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
     function togglePrivacy() { document.body.classList.toggle('privacy-mode'); }
-    function mudarTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-'+tab).classList.add('active');
-        ['estoque', 'vendas', 'reposicao'].forEach(s => document.getElementById('sec-'+s).classList.toggle('hidden', s !== tab));
-    }
     function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
-    function notify(m, t="success") { Toastify({text: m, duration: 2500, style: {background: t=="success"?"#2e7d32":"#ef5350"}}).showToast(); }
-    function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); vendaPendente = null; }
+
+    function mudarTab(t) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-'+t).classList.add('active');
+        ['estoque','vendas','reposicao'].forEach(s => document.getElementById('sec-'+s).classList.toggle('hidden', s !== t));
+    }
 
     function calcularRecomendado() {
-        const custo = parseFloat(document.getElementById('compra').value) || 0;
-        const envio = parseFloat(document.getElementById('taxa_envio').value) || 0;
-        const desc = parseFloat(document.getElementById('desconto').value) || 0;
-        const margem = parseFloat(document.getElementById('config-margem').value) || 0;
-        const total = custo + envio;
-        const rec = (total * (1 + (margem / 100))) / (1 - (desc / 100));
-        document.getElementById('venda-rec').value = total > 0 ? "R$ " + rec.toFixed(2) : "";
+        const c = parseFloat(document.getElementById('compra').value) || 0;
+        const e = parseFloat(document.getElementById('taxa_envio').value) || 0;
+        const d = parseFloat(document.getElementById('desconto').value) || 0;
+        const m = parseFloat(document.getElementById('config-margem').value) || 0;
+        const total = c + e;
+        const rec = (total * (1 + (m / 100))) / (1 - (d / 100));
+        document.getElementById('repasse').placeholder = total > 0 ? "Sugestão: " + rec.toFixed(2) : "";
     }
-
-    function abrirModalScanner() { document.getElementById('modal-scanner').style.display = 'flex'; }
-    function abrirLeitorFisico() { fecharModais(); document.getElementById('busca').focus(); notify("Aguardando bipagem do scanner...", "info"); }
-
-    function abrirCameraSaida() {
-        fecharModais();
-        const r = document.getElementById('reader');
-        r.style.display = 'block';
-        if(html5QrCode) html5QrCode.stop();
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (txt) => {
-            html5QrCode.stop(); r.style.display = 'none';
-            processarSaidaBip(txt);
-        }).catch(() => notify("Câmera bloqueada", "error"));
-    }
-
-    document.getElementById('busca').addEventListener('keypress', (e) => {
-        if(e.key === 'Enter') { processarSaidaBip(e.target.value); e.target.value = ''; }
-    });
-
-    async function processarSaidaBip(codigo) {
-        if(!codigo) return;
-        const snap = await db.collection("estoque_kell").where("userId", "==", auth.currentUser.uid).where("codigo", "==", codigo).get();
-        if(snap.empty) return notify("Código não encontrado!", "error");
-        
-        const doc = snap.docs[0]; const item = doc.data();
-        vendaPendente = { docId: doc.id, peca: item.modelo, estoqueAtual: item.qtd, custoTotalUn: (item.compra || 0) + (item.taxa_envio || 0), repasse: item.repasse, desconto: item.desconto };
-        
-        document.getElementById('m-qtd-titulo').innerText = item.modelo;
-        document.getElementById('m-qtd-estoque').innerText = "Estoque atual: " + item.qtd;
-        document.getElementById('modal-qtd').style.display = 'flex';
-    }
-
-    function abrirModalCliente() {
-        const q = parseInt(document.getElementById('venda-qtd-input').value);
-        if(q > 0 && q <= vendaPendente.estoqueAtual) {
-            vendaPendente.qtd = q;
-            document.getElementById('modal-qtd').style.display = 'none';
-            document.getElementById('modal-cliente').style.display = 'flex';
-        } else { notify("Quantidade insuficiente!", "error"); }
-    }
-
-    async function finalizarVendaBD(nome, doc, fone) {
-        const vUn = vendaPendente.repasse - (vendaPendente.repasse * (vendaPendente.desconto / 100));
-        const totalV = vUn * vendaPendente.qtd;
-        const lucroV = (vUn - vendaPendente.custoTotalUn) * vendaPendente.qtd;
-        
-        const dadosVenda = {
-            peca: vendaPendente.peca, qtd: vendaPendente.qtd, venda: totalV, un: vUn, lucro: lucroV,
-            cliente: nome || "Consumidor", rg_cpf: doc || "N/A", contato: fone || "N/A", 
-            data: new Date().toLocaleDateString('pt-BR'), timestamp: Date.now(), userId: auth.currentUser.uid
-        };
-        
-        await db.collection("vendas_kell").add(dadosVenda);
-        await db.collection("estoque_kell").doc(vendaPendente.docId).update({ qtd: vendaPendente.estoqueAtual - vendaPendente.qtd });
-        
-        fecharModais();
-        notify("Venda Registrada!");
-        gerarCupom(dadosVenda);
-    }
-
-    async function confirmarVendaTotal() { await finalizarVendaBD(document.getElementById('cli-nome').value, document.getElementById('cli-doc').value, document.getElementById('cli-fone').value); }
-    async function pularDadosCliente() { await finalizarVendaBD("Consumidor", "N/A", "N/A"); }
 
     async function salvarProduto() {
         const id = document.getElementById('edit-id').value;
-        const item = {
+        const dados = {
             modelo: document.getElementById('modelo').value, codigo: document.getElementById('codigo').value,
             qtd: parseInt(document.getElementById('qtd').value) || 0, compra: parseFloat(document.getElementById('compra').value) || 0,
             taxa_envio: parseFloat(document.getElementById('taxa_envio').value) || 0, repasse: parseFloat(document.getElementById('repasse').value) || 0,
             desconto: parseFloat(document.getElementById('desconto').value) || 0, minimo: parseInt(document.getElementById('minimo').value) || 2,
             userId: auth.currentUser.uid, timestamp: Date.now()
         };
-        if(!item.modelo) return notify("Preencha o nome!", "error");
-        id ? await db.collection("estoque_kell").doc(id).update(item) : await db.collection("estoque_kell").add(item);
-        cancelarEdicao(); notify("Estoque Atualizado!");
-    }
-
-    function listarProdutos() {
-        const busca = document.getElementById('busca').value.toLowerCase();
-        db.collection("estoque_kell").where("userId", "==", auth.currentUser.uid).onSnapshot(snap => {
-            let h = '', rep = '', inv = 0, lucP = 0, alts = 0;
-            snap.forEach(doc => {
-                const i = doc.data();
-                if(!i.modelo.toLowerCase().includes(busca) && !i.codigo.includes(busca)) return;
-                const custoT = (i.compra || 0) + (i.taxa_envio || 0);
-                const lucroU = (i.repasse - (i.repasse * (i.desconto/100))) - custoT;
-                inv += (i.compra * i.qtd); lucP += (lucroU * i.qtd);
-                if(i.qtd <= i.minimo) { alts++; rep += `• ${i.modelo} (${i.qtd} un.)<br>`; }
-                h += `<tr><td><b>${i.modelo}</b></td><td>${i.qtd}</td><td>R$ ${custoT.toFixed(2)}</td><td>R$ ${i.repasse.toFixed(2)}</td><td>${i.desconto}%</td><td>R$ ${lucroU.toFixed(2)}</td>
-                    <td><button onclick="prepararEdicao('${doc.id}', ${JSON.stringify(i).replace(/"/g, '&quot;')})" class="badge" style="background:var(--info)">✎</button>
-                    <button onclick="excluirProd('${doc.id}')" class="badge" style="background:var(--danger)">🗑️</button></td></tr>`;
-            });
-            document.getElementById('corpo-estoque').innerHTML = h;
-            document.getElementById('dash-inv').innerText = "R$ " + inv.toFixed(2);
-            document.getElementById('dash-lucro').innerText = "R$ " + lucP.toFixed(2);
-            document.getElementById('dash-alert').innerText = alts;
-            document.getElementById('lista-compra-texto').innerHTML = rep || "Tudo em dia!";
-        });
-    }
-
-    function carregarVendas() {
-        const hoje = new Date().toLocaleDateString('pt-BR');
-        db.collection("vendas_kell").where("userId", "==", auth.currentUser.uid).onSnapshot(snap => {
-            let h = '', totalV = 0, lucroA = 0, lucroH = 0;
-            const lista = [];
-            snap.forEach(doc => {
-                const v = doc.data(); lista.push({id: doc.id, ...v});
-                totalV += v.venda; lucroA += v.lucro;
-                if(v.data === hoje) lucroH += v.lucro;
-            });
-            lista.sort((a,b) => b.timestamp - a.timestamp).forEach(v => {
-                h += `<tr><td>${v.data}</td><td>${v.peca}</td><td>${v.qtd}</td><td>R$ ${v.venda.toFixed(2)}</td><td>R$ ${v.lucro.toFixed(2)}</td>
-                    <td><button onclick='gerarCupom(${JSON.stringify(v)})' class="badge" style="background:var(--info)">🎫</button>
-                    <button onclick="excluirVenda('${v.id}')" style="border:none; background:none; cursor:pointer">❌</button></td></tr>`;
-            });
-            document.getElementById('corpo-vendas').innerHTML = h;
-            document.getElementById('dash-caixa').innerText = "R$ " + totalV.toFixed(2);
-            document.getElementById('venda-lucro-total').innerText = "R$ " + lucroA.toFixed(2);
-            document.getElementById('venda-lucro-hoje').innerText = "R$ " + lucroH.toFixed(2);
-        });
+        id ? await db.collection("estoque_kell").doc(id).update(dados) : await db.collection("estoque_kell").add(dados);
+        cancelarEdicao(); Toastify({text: "Estoque Atualizado!", style: {background: "#2e7d32"}}).showToast();
     }
 
     function prepararEdicao(id, d) {
         document.getElementById('edit-id').value = id;
         document.getElementById('modelo').value = d.modelo; document.getElementById('codigo').value = d.codigo;
         document.getElementById('qtd').value = d.qtd; document.getElementById('compra').value = d.compra;
-        document.getElementById('taxa_envio').value = d.taxa_envio || 0; document.getElementById('repasse').value = d.repasse;
+        document.getElementById('taxa_envio').value = d.taxa_envio; document.getElementById('repasse').value = d.repasse;
         document.getElementById('desconto').value = d.desconto; document.getElementById('minimo').value = d.minimo;
         document.getElementById('btn-save').innerText = "ATUALIZAR"; document.getElementById('btn-cancel').style.display = "block";
+        window.scrollTo(0,0);
     }
 
     function cancelarEdicao() {
         document.getElementById('edit-id').value = '';
-        ['modelo','codigo','qtd','compra','taxa_envio','repasse','desconto'].forEach(i => document.getElementById(i).value = '');
-        document.getElementById('btn-save').innerText = "SALVAR PRODUTO"; document.getElementById('btn-cancel').style.display = "none";
+        document.getElementById('btn-save').innerText = "SALVAR PRODUTO";
+        document.getElementById('btn-cancel').style.display = "none";
+        ['modelo','codigo','qtd','compra','taxa_envio','repasse'].forEach(i => document.getElementById(i).value = '');
     }
 
-    /* FUNÇÃO DE PDF COM ALTURA DINÂMICA (NÃO CORTA) */
-    function gerarCupom(v) {
-        document.getElementById('cp-data').innerText = v.data;
-        document.getElementById('cp-cliente').innerText = v.cliente;
-        document.getElementById('cp-doc').innerText = v.rg_cpf;
-        document.getElementById('cp-fone').innerText = v.contato;
-        document.getElementById('cp-item').innerText = v.peca;
-        document.getElementById('cp-qtd').innerText = v.qtd;
-        document.getElementById('cp-un').innerText = v.un.toFixed(2);
-        document.getElementById('cp-total').innerText = v.venda.toFixed(2);
-        
-        const elemento = document.getElementById('cupom-print');
-        elemento.style.display = 'block';
+    function processarBuscaEstoque(e) {
+        if(e.key === "Enter") {
+            const val = document.getElementById('busca').value;
+            db.collection("estoque_kell").where("userId", "==", auth.currentUser.uid).where("codigo", "==", val).get().then(snap => {
+                if(!snap.empty) {
+                    const doc = snap.docs[0];
+                    vendaPendente = { docId: doc.id, ...doc.data() };
+                    document.getElementById('m-qtd-titulo').innerText = vendaPendente.modelo;
+                    document.getElementById('m-qtd-estoque').innerText = "Em estoque: " + vendaPendente.qtd;
+                    document.getElementById('modal-qtd').style.display = 'flex';
+                } else { Toastify({text: "Não encontrado", style:{background:"#ef5350"}}).showToast(); }
+            });
+            document.getElementById('busca').value = "";
+        } else {
+            pagEstoque = 1;
+            renderizarEstoque();
+        }
+    }
 
-        const opt = {
-            margin: 0,
-            filename: `Cupom_KellMotos_${v.cliente}.pdf`,
-            image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: [100, (elemento.offsetHeight * 0.2645) + 20], orientation: 'p' }
-        };
+    function mudarPaginaEstoque(dir) { pagEstoque += dir; renderizarEstoque(); }
+    function mudarPaginaFinanceiro(dir) { pagFinanceiro += dir; renderizarFinanceiro(); }
 
-        html2pdf().from(elemento).set(opt).save().then(() => {
-            elemento.style.display = 'none';
+    function listarProdutos() {
+        db.collection("estoque_kell").where("userId", "==", auth.currentUser.uid).onSnapshot(snap => {
+            cacheEstoque = [];
+            snap.forEach(doc => { cacheEstoque.push({ id: doc.id, ...doc.data() }); });
+            // Ordena localmente caso o campo timestamp não exista nos antigos
+            cacheEstoque.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            renderizarEstoque();
         });
     }
 
-    async function excluirProd(id) { if(confirm("Remover?")) await db.collection("estoque_kell").doc(id).delete(); }
-    async function excluirVenda(id) { if(confirm("Apagar venda?")) await db.collection("vendas_kell").doc(id).delete(); }
-    function compartilharLista() { window.open("https://wa.me/?text="+encodeURIComponent("REPOSIÇÃO KELL MOTOS:\n\n"+document.getElementById('lista-compra-texto').innerText.replace(/<br>/g, '\n'))); }
-    function fazerLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(() => notify("Login Inválido", "error")); }
-    function fazerLogout() { auth.signOut(); }
+    function renderizarEstoque() {
+        const busca = document.getElementById('busca').value.toLowerCase();
+        const filtrados = cacheEstoque.filter(i => (i.modelo || "").toLowerCase().includes(busca) || (i.codigo || "").includes(busca));
+        
+        let inv = 0, lucP = 0, rep = '', alts = 0;
+        cacheEstoque.forEach(i => {
+            const custoTotal = (i.compra || 0) + (i.taxa_envio || 0);
+            const vFinal = i.repasse * (1 - (i.desconto/100));
+            inv += (custoTotal * i.qtd); 
+            lucP += ((vFinal - custoTotal) * i.qtd);
+            if(i.qtd <= i.minimo) { alts++; rep += `• ${i.modelo} (Qtd: ${i.qtd})<br>`; }
+        });
 
+        document.getElementById('dash-inv').innerText = "R$ " + inv.toFixed(2);
+        document.getElementById('dash-lucro').innerText = "R$ " + lucP.toFixed(2);
+        document.getElementById('dash-alert').innerText = alts;
+        document.getElementById('lista-compra-texto').innerHTML = rep || "Nenhum alerta crítico.";
+
+        const totalPaginas = Math.ceil(filtrados.length / itensPorPagina) || 1;
+        if(pagEstoque > totalPaginas) pagEstoque = totalPaginas;
+        if(pagEstoque < 1) pagEstoque = 1;
+
+        const inicio = (pagEstoque - 1) * itensPorPagina;
+        const itensPagina = filtrados.slice(inicio, inicio + itensPorPagina);
+
+        let h = '';
+        itensPagina.forEach(i => {
+            const custoTotal = (i.compra || 0) + (i.taxa_envio || 0);
+            const vFinal = i.repasse * (1 - (i.desconto/100));
+            h += `<tr><td>${i.modelo}</td><td>${i.qtd}</td><td>R$ ${custoTotal.toFixed(2)}</td><td>R$ ${i.repasse.toFixed(2)}</td><td>${i.desconto}%</td><td>R$ ${(vFinal - custoTotal).toFixed(2)}</td>
+            <td><button class="badge" style="background:var(--info)" onclick='prepararEdicao("${i.id}", ${JSON.stringify(i)})'>✎</button>
+            <button class="badge" style="background:var(--primary)" onclick='abrirVenda("${i.id}", ${JSON.stringify(i)})'>🛒</button></td></tr>`;
+        });
+
+        document.getElementById('corpo-estoque').innerHTML = h;
+        document.getElementById('pag-est-atual').innerText = pagEstoque;
+        document.getElementById('pag-est-prev').disabled = pagEstoque === 1;
+        document.getElementById('pag-est-next').disabled = pagEstoque === totalPaginas;
+    }
+
+    function carregarVendas() {
+        db.collection("vendas_kell").where("userId", "==", auth.currentUser.uid).onSnapshot(snap => {
+            cacheFinanceiro = [];
+            snap.forEach(doc => { cacheFinanceiro.push(doc.data()); });
+            cacheFinanceiro.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            renderizarFinanceiro();
+        });
+    }
+
+    function renderizarFinanceiro() {
+        let caixa = 0;
+        cacheFinanceiro.forEach(v => { caixa += v.venda; });
+        document.getElementById('dash-caixa').innerText = "R$ " + caixa.toFixed(2);
+
+        const totalPaginas = Math.ceil(cacheFinanceiro.length / itensPorPagina) || 1;
+        if(pagFinanceiro > totalPaginas) pagFinanceiro = totalPaginas;
+        if(pagFinanceiro < 1) pagFinanceiro = 1;
+
+        const inicio = (pagFinanceiro - 1) * itensPorPagina;
+        const itensPagina = cacheFinanceiro.slice(inicio, inicio + itensPorPagina);
+
+        let h = '';
+        itensPagina.forEach(v => {
+            h += `<tr><td>#${v.numero}</td><td>${v.peca}</td><td>${v.qtd}</td><td>R$ ${v.venda.toFixed(2)}</td><td>R$ ${v.lucro.toFixed(2)}</td><td><button class="badge" style="background:var(--info)" onclick='gerarCupom(${JSON.stringify(v)})'>🎫</button></td></tr>`;
+        });
+
+        document.getElementById('corpo-vendas').innerHTML = h;
+        document.getElementById('pag-fin-atual').innerText = pagFinanceiro;
+        document.getElementById('pag-fin-prev').disabled = pagFinanceiro === 1;
+        document.getElementById('pag-fin-next').disabled = pagFinanceiro === totalPaginas;
+    }
+
+    function abrirVenda(id, i) {
+        vendaPendente = { docId: id, ...i };
+        document.getElementById('m-qtd-titulo').innerText = vendaPendente.modelo;
+        document.getElementById('m-qtd-estoque').innerText = "Em estoque: " + vendaPendente.qtd;
+        document.getElementById('modal-qtd').style.display = 'flex';
+    }
+
+    function abrirModalCliente() { 
+        vendaPendente.qtdVenda = parseInt(document.getElementById('venda-qtd-input').value); 
+        fecharModais(); 
+        document.getElementById('modal-cliente').style.display = 'flex'; 
+    }
+
+    async function confirmarVendaTotal() {
+        const vUn = vendaPendente.repasse * (1 - (vendaPendente.desconto / 100));
+        const num = Date.now().toString().slice(-6);
+        const custoTotal = (vendaPendente.compra || 0) + (vendaPendente.taxa_envio || 0);
+        
+        const dados = {
+            numero: num, peca: vendaPendente.modelo, qtd: vendaPendente.qtdVenda, venda: vUn * vendaPendente.qtdVenda,
+            lucro: (vUn - custoTotal) * vendaPendente.qtdVenda,
+            cliente: document.getElementById('cli-nome').value || "Consumidor Final",
+            serie: document.getElementById('config-serie').value,
+            cnpj: document.getElementById('config-cnpj').value,
+            data: new Date().toLocaleString(), timestamp: Date.now(), userId: auth.currentUser.uid
+        };
+        
+        await db.collection("vendas_kell").add(dados);
+        await db.collection("estoque_kell").doc(vendaPendente.docId).update({ qtd: vendaPendente.qtd - vendaPendente.qtdVenda });
+        fecharModais(); 
+        gerarCupom(dados);
+    }
+
+    function gerarCupom(v) {
+        const wrapper = document.getElementById('cupom-wrapper');
+        document.getElementById('cp-cnpj').innerText = v.cnpj; document.getElementById('cp-serie').innerText = v.serie;
+        document.getElementById('cp-num').innerText = v.numero; document.getElementById('cp-data').innerText = v.data;
+        document.getElementById('cp-cliente').innerText = v.cliente; document.getElementById('cp-total').innerText = v.venda.toFixed(2);
+        document.getElementById('cp-itens').innerHTML = `<tr><td>${v.peca}</td><td style="text-align:center">${v.qtd}</td><td style="text-align:right">R$ ${v.venda.toFixed(2)}</td></tr>`;
+        document.getElementById('qrcode-box').innerHTML = "";
+        new QRCode(document.getElementById('qrcode-box'), { text: "VENDA:"+v.numero, width: 100, height: 100 });
+        wrapper.style.display = 'flex';
+        setTimeout(() => {
+            html2pdf().from(document.getElementById('cupom-print')).set({ margin: 0, filename: `CUPOM_${v.numero}.pdf`, html2canvas: { scale: 3 }, jsPDF: { unit: 'mm', format: [80, 210] } }).save().then(() => { wrapper.style.display = 'none'; });
+        }, 1500);
+    }
+
+    function compartilharLista() { window.open("https://wa.me/?text="+encodeURIComponent("🛒 *REPOSIÇÃO KELL MOTOS*\n\n"+document.getElementById('lista-compra-texto').innerText.replace(/<br>/g, '\n'))); }
+    function fazerLogin() { auth.signInWithEmailAndPassword(document.getElementById('email').value, document.getElementById('password').value).catch(e => alert("Erro: " + e.message)); }
+    function fazerLogout() { auth.signOut(); }
+    
     auth.onAuthStateChanged(u => {
         if(u) { document.getElementById('login-screen').style.display='none'; document.getElementById('main-app').style.display='block'; listarProdutos(); carregarVendas(); }
         else { document.getElementById('login-screen').style.display='block'; document.getElementById('main-app').style.display='none'; }
