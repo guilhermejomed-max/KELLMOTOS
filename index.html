@@ -27,12 +27,16 @@
         
         .sidebar { width: var(--sidebar-width); background: var(--card-bg); border-right: 1px solid var(--border); height: 100vh; position: fixed; left: 0; top: 0; transition: 0.3s; z-index: 1000; display: flex; flex-direction: column; }
         .sidebar.hidden { left: calc(var(--sidebar-width) * -1); }
-        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); text-align: center; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .logo-img { width: 100%; max-width: 180px; height: auto; border-radius: 10px; object-fit: contain; }
         .sidebar-menu { flex: 1; padding: 15px 0; }
         .menu-item { padding: 15px 25px; cursor: pointer; display: flex; align-items: center; gap: 15px; font-weight: 600; color: var(--text); transition: 0.2s; border-left: 4px solid transparent; }
         .menu-item:hover { background: rgba(0,0,0,0.05); }
         .menu-item.active { background: rgba(46, 125, 50, 0.1); color: var(--primary); border-left: 4px solid var(--primary); }
         
+        .sidebar-footer { padding: 20px; border-top: 1px solid var(--border); text-align: center; }
+        #user-role-display { font-size: 11px; margin-bottom: 10px; color: var(--primary); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
+
         .main-content { flex: 1; margin-left: var(--sidebar-width); transition: 0.3s; padding: 20px; width: 100%; box-sizing: border-box; }
         .main-content.full { margin-left: 0; }
         
@@ -87,8 +91,7 @@
 
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <img src="Logo.jpg" style="width: 80px; border-radius: 10px;">
-            <h2 id="user-role-display" style="font-size: 12px; margin-top: 10px; color: var(--primary); text-transform: uppercase;">CARREGANDO...</h2>
+            <img src="Logo.jpg" class="logo-img">
         </div>
         <nav class="sidebar-menu">
             <div class="menu-item active" id="m-estoque" onclick="mudarTab('estoque')"><span>📦</span> Estoque</div>
@@ -98,7 +101,8 @@
             <div class="menu-item" id="m-dash" onclick="mudarTab('dash')"><span>📊</span> Dashboard</div>
             <div class="menu-item" id="m-funcionarios" onclick="mudarTab('funcionarios')"><span>👥</span> Funcionários</div>
         </nav>
-        <div style="padding: 20px; border-top: 1px solid var(--border);">
+        <div class="sidebar-footer">
+            <div id="user-role-display">CARREGANDO...</div>
             <button class="btn btn-main" style="background: var(--danger); width: 100%;" onclick="fazerLogout()">Sair</button>
         </div>
     </aside>
@@ -491,12 +495,11 @@
         fecharModais(); document.getElementById('modal-cliente').style.display = 'flex'; 
     }
 
-    // 🔥 CORREÇÃO 1 e 3: TRANSACÇÃO ATÔMICA + CALCULO DE LUCRO NO BANCO
     async function confirmarVenda() {
         const seqRef = db.collection("config_kell").doc("sequencial");
         const estoqueRef = db.collection("estoque_kell").doc(vendaPendente.docId);
         const vendaRef = db.collection("vendas_kell").doc();
-
+        
         try {
             const resultado = await db.runTransaction(async (transaction) => {
                 const seqDoc = await transaction.get(seqRef);
@@ -509,7 +512,6 @@
                 let n = 818558;
                 if(seqDoc.exists) n = (seqDoc.data().ultimoPedido || 818558) + 1;
 
-                // Cálculo de lucro baseado no custo REAL do banco de dados, não do front
                 const custoReal = (dadosEstoque.compra + (dadosEstoque.taxa_envio || 0));
                 const valorVendaReal = dadosEstoque.repasse;
                 const lucroCalculado = (valorVendaReal - custoReal) * vendaPendente.qtdVenda;
@@ -574,11 +576,13 @@
     }
 
     function enviarWhatsapp() { window.open("https://wa.me/?text=" + encodeURIComponent("*LISTA DE REPOSIÇÃO KELL MOTOS*\n\n" + document.getElementById('lista-reposicao-txt').innerText.replace(/<br>/g, '\n'))); }
+    
     function fazerLogin() { 
         const email = document.getElementById('email').value.toLowerCase().trim();
         const pass = document.getElementById('password').value;
         auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Erro: " + e.message));
     }
+    
     function fazerLogout() { auth.signOut(); }
 
     auth.onAuthStateChanged(u => {
