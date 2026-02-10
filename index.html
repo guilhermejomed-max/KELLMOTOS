@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KELL MOTOS - BI v15.0 PROTECTED</title>
+    <title>KELL MOTOS - Business Intelligence v17.7</title>
+    
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
@@ -17,7 +18,7 @@
         :root { 
             --primary: #2e7d32; --danger: #ef5350; --warning: #ffa726; --info: #0288d1;
             --bg: #f4f7f6; --card-bg: #ffffff; --text: #333; --border: #ddd;
-            --sidebar-width: 260px;
+            --sidebar-width: 260px; --eco: #673ab7;
         }
         body.dark-mode { 
             --bg: #121212; --card-bg: #1e1e1e; --text: #e0e0e0; --border: #333;
@@ -25,570 +26,621 @@
         }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; transition: 0.3s; display: flex; min-height: 100vh; overflow-x: hidden; }
         
+        /* SIDEBAR E NAVEGAÇÃO */
         .sidebar { width: var(--sidebar-width); background: var(--card-bg); border-right: 1px solid var(--border); height: 100vh; position: fixed; left: 0; top: 0; transition: 0.3s; z-index: 1000; display: flex; flex-direction: column; }
-        .sidebar.hidden { left: calc(var(--sidebar-width) * -1); }
-        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); text-align: center; }
         .logo-img { width: 100%; max-width: 180px; height: auto; border-radius: 10px; object-fit: contain; }
-        .sidebar-menu { flex: 1; padding: 15px 0; }
+        .sidebar-menu { flex: 1; padding: 15px 0; overflow-y: auto; }
         .menu-item { padding: 15px 25px; cursor: pointer; display: flex; align-items: center; gap: 15px; font-weight: 600; color: var(--text); transition: 0.2s; border-left: 4px solid transparent; }
         .menu-item:hover { background: rgba(0,0,0,0.05); }
         .menu-item.active { background: rgba(46, 125, 50, 0.1); color: var(--primary); border-left: 4px solid var(--primary); }
-        
+        .menu-item.eco-active { background: rgba(103, 58, 183, 0.1); color: var(--eco); border-left: 4px solid var(--eco); }
         .sidebar-footer { padding: 20px; border-top: 1px solid var(--border); text-align: center; }
         #user-role-display { font-size: 11px; margin-bottom: 10px; color: var(--primary); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
 
+        /* LOGIN SCREEN */
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: var(--card-bg); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
+
+        /* LAYOUT PRINCIPAL */
         .main-content { flex: 1; margin-left: var(--sidebar-width); transition: 0.3s; padding: 20px; width: 100%; box-sizing: border-box; }
-        .main-content.full { margin-left: 0; }
-        
         .header-app { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; gap: 10px; }
         .nav-controls { display: flex; align-items: center; gap: 15px; }
         .hamburger { font-size: 24px; cursor: pointer; background: none; border: none; color: var(--text); }
         
-        .container { max-width: 1200px; margin: auto; display: none; }
-        .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid var(--border); }
-        
+        .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid var(--border); position: relative; }
         .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: var(--card-bg); padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); border: 1px solid var(--border); }
+        .stat-card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); transition: 0.3s; }
         .stat-card small { font-size: 11px; text-transform: uppercase; opacity: 0.8; }
         .stat-card strong { font-size: 20px; display: block; margin-top: 8px; }
         
+        .privacy-on strong { filter: blur(7px); user-select: none; }
+
+        /* FORMULÁRIOS E BOTÕES */
         .btn { padding: 12px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-size: 14px; }
         .btn-main { background: var(--primary); width: 100%; margin-top: 10px; }
-        
         .input-style { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); box-sizing: border-box; font-size: 16px; margin-top: 5px; }
+        .input-label { font-size: 10px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-top: 10px; display: block; }
+        .badge { padding: 4px 8px; border-radius: 4px; border: none; color: white; cursor: pointer; font-size: 11px; font-weight: bold; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        /* TABELAS */
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 600px; }
         th { background: var(--primary); color: white; padding: 12px; font-size: 13px; text-transform: uppercase; }
         td { padding: 12px; border-bottom: 1px solid var(--border); text-align: center; font-size: 14px; }
 
+        /* MODAL */
         .modal { display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; padding: 10px; }
         .modal-content { background: var(--card-bg); padding: 30px; border-radius: 15px; width: 100%; max-width: 450px; text-align: center; }
 
-        .hidden { display: none !important; }
-        .badge { padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; color: white; border: none; font-weight: bold; }
-        body.privacy-mode .hidden-value { color: transparent; text-shadow: 0 0 10px var(--text); }
-
-        .moto-selector { height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--bg); margin-top: 8px; }
-        .moto-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
-
+        /* DESIGN DO CUPOM PROFISSIONAL (CORREÇÃO DE LEITURA) */
         #cupom-wrapper { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10002; overflow-y: auto; justify-content: center; padding: 20px; }
-        #cupom-print { background: #fff; width: 300px; padding: 30px 20px; color: #000; box-sizing: border-box; font-family: 'Courier New', Courier, monospace; }
-        .cp-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 15px; }
-        .cp-title { font-size: 26px; font-weight: 900; margin: 0; }
-        .cp-row { display: flex; justify-content: space-between; font-size: 12px; margin: 5px 0; }
-        .cp-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        .cp-table th { border-bottom: 1px solid #000; text-align: left; padding: 5px 0; color: #000; background: none; }
-        .cp-total { display: flex; justify-content: space-between; font-size: 22px; font-weight: 900; margin-top: 20px; padding-top: 10px; border-top: 2px solid #000; }
+        #cupom-print { background: #fff; width: 300px; padding: 20px; color: #000; font-family: 'Courier New', Courier, monospace; line-height: 1.4; box-sizing: border-box; border: 1px solid #eee; }
+        .cp-divider { border-top: 1px dashed #000; margin: 12px 0; }
+        .cp-header { text-align: center; margin-bottom: 15px; }
+        .cp-title { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+        .cp-table { width: 100%; font-size: 12px; border-collapse: collapse; margin: 10px 0; }
+        .cp-table th { background: none; color: #000; border-bottom: 1px solid #000; padding: 5px 0; text-align: left; }
+        .cp-table td { border-bottom: none; padding: 6px 0; text-align: left; vertical-align: top; }
+        .cp-footer { text-align: center; font-size: 10px; margin-top: 20px; line-height: 1.5; }
+        .cp-signature { margin-top: 40px; border-top: 1px solid #000; width: 85%; margin-left: 7.5%; text-align: center; font-size: 9px; padding-top: 5px; text-transform: uppercase; }
+        
+        .hidden { display: none !important; }
+        .moto-selector { height: 180px; overflow-y: auto; border: 1px solid var(--border); padding: 10px; background: var(--bg); margin-top: 8px; border-radius: 8px; }
+        .moto-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+        .top-item { display: flex; justify-content: space-between; padding: 8px; background: rgba(0,0,0,0.03); border-radius: 8px; margin-bottom: 5px; font-size: 13px; }
 
-        @media (max-width: 768px) {
-            .sidebar { left: calc(var(--sidebar-width) * -1); }
-            .sidebar.active { left: 0; }
-            .main-content { margin-left: 0; }
-        }
+        @media (max-width: 768px) { .sidebar { left: -260px; } .sidebar.active { left: 0; } .main-content { margin-left: 0; } }
     </style>
 </head>
-<body>
+<body class="privacy-on">
+
+    <div id="login-screen">
+        <div class="login-card">
+            <img src="Logo.jpg" style="width: 140px; margin-bottom: 20px; border-radius: 10px;">
+            <h2 id="login-title" style="color: var(--primary); font-weight: 900;">ACESSO RESTRITO</h2>
+            <input type="email" id="email" class="input-style" placeholder="E-mail de Usuário">
+            <input type="password" id="password" class="input-style" placeholder="Senha de Acesso" style="margin-top: 10px;">
+            <button id="btn-login-main" class="btn btn-main" style="height: 50px;" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
+            <div style="margin-top: 15px; font-size: 13px;">
+                <a href="#" id="link-primeiro-acesso" onclick="modoPrimeiroAcesso()" style="color: var(--info); text-decoration: none; font-weight: bold;">Primeiro Acesso / Criar Senha</a>
+            </div>
+        </div>
+    </div>
 
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <img src="Logo.jpg" class="logo-img">
-        </div>
+        <div class="sidebar-header"><img src="Logo.jpg" class="logo-img"></div>
         <nav class="sidebar-menu">
-            <div class="menu-item active" id="m-estoque" onclick="mudarTab('estoque')"><span>📦</span> Estoque</div>
-            <div class="menu-item" id="m-motos" onclick="mudarTab('motos')"><span>🏍️</span> Motos</div>
-            <div class="menu-item" id="m-vendas" onclick="mudarTab('vendas')"><span>💰</span> Vendas</div>
-            <div class="menu-item" id="m-reposicao" onclick="mudarTab('reposicao')"><span>🛒</span> Reposição</div>
-            <div class="menu-item" id="m-dash" onclick="mudarTab('dash')"><span>📊</span> Dashboard</div>
-            <div class="menu-item" id="m-funcionarios" onclick="mudarTab('funcionarios')"><span>👥</span> Funcionários</div>
+            <div class="menu-item active" id="m-estoque" onclick="mudarTab('estoque')">📦 Estoque</div>
+            <div class="menu-item" id="m-ecommerce" onclick="mudarTab('ecommerce')">🌐 E-Commerce</div>
+            <div class="menu-item" id="m-motos" onclick="mudarTab('motos')">🏍️ Motos</div>
+            <div class="menu-item" id="m-vendas" onclick="mudarTab('vendas')">💰 Vendas</div>
+            <div class="menu-item" id="m-reposicao" onclick="mudarTab('reposicao')">🛒 Reposição</div>
+            <div class="menu-item" id="m-dash" onclick="mudarTab('dash')">📊 Dashboard</div>
+            <div class="menu-item" id="m-funcionarios" onclick="mudarTab('funcionarios')">👥 Equipe</div>
         </nav>
         <div class="sidebar-footer">
             <div id="user-role-display">CARREGANDO...</div>
-            <button class="btn btn-main" style="background: var(--danger); width: 100%;" onclick="fazerLogout()">Sair</button>
+            <button class="btn" style="background:var(--danger); width:100%" onclick="fazerLogout()">Encerrar Sessão</button>
         </div>
     </aside>
 
+    <main class="main-content" id="main-content" style="display: none;">
+        <header class="header-app">
+            <div class="nav-controls">
+                <button class="hamburger" onclick="toggleSidebar()">☰</button>
+                <h1 id="page-title" style="margin: 0; font-size: 22px; font-weight: 900; color: var(--primary);">ESTOQUE</h1>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" style="background:#444" id="btn-config-geral" onclick="toggleConfig()">⚙️</button>
+                <button class="btn" style="background:var(--info)" onclick="togglePrivacy()">👁️</button>
+                <button class="btn" style="background:#555" onclick="toggleDarkMode()">🌓</button>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <div class="stat-card" id="kpi-fat-card"><small>Faturamento Hoje</small><strong id="kpi-faturamento">R$ 0,00</strong></div>
+            <div class="stat-card" id="kpi-luc-card"><small>Lucro Estimado (30d)</small><strong id="kpi-lucro">R$ 0,00</strong></div>
+            <div class="stat-card"><small>Custo de Estoque</small><strong id="kpi-estoque">R$ 0,00</strong></div>
+            <div class="stat-card"><small>Produtos em Falta</small><strong id="kpi-alertas" style="color:var(--danger)">0</strong></div>
+        </div>
+
+        <div id="sec-estoque">
+            <button class="btn btn-main" style="background: var(--info); margin-bottom: 15px;" onclick="toggleFormCadastro()">+ CADASTRAR NOVO PRODUTO</button>
+            
+            <div class="card" id="form-cadastro" style="display: none;">
+                <input type="hidden" id="edit-id">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                    <div><label class="input-label">NOME DO PRODUTO</label><input type="text" id="modelo" class="input-style"></div>
+                    <div><label class="input-label">CÓDIGO / EAN</label><input type="text" id="codigo" class="input-style"></div>
+                    <div><label class="input-label">QUANTIDADE</label><input type="number" id="qtd" class="input-style"></div>
+                    <div><label class="input-label">CUSTO UNITÁRIO</label><input type="number" id="compra" class="input-style" oninput="calcularSugerido()"></div>
+                    <div><label class="input-label">TAXA / ENVIO</label><input type="number" id="taxa_envio" class="input-style" value="0"></div>
+                    <div><label class="input-label">VALOR BALCÃO</label><input type="number" id="repasse" class="input-style"></div>
+                </div>
+                <div style="margin-top: 15px;"><label class="input-label">VINCULAR APLICAÇÕES (MOTOS):</label><input type="text" id="busca-moto-cadastro" class="input-style" placeholder="Pesquisar modelo..." onkeyup="filtrarMotosCadastro()"></div>
+                <div class="moto-selector" id="moto-selector-list"></div>
+                <button class="btn btn-main" onclick="salvarProduto()" style="margin-top: 15px;">SALVAR NO BANCO DE DADOS</button>
+            </div>
+            
+            <div class="card">
+                <input type="text" id="busca" class="input-style" placeholder="🔍 Buscar por nome, código ou aplicação..." onkeyup="renderizarEstoque()">
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>DESCRIÇÃO DO PRODUTO</th><th>APLICAÇÃO</th><th>QTD</th><th>PREÇO</th><th>AÇÕES</th></tr></thead>
+                        <tbody id="corpo-estoque"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-ecommerce" class="hidden">
+            <div class="card" id="card-calc-eco" style="display:none; border: 2px solid var(--eco);">
+                <h3 style="color:var(--eco)">Calculadora Marketplace: <span id="label-peca-eco"></span></h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;">
+                    <div><label class="input-label">EMBALAGEM (R$)</label><input type="number" id="calc_emb" class="input-style" value="2.50" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label">FRETE (R$)</label><input type="number" id="calc_frete" class="input-style" value="0" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label">COMISSÃO (%)</label><input type="number" id="calc_plat" class="input-style" value="16.5" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label">IMPOSTO/FIXO (%)</label><input type="number" id="calc_fixo" class="input-style" value="6" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label">VALOR FINAL SUGERIDO</label><input type="text" id="calc_venda" class="input-style" readonly style="background:#f0ebff; border-color:var(--eco); font-weight:bold"></div>
+                </div>
+                <button class="btn btn-main" style="background:var(--eco); margin-top:20px" onclick="salvarPrecoOnline()">ATUALIZAR PREÇO ONLINE</button>
+            </div>
+            <div class="card">
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>ITEM</th><th>CUSTO TOTAL</th><th>BALCÃO</th><th>E-COMMERCE</th><th>AÇÃO</th></tr></thead>
+                        <tbody id="corpo-ecommerce"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-motos" class="hidden">
+            <div class="card">
+                <h3>Gerenciar Modelos de Motos</h3>
+                <div style="display:flex; gap:10px">
+                    <input type="text" id="nova-moto" class="input-style" placeholder="Ex: Honda CB 300F Twister 2024">
+                    <button class="btn btn-main" style="width:auto; margin:0" onclick="salvarMoto()">ADICIONAR</button>
+                </div>
+                <div id="lista-motos-gerencia" style="margin-top:20px; display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:10px"></div>
+            </div>
+        </div>
+
+        <div id="sec-vendas" class="hidden">
+            <div class="card">
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Nº PEDIDO</th><th>DATA/HORA</th><th>CLIENTE</th><th>ITEM</th><th>VALOR TOTAL</th><th>AÇÕES</th></tr></thead>
+                        <tbody id="corpo-vendas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-dash" class="hidden">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
+                <div class="card"><h3>Histórico de Vendas (7 Dias)</h3><canvas id="chart-fat"></canvas></div>
+                <div class="card"><h3>🏆 Produtos Mais Vendidos</h3><div id="top-produtos-lista"></div></div>
+            </div>
+        </div>
+
+        <div id="sec-funcionarios" class="hidden">
+            <div class="card">
+                <h3>Gestão de Acessos</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
+                    <input type="email" id="func-email" class="input-style" placeholder="E-mail do Funcionário">
+                    <select id="func-nivel" class="input-style">
+                        <option value="JUNIOR">VENDEDOR (Nível 1)</option>
+                        <option value="SENIOR">ADMINISTRADOR (Nível 2)</option>
+                    </select>
+                </div>
+                <button class="btn btn-main" onclick="salvarFuncionario()">AUTORIZAR ACESSO</button>
+                <div id="lista-funcionarios" style="margin-top:20px"></div>
+            </div>
+        </div>
+
+        <div id="sec-reposicao" class="hidden">
+            <div class="card">
+                <h3 style="color:var(--danger)">📦 Relatório de Itens em Falta</h3>
+                <div id="lista-reposicao-txt" style="padding:15px; background:rgba(0,0,0,0.03); border-radius:10px; white-space:pre-wrap; font-family:monospace; border: 1px dashed var(--danger); min-height:100px;"></div>
+                <button class="btn btn-main" onclick="enviarWhatsapp()" style="margin-top:10px;">COMPARTILHAR LISTA VIA WHATSAPP</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-qtd" class="modal"><div class="modal-content"><h3 id="m-qtd-titulo"></h3><label class="input-label">INFORME A QUANTIDADE:</label><input type="number" id="venda-qtd-input" class="input-style" value="1"><button class="btn btn-main" onclick="abrirModalCliente()">AVANÇAR PARA CLIENTE</button><button class="btn" style="background:#777; width:100%; margin-top:5px" onclick="fecharModais()">CANCELAR</button></div></div>
+    <div id="modal-cliente" class="modal"><div class="modal-content"><h3>Identificação da Venda</h3><label class="input-label">NOME DO CLIENTE</label><input type="text" id="cli-nome" class="input-style" placeholder="Consumidor Final"><button class="btn btn-main" onclick="confirmarVenda()">CONCLUIR VENDA E GERAR PDF</button></div></div>
+    
     <div id="modal-config" class="modal">
         <div class="modal-content">
-            <h3>⚙️ Configurações</h3>
-            <div style="text-align: left; display: flex; flex-direction: column; gap: 10px;">
-                <label>Margem de Lucro %</label><input type="number" id="config-margem" class="input-style" value="35">
-                <label>CNPJ da Loja</label><input type="text" id="config-cnpj" class="input-style" value="00.000.000/0001-00">
-                <label>Série Equipamento</label><input type="text" id="config-serie" class="input-style" value="KL-001">
-            </div>
-            <button class="btn btn-main" onclick="fecharModais()">Salvar</button>
+            <h3 style="color: var(--primary)">CONFIGURAÇÕES DA LOJA</h3>
+            <label class="input-label">NOME DA EMPRESA</label><input type="text" id="cfg-nome" class="input-style">
+            <label class="input-label">CNPJ PARA O CUPOM</label><input type="text" id="cfg-cnpj" class="input-style">
+            <label class="input-label">MARGEM BALCÃO PADRÃO (%)</label><input type="number" id="cfg-margem" class="input-style">
+            <label class="input-label">MARGEM E-COMMERCE (%)</label><input type="number" id="cfg-margem-eco" class="input-style">
+            <button class="btn btn-main" onclick="salvarConfigGeral()">SALVAR ALTERAÇÕES</button>
+            <button class="btn" style="background:#777; width:100%; margin-top:5px" onclick="toggleConfig()">FECHAR</button>
         </div>
     </div>
 
     <div id="cupom-wrapper">
         <div id="cupom-print">
-            <div class="cp-header"><h1 class="cp-title">KELL MOTOS</h1><p style="font-size:10px">COMPROVANTE DE VENDA</p></div>
-            <div class="cp-row"><b>Nº PEDIDO:</b> <span id="cp-num"></span></div>
-            <div class="cp-row"><b>DATA/HORA:</b> <span id="cp-data"></span></div>
-            <div class="cp-row"><b>CLIENTE:</b> <span id="cp-cliente"></span></div>
+            <div class="cp-header">
+                <div class="cp-title" id="cp-empresa-nome">KELL MOTOS</div>
+                <div id="cp-empresa-cnpj" style="font-size:11px">00.000.000/0000-00</div>
+            </div>
+            <div class="cp-divider"></div>
+            <div style="font-size:12px"><b>PEDIDO:</b> <span id="cp-num"></span></div>
+            <div style="font-size:12px"><b>DATA/HORA:</b> <span id="cp-data"></span></div>
+            <div style="font-size:12px"><b>CLIENTE:</b> <span id="cp-cli"></span></div>
+            <div class="cp-divider"></div>
             <table class="cp-table">
-                <thead><tr><th>DESCRIÇÃO</th><th style="text-align:center">QTD</th><th style="text-align:right">TOTAL</th></tr></thead>
+                <thead><tr><th width="60%">DESCRIÇÃO</th><th width="15%" align="center">QTD</th><th width="25%" align="right">TOTAL</th></tr></thead>
                 <tbody id="cp-itens"></tbody>
             </table>
-            <div class="cp-total"><span>TOTAL À PAGAR</span><span>R$ <span id="cp-total"></span></span></div>
-            <div id="qrcode-box" style="display: flex; justify-content: center; margin: 25px 0;"></div>
-            <p style="text-align:center; font-size:10px; font-weight: bold;">OBRIGADO PELA PREFERÊNCIA!</p>
+            <div class="cp-divider"></div>
+            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:15px">
+                <span>TOTAL A PAGAR:</span><span id="cp-total"></span>
+            </div>
+            <div class="cp-divider"></div>
+            <div class="cp-footer">
+                Agradecemos a preferência, siga-nos nas redes sociais!<br>
+                <b>Garantia somente com a apresentação deste cupom.</b>
+            </div>
+            <div class="cp-signature">
+                ASSINATURA DO CLIENTE
+            </div>
+            <center style="margin-top:20px"><div id="qrcode-venda"></div></center>
+            <div style="text-align:center; font-size:9px; margin-top:10px; color:#555">SISTEMA KELL MOTOS BI v17.7</div>
         </div>
     </div>
-
-    <div id="login-screen" style="width: 100%; max-width: 350px; margin: 80px auto; text-align: center; padding: 20px;">
-        <img src="Logo.jpg" style="width: 120px; border-radius: 12px; margin-bottom: 25px;">
-        
-        <div id="login-form">
-            <input type="email" id="email" class="input-style" placeholder="E-mail">
-            <input type="password" id="password" class="input-style" placeholder="Senha" style="margin-top: 10px;">
-            <button class="btn btn-main" onclick="fazerLogin()">ACESSAR SISTEMA</button>
-            <p style="margin-top: 20px; font-size: 13px; cursor: pointer; color: var(--info);" onclick="toggleAcesso(true)">É seu primeiro acesso? Clique aqui.</p>
-        </div>
-
-        <div id="setup-form" class="hidden">
-            <h3>Primeiro Acesso</h3>
-            <p style="font-size: 12px; color: #777;">Digite seu e-mail autorizado e escolha sua senha.</p>
-            <input type="email" id="new-email" class="input-style" placeholder="Seu E-mail">
-            <input type="password" id="new-password" class="input-style" placeholder="Criar Senha" style="margin-top: 10px;">
-            <button class="btn btn-main" style="background: var(--info);" onclick="cadastrarPrimeiroAcesso()">CADASTRAR SENHA</button>
-            <p style="margin-top: 20px; font-size: 13px; cursor: pointer; color: var(--primary);" onclick="toggleAcesso(false)">Voltar para o Login</p>
-        </div>
-    </div>
-
-    <main class="main-content" id="main-content">
-        <header class="header-app">
-            <div class="nav-controls">
-                <button class="hamburger" onclick="toggleSidebar()">☰</button>
-                <h1 id="page-title" style="margin: 0; font-size: 20px; font-weight: 800; color: var(--primary);">ESTOQUE</h1>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button id="btn-config-adm" class="btn hidden" style="background:#444" onclick="abrirConfig()">⚙️</button>
-                <button id="btn-privacy-adm" class="btn hidden" style="background:var(--info)" onclick="togglePrivacy()">👁️</button>
-                <button class="btn" style="background:#555" onclick="toggleDarkMode()">🌓</button>
-            </div>
-        </header>
-
-        <div class="container" id="main-app" style="display: block;">
-            <div class="dashboard" id="dashboard-kpis">
-                <div id="kpi-fat-card" class="stat-card hidden"><small>Faturamento Hoje</small><strong id="kpi-faturamento" class="hidden-value">R$ 0,00</strong></div>
-                <div id="kpi-luc-card" class="stat-card hidden"><small>Lucro 30 dias</small><strong id="kpi-lucro" class="hidden-value">R$ 0,00</strong></div>
-                <div class="stat-card"><small>Custo de Estoque</small><strong id="kpi-estoque" class="hidden-value">R$ 0,00</strong></div>
-                <div class="stat-card"><small>Alertas Baixos</small><strong id="kpi-alertas">0</strong></div>
-            </div>
-
-            <div id="sec-estoque">
-                <button class="btn btn-main hidden" id="btn-abrir-cadastro" style="margin-bottom: 15px; background: var(--info);" onclick="toggleFormCadastro()">+ ADICIONAR NOVO PRODUTO</button>
-                
-                <div class="card" id="form-cadastro" style="display: none;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
-                        <input type="hidden" id="edit-id">
-                        <div><label style="font-size:11px">PEÇA / COMPONENTE</label><input type="text" id="modelo" class="input-style"></div>
-                        <div><label style="font-size:11px">CÓDIGO EAN</label><input type="text" id="codigo" class="input-style"></div>
-                        <div><label style="font-size:11px">QTD INICIAL</label><input type="number" id="qtd" class="input-style"></div>
-                        <div><label style="font-size:11px">CUSTO UN.</label><input type="number" id="compra" class="input-style" oninput="calcularRecomendado()"></div>
-                        <div><label style="font-size:11px">TAXA ENVIO</label><input type="number" id="taxa_envio" class="input-style" value="0" oninput="calcularRecomendado()"></div>
-                        <div><label style="font-size:11px">VALOR VENDA</label><input type="number" id="repasse" class="input-style"></div>
-                    </div>
-                    <div style="margin-top:20px;">
-                        <label style="font-size:11px; font-weight: bold;">MOTOS COMPATÍVEIS:</label>
-                        <div id="moto-selector-list" class="moto-selector"></div>
-                    </div>
-                    <button class="btn btn-main" onclick="salvarProduto()">SALVAR NO INVENTÁRIO</button>
-                    <button class="btn" style="background: #777; width: 100%; margin-top: 5px;" onclick="toggleFormCadastro()">CANCELAR</button>
-                </div>
-
-                <div class="card">
-                    <input type="text" id="busca" class="input-style" placeholder="🔍 Buscar por peça ou compatibilidade..." onkeyup="renderizarEstoque()">
-                    <table>
-                        <thead><tr><th>PEÇA</th><th>COMPATIBILIDADE</th><th>QTD</th><th>VENDA</th><th id="th-acoes">AÇÕES</th></tr></thead>
-                        <tbody id="corpo-estoque"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="sec-motos" class="hidden">
-                <div class="card">
-                    <h3>Gerenciar Modelos</h3>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="nova-moto" class="input-style" placeholder="Ex: Honda CG 160 Titan">
-                        <button class="btn btn-main" onclick="salvarMoto()" style="margin-top:5px; width:auto;">ADICIONAR</button>
-                    </div>
-                    <button class="btn" style="background:var(--info); margin-top:15px; width:100%" onclick="importarModelosPadrao()">📥 IMPORTAR MODELOS PADRÃO</button>
-                    <div id="lista-motos-gerencia" style="margin-top:25px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;"></div>
-                </div>
-            </div>
-
-            <div id="sec-vendas" class="hidden">
-                <div class="card">
-                    <table>
-                        <thead><tr><th>Nº PEDIDO</th><th>DATA</th><th>DESCRIÇÃO</th><th>VALOR</th><th>AÇÕES</th></tr></thead>
-                        <tbody id="corpo-vendas"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="sec-dash" class="hidden">
-                <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                    <div class="card"><h3>Faturamento (7 Dias)</h3><canvas id="chart-fat"></canvas></div>
-                    <div class="card"><h3>Top 5 Mais Vendidos</h3><canvas id="chart-top"></canvas></div>
-                </div>
-            </div>
-
-            <div id="sec-reposicao" class="hidden">
-                <div class="card">
-                    <h3>🛒 Peças para Reposição</h3>
-                    <div id="lista-reposicao-txt" style="padding:15px; background:rgba(0,0,0,0.02); border-radius:8px; line-height:2; font-weight:bold; color:var(--danger)"></div>
-                    <button class="btn btn-main" onclick="enviarWhatsapp()">ENVIAR LISTA WHATSAPP</button>
-                </div>
-            </div>
-
-            <div id="sec-funcionarios" class="hidden">
-                <div class="card">
-                    <h3>👥 Gestão de Equipe</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <input type="email" id="func-email" class="input-style" placeholder="E-mail do Funcionário">
-                        <select id="func-nivel" class="input-style">
-                            <option value="JUNIOR">JUNIOR</option>
-                            <option value="PLENO">PLENO</option>
-                            <option value="SENIOR">SENIOR (ADM)</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-main" onclick="salvarFuncionario()">AUTORIZAR ACESSO</button>
-                    <div id="lista-funcionarios" style="margin-top: 20px;"></div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <div id="modal-qtd" class="modal"><div class="modal-content">
-        <h3 id="m-qtd-titulo"></h3>
-        <label>Quantidade:</label>
-        <input type="number" id="venda-qtd-input" class="input-style" value="1">
-        <button class="btn btn-main" onclick="abrirModalCliente()">CONTINUAR</button>
-    </div></div>
-
-    <div id="modal-cliente" class="modal"><div class="modal-content">
-        <h3>Identificação do Cliente</h3>
-        <input type="text" id="cli-nome" class="input-style" placeholder="Nome do Cliente">
-        <button class="btn btn-main" onclick="confirmarVenda()">CONCLUIR E GERAR CUPOM</button>
-    </div></div>
 
 <script>
-    const firebaseConfig = { apiKey: "AIzaSyCDrwonWKHZ12zhzLKdFWTDgxHc-juX3F0", authDomain: "kellmotos.firebaseapp.com", projectId: "kellmotos", storageBucket: "kellmotos.firebasestorage.app", messagingSenderId: "244705542944", appId: "1:244705542944:web:ff7464334b36ecaa464d45" };
+    // CONFIGURAÇÃO DO FIREBASE (DADOS ORIGINAIS)
+    const firebaseConfig = { 
+        apiKey: "AIzaSyCDrwonWKHZ12zhzLKdFWTDgxHc-juX3F0", 
+        authDomain: "kellmotos.firebaseapp.com", 
+        projectId: "kellmotos", 
+        storageBucket: "kellmotos.firebasestorage.app", 
+        messagingSenderId: "244705542944", 
+        appId: "1:244705542944:web:ff7464334b36ecaa464d45" 
+    };
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    const auth = firebase.auth(), db = firebase.firestore();
 
-    let cacheEstoque = [], cacheVendas = [], cacheMotos = [], userNivel = 'JUNIOR', vendaPendente = null;
-    let chartF = null, chartT = null;
+    // VARIÁVEIS DE ESTADO (CACHE)
+    let cacheEstoque = [], cacheVendas = [], cacheMotos = [], cacheFuncionarios = [], userNivel = 'SENIOR', chartF = null, vendaPendente = null, itemEcoPendente = null;
+    let configEmpresa = { nome: "KELL MOTOS", cnpj: "00.000.000/0000-00", margem: 40, margemEco: 20 };
 
-    function toggleAcesso(isNew) {
-        document.getElementById('login-form').classList.toggle('hidden', isNew);
-        document.getElementById('setup-form').classList.toggle('hidden', !isNew);
+    // --- SISTEMA DE LOGIN ---
+    async function fazerLogin() {
+        const e = document.getElementById('email').value, p = document.getElementById('password').value;
+        if(!e || !p) return alert("Preencha todos os campos!");
+        auth.signInWithEmailAndPassword(e, p).catch(err => alert("Erro ao entrar: " + err.message));
     }
 
-    function toggleFormCadastro() {
-        const form = document.getElementById('form-cadastro');
-        const btn = document.getElementById('btn-abrir-cadastro');
-        form.style.display = (form.style.display === 'none') ? 'block' : 'none';
-        btn.style.display = (form.style.display === 'none') ? 'block' : 'none';
+    function fazerLogout() { auth.signOut(); }
+
+    auth.onAuthStateChanged(user => {
+        document.getElementById('login-screen').style.display = user ? 'none' : 'flex';
+        document.getElementById('main-content').style.display = user ? 'block' : 'none';
+        if(user) iniciarApp();
+    });
+
+    function modoPrimeiroAcesso() {
+        document.getElementById('login-title').innerText = "CRIAR ACESSO";
+        document.getElementById('btn-login-main').innerText = "REGISTRAR SENHA";
+        document.getElementById('btn-login-main').setAttribute('onclick', 'cadastrarPrimeiraSenha()');
     }
 
-    async function cadastrarPrimeiroAcesso() {
-        const emailInput = document.getElementById('new-email').value.toLowerCase().trim();
-        const pass = document.getElementById('new-password').value;
-        if(!emailInput || pass.length < 6) { alert("Preencha o e-mail e uma senha com no mínimo 6 caracteres."); return; }
-        try {
-            const doc = await db.collection("funcionarios_kell").doc(emailInput).get();
-            if(doc.exists) {
-                const cred = await auth.createUserWithEmailAndPassword(emailInput, pass);
-                await db.collection("funcionarios_kell").doc(emailInput).update({ uid: cred.user.uid, cadastradoEm: Date.now(), status: 'ativo' });
-                alert("CADASTRO REALIZADO COM SUCESSO!");
-                toggleAcesso(false);
-            } else { alert("ERRO: Este e-mail não está autorizado pelo administrador."); }
-        } catch(e) { console.error(e); alert("Erro ao cadastrar: " + e.message); }
+    async function cadastrarPrimeiraSenha() {
+        const e = document.getElementById('email').value.toLowerCase(), p = document.getElementById('password').value;
+        if(p.length < 6) return alert("Senha muito curta!");
+        const funcDoc = await db.collection("funcionarios_kell").doc(e).get();
+        if(!funcDoc.exists) return alert("E-mail não autorizado!");
+        auth.createUserWithEmailAndPassword(e, p).catch(err => alert(err.message));
     }
 
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('hidden');
-        document.getElementById('sidebar').classList.toggle('active');
-        document.getElementById('main-content').classList.toggle('full');
-    }
-
-    function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
-    function abrirConfig() { document.getElementById('modal-config').style.display = 'flex'; }
-    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
-    function togglePrivacy() { document.body.classList.toggle('privacy-mode'); }
-
-    function mudarTab(t) {
-        document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
-        const tabBtn = document.getElementById('m-'+t);
-        if(tabBtn) tabBtn.classList.add('active');
-        ['estoque','motos','vendas','dash','reposicao','funcionarios'].forEach(s => {
-            const el = document.getElementById('sec-'+s);
-            if(el) el.classList.toggle('hidden', s !== t);
-        });
-        document.getElementById('page-title').innerText = t.toUpperCase();
-        if(t === 'dash') renderizarGraficos();
-        if(window.innerWidth < 768) toggleSidebar();
-    }
-
-    function aplicarPermissoes(nivel) {
-        userNivel = nivel;
-        document.getElementById('user-role-display').innerText = "CARGO: " + nivel;
-        document.getElementById('m-motos').classList.toggle('hidden', nivel === 'JUNIOR');
-        document.getElementById('m-vendas').classList.toggle('hidden', nivel === 'JUNIOR');
-        document.getElementById('m-dash').classList.toggle('hidden', nivel !== 'SENIOR');
-        document.getElementById('m-funcionarios').classList.toggle('hidden', nivel !== 'SENIOR');
-        document.getElementById('btn-abrir-cadastro').classList.toggle('hidden', nivel === 'JUNIOR');
-        document.getElementById('btn-config-adm').classList.toggle('hidden', nivel !== 'SENIOR');
-        document.getElementById('btn-privacy-adm').classList.toggle('hidden', nivel !== 'SENIOR');
-        document.getElementById('kpi-fat-card').classList.toggle('hidden', nivel !== 'SENIOR');
-        document.getElementById('kpi-luc-card').classList.toggle('hidden', nivel !== 'SENIOR');
-        document.getElementById('th-acoes').classList.toggle('hidden', nivel === 'JUNIOR');
-        if(nivel === 'JUNIOR' && (['MOTOS','VENDAS','DASHBOARD'].includes(document.getElementById('page-title').innerText))) mudarTab('estoque');
-        renderizarEstoque();
-    }
-
-    async function salvarFuncionario() {
-        const email = document.getElementById('func-email').value.toLowerCase().trim();
-        const nivel = document.getElementById('func-nivel').value;
-        if(!email) return;
-        await db.collection("funcionarios_kell").doc(email).set({ email, nivel, criadoEm: Date.now() }, { merge: true });
-        document.getElementById('func-email').value = '';
-        Toastify({text: "E-mail autorizado!"}).showToast();
-    }
-
-    async function deletarFunc(id) { if(confirm("Remover autorização?")) await db.collection("funcionarios_kell").doc(id).delete(); }
-
-    function listarDados() {
+    // --- INICIALIZAÇÃO ---
+    function iniciarApp() {
         const email = auth.currentUser.email.toLowerCase();
+        
+        // Listener Configurações
+        db.collection("config_kell").doc("empresa").onSnapshot(doc => {
+            if(doc.exists) {
+                configEmpresa = doc.data();
+                document.getElementById('cfg-nome').value = configEmpresa.nome;
+                document.getElementById('cfg-cnpj').value = configEmpresa.cnpj;
+                document.getElementById('cfg-margem').value = configEmpresa.margem;
+                document.getElementById('cfg-margem-eco').value = configEmpresa.margemEco;
+                document.getElementById('cp-empresa-nome').innerText = configEmpresa.nome;
+                document.getElementById('cp-empresa-cnpj').innerText = configEmpresa.cnpj;
+            }
+        });
+
+        // Listener Funcionário
         db.collection("funcionarios_kell").doc(email).onSnapshot(doc => {
-            if(doc.exists) aplicarPermissoes(doc.data().nivel);
-            else aplicarPermissoes('SENIOR');
+            userNivel = doc.exists ? doc.data().nivel : 'SENIOR';
+            document.getElementById('user-role-display').innerText = "PERFIL: " + userNivel;
+            if(userNivel !== 'SENIOR') {
+                document.getElementById('m-dash').classList.add('hidden');
+                document.getElementById('m-funcionarios').classList.add('hidden');
+            }
         });
-        db.collection("funcionarios_kell").onSnapshot(snap => {
-            let h = '';
-            snap.forEach(doc => {
-                const f = doc.data();
-                h += `<div class="card" style="margin-bottom:5px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <span>${f.email} <b>(${f.nivel})</b></span>
-                    <button class="badge" style="background:var(--danger)" onclick="deletarFunc('${doc.id}')">Remover</button>
-                </div>`;
-            });
-            document.getElementById('lista-funcionarios').innerHTML = h;
-        });
+
+        // Listeners Dados
         db.collection("motos_kell").onSnapshot(snap => {
-            cacheMotos = []; snap.forEach(doc => cacheMotos.push({ id: doc.id, ...doc.data() }));
+            cacheMotos = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.nome.localeCompare(b.nome));
             renderizarListaMotos();
         });
+
         db.collection("estoque_kell").onSnapshot(snap => {
-            cacheEstoque = []; snap.forEach(doc => cacheEstoque.push({ id: doc.id, ...doc.data() }));
-            renderizarEstoque(); atualizarKPIs();
+            cacheEstoque = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderizarEstoque(); renderizarEcommerce(); atualizarKPIs();
         });
+
         db.collection("vendas_kell").onSnapshot(snap => {
-            cacheVendas = []; snap.forEach(doc => cacheVendas.push(doc.data()));
-            cacheVendas.sort((a,b) => b.timestamp - a.timestamp);
+            cacheVendas = snap.docs.map(d => d.data()).sort((a,b) => b.timestamp - a.timestamp);
             renderizarVendas(); atualizarKPIs();
         });
+
+        db.collection("funcionarios_kell").onSnapshot(snap => {
+            cacheFuncionarios = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderizarListaFuncionarios();
+        });
     }
 
-    function calcularRecomendado() {
-        const c = parseFloat(document.getElementById('compra').value) || 0;
-        const e = parseFloat(document.getElementById('taxa_envio').value) || 0;
-        const m = parseFloat(document.getElementById('config-margem').value) || 35;
-        const rec = (c + e) * (1 + (m / 100));
-        document.getElementById('repasse').placeholder = "Sugerido: R$ " + rec.toFixed(2);
-    }
-
-    async function salvarMoto() {
-        const nome = document.getElementById('nova-moto').value;
-        if(nome) await db.collection("motos_kell").add({ nome });
-        document.getElementById('nova-moto').value = '';
-    }
-
-    async function deletarMoto(id) { if(confirm("Excluir?")) await db.collection("motos_kell").doc(id).delete(); }
-
-    async function importarModelosPadrao() {
-        const padrao = ["Honda CG 160 Titan", "Honda CG 160 Fan", "Honda CG 160 Start", "Honda Biz 125", "Honda Biz 110i", "Honda NXR 160 Bros", "Honda XRE 300", "Honda XRE 190", "Honda CB 300F", "Yamaha Fazer FZ25", "Yamaha Lander 250", "Yamaha Crosser 150", "Yamaha Factor 150"];
-        for(let m of padrao) await db.collection("motos_kell").add({ nome: m });
+    // --- LÓGICA DE ESTOQUE ---
+    function renderizarEstoque() {
+        const filtro = document.getElementById('busca').value.toLowerCase();
+        let html = '', faltas = 0, listaRep = '';
+        cacheEstoque.filter(i => 
+            i.modelo.toLowerCase().includes(filtro) || 
+            (i.compatibilidade||[]).join().toLowerCase().includes(filtro)
+        ).forEach(i => {
+            html += `<tr>
+                <td><b>${i.modelo}</b><br><small>${i.codigo || ''}</small></td>
+                <td style="font-size:11px; color:var(--info)">${(i.compatibilidade||[]).join(", ")}</td>
+                <td style="color:${i.qtd <= 2 ? 'red' : 'inherit'}">${i.qtd}</td>
+                <td>R$ ${i.repasse.toFixed(2)}</td>
+                <td>
+                    <button class="badge" style="background:var(--primary)" onclick='abrirVenda("${i.id}", ${JSON.stringify(i)})'>VENDER</button>
+                    <button class="badge" style="background:#444; margin-left:4px" onclick='carregarParaEdicao(${JSON.stringify(i)})'>EDIT</button>
+                </td>
+            </tr>`;
+            if(i.qtd <= 2) { faltas++; listaRep += `• ${i.modelo} (${i.qtd} un)\n`; }
+        });
+        document.getElementById('corpo-estoque').innerHTML = html;
+        document.getElementById('kpi-alertas').innerText = faltas;
+        document.getElementById('lista-reposicao-txt').innerText = listaRep || "Estoque em níveis normais.";
     }
 
     async function salvarProduto() {
         const id = document.getElementById('edit-id').value;
-        const selecionadas = [];
-        document.querySelectorAll('.moto-check:checked').forEach(c => selecionadas.push(c.value));
-        const dados = {
-            modelo: document.getElementById('modelo').value, codigo: document.getElementById('codigo').value,
-            qtd: parseInt(document.getElementById('qtd').value) || 0, compra: parseFloat(document.getElementById('compra').value) || 0,
-            taxa_envio: parseFloat(document.getElementById('taxa_envio').value) || 0, repasse: parseFloat(document.getElementById('repasse').value) || 0,
-            compatibilidade: selecionadas, minimo: 2, timestamp: Date.now()
+        const aplicacoes = []; document.querySelectorAll('.moto-check:checked').forEach(c => aplicacoes.push(c.value));
+        const produto = {
+            modelo: document.getElementById('modelo').value,
+            codigo: document.getElementById('codigo').value,
+            qtd: parseInt(document.getElementById('qtd').value) || 0,
+            compra: parseFloat(document.getElementById('compra').value) || 0,
+            taxa_envio: parseFloat(document.getElementById('taxa_envio').value) || 0,
+            repasse: parseFloat(document.getElementById('repasse').value) || 0,
+            compatibilidade: aplicacoes,
+            timestamp: Date.now()
         };
-        id ? await db.collection("estoque_kell").doc(id).update(dados) : await db.collection("estoque_kell").add(dados);
-        limparCampos(); toggleFormCadastro();
+        if(!produto.modelo) return alert("Defina o nome do produto!");
+        id ? await db.collection("estoque_kell").doc(id).update(produto) : await db.collection("estoque_kell").add(produto);
+        toggleFormCadastro(); limparFormEstoque();
+        Toastify({text: "Produto Salvo!"}).showToast();
     }
 
-    function limparCampos() {
-        document.getElementById('edit-id').value = '';
-        ['modelo','codigo','qtd','compra','taxa_envio','repasse'].forEach(i => document.getElementById(i).value = '');
-        document.querySelectorAll('.moto-check').forEach(c => c.checked = false);
+    function carregarParaEdicao(i) {
+        document.getElementById('edit-id').value = i.id;
+        document.getElementById('modelo').value = i.modelo;
+        document.getElementById('codigo').value = i.codigo;
+        document.getElementById('qtd').value = i.qtd;
+        document.getElementById('compra').value = i.compra;
+        document.getElementById('taxa_envio').value = i.taxa_envio;
+        document.getElementById('repasse').value = i.repasse;
+        document.querySelectorAll('.moto-check').forEach(ck => ck.checked = i.compatibilidade?.includes(ck.value));
+        document.getElementById('form-cadastro').style.display = 'block';
+        window.scrollTo(0,0);
+    }
+
+    // --- LÓGICA DE VENDAS E CUPOM ---
+    function abrirVenda(id, item) { 
+        vendaPendente = {docId:id, ...item}; 
+        document.getElementById('m-qtd-titulo').innerText = item.modelo; 
+        document.getElementById('modal-qtd').style.display = 'flex'; 
+    }
+
+    function abrirModalCliente() { 
+        vendaPendente.qtdVenda = parseInt(document.getElementById('venda-qtd-input').value); 
+        fecharModais(); 
+        document.getElementById('modal-cliente').style.display = 'flex'; 
+    }
+
+    async function confirmarVenda() {
+        const estRef = db.collection("estoque_kell").doc(vendaPendente.docId);
+        const seqRef = db.collection("config_kell").doc("sequencial");
+        try {
+            const resultado = await db.runTransaction(async (t) => {
+                const sDoc = await t.get(seqRef);
+                const eDoc = await t.get(estRef);
+                if(eDoc.data().qtd < vendaPendente.qtdVenda) throw "Estoque Insuficiente!";
+                
+                const num = (sDoc.exists ? sDoc.data().ultimoPedido : 818570) + 1;
+                const agora = new Date();
+                const dadosVenda = {
+                    numero: num,
+                    peca: eDoc.data().modelo,
+                    qtd: vendaPendente.qtdVenda,
+                    venda: eDoc.data().repasse * vendaPendente.qtdVenda,
+                    lucro: (eDoc.data().repasse - (eDoc.data().compra + eDoc.data().taxa_envio)) * vendaPendente.qtdVenda,
+                    data: agora.toLocaleDateString('pt-BR'),
+                    hora: agora.toLocaleTimeString('pt-BR'),
+                    timestamp: Date.now(),
+                    cliente: document.getElementById('cli-nome').value || "CONSUMIDOR FINAL"
+                };
+                
+                t.set(db.collection("vendas_kell").doc(), dadosVenda);
+                t.update(seqRef, {ultimoPedido: num});
+                t.update(estRef, {qtd: eDoc.data().qtd - vendaPendente.qtdVenda});
+                return dadosVenda;
+            });
+            fecharModais(); gerarCupom(resultado);
+            Toastify({text: "Venda Realizada!", style:{background:"green"}}).showToast();
+        } catch(err) { alert(err); }
+    }
+
+    function gerarCupom(v) {
+        document.getElementById('cp-num').innerText = "#" + v.numero;
+        document.getElementById('cp-data').innerText = v.data + " " + v.hora;
+        document.getElementById('cp-cli').innerText = v.cliente.toUpperCase();
+        document.getElementById('cp-itens').innerHTML = `<tr><td>${v.peca.toUpperCase()}</td><td align="center">${v.qtd}</td><td align="right">R$ ${v.venda.toFixed(2)}</td></tr>`;
+        document.getElementById('cp-total').innerText = "R$ " + v.venda.toFixed(2);
+        
+        document.getElementById('qrcode-venda').innerHTML = "";
+        new QRCode(document.getElementById('qrcode-venda'), {text: "KELLMOTOS-"+v.numero, width: 90, height: 90});
+        
+        document.getElementById('cupom-wrapper').style.display='flex';
+        const opt = { margin: 0, filename: `KELL_${v.numero}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 3 }, jsPDF: { unit: 'mm', format: [80, 190], orientation: 'portrait' } };
+        
+        setTimeout(() => {
+            html2pdf().from(document.getElementById('cupom-print')).set(opt).save().then(() => {
+                document.getElementById('cupom-wrapper').style.display = 'none';
+            });
+        }, 1500);
+    }
+
+    // --- E-COMMERCE E CALCULADORA ---
+    function renderizarEcommerce() {
+        let h = ''; cacheEstoque.forEach(i => {
+            const custoTotal = i.compra + (i.taxa_envio || 0);
+            h += `<tr>
+                <td>${i.modelo}</td>
+                <td>R$ ${custoTotal.toFixed(2)}</td>
+                <td>R$ ${i.repasse.toFixed(2)}</td>
+                <td style="color:var(--eco); font-weight:bold">R$ ${i.eco_venda?.toFixed(2) || '---'}</td>
+                <td><button class="badge" style="background:var(--eco)" onclick="abrirAjusteEco('${i.id}')">EDITAR ONLINE</button></td>
+            </tr>`;
+        });
+        document.getElementById('corpo-ecommerce').innerHTML = h;
+    }
+
+    function abrirAjusteEco(id) { 
+        itemEcoPendente = cacheEstoque.find(i => i.id === id);
+        document.getElementById('label-peca-eco').innerText = itemEcoPendente.modelo;
+        document.getElementById('card-calc-eco').style.display = 'block';
+        executarCalculoOnline();
+    }
+
+    function executarCalculoOnline() {
+        const custo = itemEcoPendente.compra + (itemEcoPendente.taxa_envio || 0);
+        const emb = parseFloat(document.getElementById('calc_emb').value) || 0;
+        const frete = parseFloat(document.getElementById('calc_frete').value) || 0;
+        const plat = parseFloat(document.getElementById('calc_plat').value) || 0;
+        const fixo = parseFloat(document.getElementById('calc_fixo').value) || 0;
+        const margemDesejada = configEmpresa.margemEco || 20;
+        
+        const preco = (custo + emb + frete) / (1 - ((plat + fixo + margemDesejada) / 100));
+        document.getElementById('calc_venda').value = "R$ " + preco.toFixed(2);
+    }
+
+    async function salvarPrecoOnline() {
+        const precoVal = parseFloat(document.getElementById('calc_venda').value.replace("R$ ",""));
+        await db.collection("estoque_kell").doc(itemEcoPendente.id).update({ eco_venda: precoVal });
+        document.getElementById('card-calc-eco').style.display = 'none';
+        Toastify({text: "Preço Online Sincronizado!"}).showToast();
+    }
+
+    // --- DASHBOARD E KPIS ---
+    function atualizarKPIs() {
+        const hoje = new Date().toLocaleDateString('pt-BR');
+        let fat = 0, luc = 0, est = 0;
+        cacheVendas.forEach(v => {
+            if(v.data === hoje) fat += v.venda;
+            if(v.timestamp > (Date.now() - 30 * 86400000)) luc += v.lucro;
+        });
+        cacheEstoque.forEach(i => est += ((i.compra + i.taxa_envio) * i.qtd));
+        document.getElementById('kpi-faturamento').innerText = "R$ " + fat.toLocaleString('pt-BR', {minimumFractionDigits:2});
+        document.getElementById('kpi-lucro').innerText = "R$ " + luc.toLocaleString('pt-BR', {minimumFractionDigits:2});
+        document.getElementById('kpi-estoque').innerText = "R$ " + est.toLocaleString('pt-BR', {minimumFractionDigits:2});
+    }
+
+    function renderizarGraficos() {
+        const ctx = document.getElementById('chart-fat').getContext('2d');
+        const dias = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return d.toLocaleDateString('pt-BR'); }).reverse();
+        const valores = dias.map(dia => cacheVendas.filter(v => v.data === dia).reduce((a, b) => a + b.venda, 0));
+        if(chartF) chartF.destroy();
+        chartF = new Chart(ctx, { type: 'line', data: { labels: dias, datasets: [{ label: 'Faturamento R$', data: valores, borderColor: '#2e7d32', backgroundColor: 'rgba(46,125,50,0.1)', fill: true, tension: 0.4 }] }});
+        
+        const rank = {}; cacheVendas.forEach(v => rank[v.peca] = (rank[v.peca] || 0) + v.qtd);
+        const top = Object.entries(rank).sort((a,b) => b[1] - a[1]).slice(0, 5);
+        let h = ''; top.forEach((it, i) => h += `<div class="top-item"><span>${i+1}º ${it[0]}</span><b>${it[1]} un</b></div>`);
+        document.getElementById('top-produtos-lista').innerHTML = h || "Nenhuma venda registrada.";
+    }
+
+    // --- FUNÇÕES AUXILIARES ---
+    function renderizarVendas() {
+        let h = ''; cacheVendas.forEach(v => {
+            h += `<tr><td>#${v.numero}</td><td>${v.data}<br>${v.hora}</td><td>${v.cliente}</td><td>${v.peca}</td><td>R$ ${v.venda.toFixed(2)}</td><td><button class="badge" style="background:var(--info)" onclick='gerarCupom(${JSON.stringify(v)})'>PDF</button></td></tr>`;
+        });
+        document.getElementById('corpo-vendas').innerHTML = h;
     }
 
     function renderizarListaMotos() {
         let h_sel = '', h_ger = '';
-        cacheMotos.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(m => {
-            h_sel += `<div class="moto-item"><input type="checkbox" class="moto-check" value="${m.nome}"> ${m.nome}</div>`;
-            h_ger += `<div class="card" style="margin-bottom:5px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
-                <span>${m.nome}</span><button class="badge" style="background:var(--danger)" onclick="deletarMoto('${m.id}')">Excluir</button>
-            </div>`;
+        cacheMotos.forEach(m => {
+            h_sel += `<div class="moto-item"><input type="checkbox" class="moto-check" value="${m.nome}"><span style="font-size:12px">${m.nome}</span></div>`;
+            h_ger += `<div class="card" style="padding:10px; display:flex; justify-content:space-between; align-items:center"><span>${m.nome}</span><button class="badge" style="background:var(--danger)" onclick="deletarMoto('${m.id}')">EXCLUIR</button></div>`;
         });
         document.getElementById('moto-selector-list').innerHTML = h_sel;
         document.getElementById('lista-motos-gerencia').innerHTML = h_ger;
     }
 
-    function renderizarEstoque() {
-        const busca = document.getElementById('busca').value.toLowerCase();
-        const filtrados = cacheEstoque.filter(i => 
-            (i.modelo||"").toLowerCase().includes(busca) || 
-            (i.codigo||"").includes(busca) ||
-            (i.compatibilidade||[]).some(m => m.toLowerCase().includes(busca))
-        );
-        let h = '', rep = '', alts = 0;
-        filtrados.forEach(i => {
-            const comp = (i.compatibilidade || []).join(", ") || "Nenhuma";
-            const btnAcao = userNivel === 'JUNIOR' ? '' : `<td><button class="badge" style="background:var(--primary)" onclick='abrirVenda("${i.id}", ${JSON.stringify(i)})'>🛒 VENDER</button></td>`;
-            h += `<tr><td>${i.modelo}</td><td style="font-size:10px; color:var(--info)">${comp}</td><td>${i.qtd}</td><td>R$ ${i.repasse.toFixed(2)}</td>${btnAcao}</tr>`;
-            if(i.qtd <= 2) { alts++; rep += `🚨 ${i.modelo}<br>`; }
+    async function salvarConfigGeral() {
+        configEmpresa = { 
+            nome: document.getElementById('cfg-nome').value, 
+            cnpj: document.getElementById('cfg-cnpj').value, 
+            margem: parseFloat(document.getElementById('cfg-margem').value), 
+            margemEco: parseFloat(document.getElementById('cfg-margem-eco').value) 
+        };
+        await db.collection("config_kell").doc("empresa").set(configEmpresa);
+        toggleConfig();
+        Toastify({text: "Configurações Atualizadas!"}).showToast();
+    }
+
+    function mudarTab(t) {
+        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active', 'eco-active'));
+        const menuAtivo = document.getElementById('m-'+t);
+        if(menuAtivo) menuAtivo.classList.add(t === 'ecommerce' ? 'eco-active' : 'active');
+        ['estoque','ecommerce','motos','vendas','reposicao','dash','funcionarios'].forEach(sec => {
+            const el = document.getElementById('sec-'+sec);
+            if(el) el.classList.toggle('hidden', sec !== t);
         });
-        document.getElementById('corpo-estoque').innerHTML = h;
-        document.getElementById('kpi-alertas').innerText = alts;
-        document.getElementById('lista-reposicao-txt').innerHTML = rep || "ESTOQUE EM DIA";
+        document.getElementById('page-title').innerText = t.toUpperCase();
+        if(t === 'dash') renderizarGraficos();
+        if(window.innerWidth < 768) document.getElementById('sidebar').classList.remove('active');
     }
 
-    function renderizarVendas() {
-        let h = '';
-        cacheVendas.forEach(v => {
-            h += `<tr><td>#${v.numero}</td><td>${v.data}</td><td>${v.peca}</td><td>R$ ${v.venda.toFixed(2)}</td>
-            <td><button class="badge" style="background:var(--info)" onclick='gerarCupom(${JSON.stringify(v)})'>VER</button></td></tr>`;
-        });
-        document.getElementById('corpo-vendas').innerHTML = h;
-    }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
+    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
+    function togglePrivacy() { document.body.classList.toggle('privacy-on'); }
+    function toggleConfig() { const m = document.getElementById('modal-config'); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
+    function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+    function toggleFormCadastro() { const f = document.getElementById('form-cadastro'); f.style.display = (f.style.display === 'none') ? 'block' : 'none'; }
+    function limparFormEstoque() { ['edit-id','modelo','codigo','qtd','compra','taxa_envio','repasse'].forEach(id => document.getElementById(id).value = ''); document.querySelectorAll('.moto-check').forEach(ck => ck.checked = false); }
+    function calcularSugerido() { const c = parseFloat(document.getElementById('compra').value) || 0; document.getElementById('repasse').placeholder = "Sugerido: R$ " + (c * (1 + configEmpresa.margem/100)).toFixed(2); }
+    function filtrarMotosCadastro() { const b = document.getElementById('busca-moto-cadastro').value.toLowerCase(); document.querySelectorAll('.moto-item').forEach(i => i.style.display = i.innerText.toLowerCase().includes(b) ? 'flex' : 'none'); }
+    async function salvarMoto() { const n = document.getElementById('nova-moto').value; if(n) await db.collection("motos_kell").add({nome: n}); document.getElementById('nova-moto').value = ''; }
+    async function deletarMoto(id) { if(confirm("Remover modelo do sistema?")) await db.collection("motos_kell").doc(id).delete(); }
+    async function salvarFuncionario() { const e = document.getElementById('func-email').value.toLowerCase(), n = document.getElementById('func-nivel').value; if(e) await db.collection("funcionarios_kell").doc(e).set({email:e, nivel:n}); }
+    function renderizarListaFuncionarios() { let h = ''; cacheFuncionarios.forEach(f => h += `<div class="card" style="padding:10px; display:flex; justify-content:space-between"><span><b>${f.email}</b> (${f.nivel})</span><button class="badge" style="background:var(--danger)" onclick="deletarFuncionario('${f.id}')">REMOVER</button></div>`); document.getElementById('lista-funcionarios').innerHTML = h; }
+    async function deletarFuncionario(id) { if(confirm("Revogar acesso?")) await db.collection("funcionarios_kell").doc(id).delete(); }
+    function enviarWhatsapp() { const msg = "*LISTA DE FALTAS - KELL MOTOS*\n" + document.getElementById('lista-reposicao-txt').innerText; window.open("https://wa.me/?text=" + encodeURIComponent(msg)); }
 
-    function atualizarKPIs() {
-        const hoje = new Date().toLocaleDateString('pt-BR');
-        let fat = 0, luc = 0, est = 0;
-        cacheVendas.forEach(v => { if(v.data === hoje) fat += v.venda; if(v.timestamp > (Date.now() - 2592000000)) luc += (v.lucro || 0); });
-        cacheEstoque.forEach(i => est += ((i.compra + i.taxa_envio) * i.qtd));
-        document.getElementById('kpi-faturamento').innerText = "R$ " + fat.toFixed(2);
-        document.getElementById('kpi-lucro').innerText = "R$ " + luc.toFixed(2);
-        document.getElementById('kpi-estoque').innerText = "R$ " + est.toFixed(2);
-    }
-
-    function abrirVenda(id, i) {
-        vendaPendente = { docId: id, ...i };
-        document.getElementById('m-qtd-titulo').innerText = i.modelo;
-        document.getElementById('modal-qtd').style.display = 'flex';
-    }
-
-    function abrirModalCliente() { 
-        vendaPendente.qtdVenda = parseInt(document.getElementById('venda-qtd-input').value); 
-        fecharModais(); document.getElementById('modal-cliente').style.display = 'flex'; 
-    }
-
-    async function confirmarVenda() {
-        const seqRef = db.collection("config_kell").doc("sequencial");
-        const estoqueRef = db.collection("estoque_kell").doc(vendaPendente.docId);
-        const vendaRef = db.collection("vendas_kell").doc();
-        
-        try {
-            const resultado = await db.runTransaction(async (transaction) => {
-                const seqDoc = await transaction.get(seqRef);
-                const estDoc = await transaction.get(estoqueRef);
-                
-                if (!estDoc.exists) throw "Produto não existe!";
-                const dadosEstoque = estDoc.data();
-                if (dadosEstoque.qtd < vendaPendente.qtdVenda) throw "Estoque insuficiente!";
-
-                let n = 818558;
-                if(seqDoc.exists) n = (seqDoc.data().ultimoPedido || 818558) + 1;
-
-                const custoReal = (dadosEstoque.compra + (dadosEstoque.taxa_envio || 0));
-                const valorVendaReal = dadosEstoque.repasse;
-                const lucroCalculado = (valorVendaReal - custoReal) * vendaPendente.qtdVenda;
-
-                const vendaData = {
-                    numero: n, 
-                    peca: dadosEstoque.modelo, 
-                    qtd: vendaPendente.qtdVenda,
-                    venda: valorVendaReal * vendaPendente.qtdVenda,
-                    lucro: lucroCalculado,
-                    cliente: document.getElementById('cli-nome').value || "Consumidor Final", 
-                    data: new Date().toLocaleDateString('pt-BR'),
-                    timestamp: Date.now(), 
-                    cnpj: document.getElementById('config-cnpj').value, 
-                    serie: document.getElementById('config-serie').value,
-                    vendedor: auth.currentUser.email
-                };
-
-                transaction.set(vendaRef, vendaData);
-                transaction.update(seqRef, { ultimoPedido: n });
-                transaction.update(estoqueRef, { qtd: dadosEstoque.qtd - vendaPendente.qtdVenda });
-
-                return vendaData;
-            });
-
-            fecharModais(); 
-            gerarCupom(resultado);
-            Toastify({text: "Venda processada com sucesso!", style: {background: "green"}}).showToast();
-
-        } catch (e) {
-            console.error(e);
-            alert("Erro na transação: " + e);
-        }
-    }
-
-    function gerarCupom(v) {
-        const wrapper = document.getElementById('cupom-wrapper');
-        document.getElementById('cp-num').innerText = v.numero; 
-        document.getElementById('cp-data').innerText = v.data;
-        document.getElementById('cp-cliente').innerText = v.cliente; 
-        document.getElementById('cp-total').innerText = v.venda.toFixed(2);
-        document.getElementById('cp-itens').innerHTML = `<tr><td>${v.peca}</td><td style="text-align:center">${v.qtd}</td><td style="text-align:right">R$ ${v.venda.toFixed(2)}</td></tr>`;
-        document.getElementById('qrcode-box').innerHTML = "";
-        new QRCode(document.getElementById('qrcode-box'), { text: "V:" + v.numero, width: 140, height: 140 });
-        wrapper.style.display = 'flex';
-        setTimeout(() => {
-            html2pdf().from(document.getElementById('cupom-print')).set({ margin: 5, filename: `KELL_${v.numero}.pdf`, jsPDF: { unit: 'mm', format: [80, 200] } }).save().then(() => wrapper.style.display = 'none');
-        }, 1200);
-    }
-
-    function renderizarGraficos() {
-        const ctxF = document.getElementById('chart-fat').getContext('2d');
-        const ctxT = document.getElementById('chart-top').getContext('2d');
-        const ult7 = [...Array(7)].map((_,i) => { const d = new Date(); d.setDate(d.getDate()-i); return d.toLocaleDateString('pt-BR'); }).reverse();
-        const dF = ult7.map(dia => cacheVendas.filter(v => v.data === dia).reduce((acc, v) => acc + v.venda, 0));
-        const prods = {}; cacheVendas.forEach(v => prods[v.peca] = (prods[v.peca]||0) + v.qtd);
-        const top5 = Object.entries(prods).sort((a,b)=>b[1]-a[1]).slice(0,5);
-        if(chartF) chartF.destroy();
-        chartF = new Chart(ctxF, { type:'line', data:{ labels:ult7, datasets:[{label:'Vendas R$', data:dF, borderColor:'#2e7d32', fill:true, backgroundColor:'rgba(46,125,50,0.1)', tension:0.4}] } });
-        if(chartT) chartT.destroy();
-        chartT = new Chart(ctxT, { type:'bar', data:{ labels:top5.map(x=>x[0]), datasets:[{label:'Qtd', data:top5.map(x=>x[1]), backgroundColor:'#0288d1'}] }, options:{indexAxis:'y'} });
-    }
-
-    function enviarWhatsapp() { window.open("https://wa.me/?text=" + encodeURIComponent("*LISTA DE REPOSIÇÃO KELL MOTOS*\n\n" + document.getElementById('lista-reposicao-txt').innerText.replace(/<br>/g, '\n'))); }
-    
-    function fazerLogin() { 
-        const email = document.getElementById('email').value.toLowerCase().trim();
-        const pass = document.getElementById('password').value;
-        auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Erro: " + e.message));
-    }
-    
-    function fazerLogout() { auth.signOut(); }
-
-    auth.onAuthStateChanged(u => {
-        if(u) { document.getElementById('login-screen').style.display='none'; document.getElementById('sidebar').style.display='flex'; document.getElementById('main-content').style.display='block'; listarDados(); }
-        else { document.getElementById('login-screen').style.display='block'; document.getElementById('sidebar').style.display='none'; document.getElementById('main-content').style.display='none'; }
-    });
 </script>
 </body>
 </html>
