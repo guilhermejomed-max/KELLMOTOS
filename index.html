@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KELL MOTOS - Business Intelligence v23.0 (Cupom Pro)</title>
+    <title>KELL MOTOS - Business Intelligence v24.0</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
@@ -402,14 +402,14 @@
             <h2 id="login-title" style="color: var(--primary); font-weight: 900;">ACESSO RESTRITO</h2>
             
             <div id="login-fields">
-                <input type="email" id="email" class="input-style" placeholder="E-mail de Usuário">
+                <input type="text" id="username" class="input-style" placeholder="Nome.Sobrenome ou E-mail">
                 <input type="password" id="password" class="input-style" placeholder="Senha de Acesso" style="margin-top: 10px;">
                 <button class="btn btn-main" style="height: 50px;" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
             </div>
 
             <div id="setup-fields" style="display: none;">
-                <p style="font-size: 13px; color: var(--info); margin-bottom: 15px;">Atenção: Seu e-mail deve estar autorizado na aba 'Equipe' pelo administrador.</p>
-                <input type="email" id="setup-email" class="input-style" placeholder="Seu E-mail Autorizado">
+                <p style="font-size: 13px; color: var(--info); margin-bottom: 15px;">Atenção: Seu Nome.Sobrenome deve estar autorizado na aba 'Equipe' pelo administrador.</p>
+                <input type="text" id="setup-username" class="input-style" placeholder="Seu Nome.Sobrenome">
                 <input type="password" id="setup-password" class="input-style" placeholder="Crie sua Senha (min. 6 car.)" style="margin-top: 10px;">
                 <button class="btn btn-main" style="height: 50px; background: var(--info);" onclick="cadastrarPrimeiraSenha()">REGISTRAR E ENTRAR</button>
             </div>
@@ -554,13 +554,21 @@
             <div class="card">
                 <h3>Gestão de Acessos</h3>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
-                    <input type="email" id="func-email" class="input-style" placeholder="E-mail do Funcionário">
-                    <select id="func-nivel" class="input-style">
-                        <option value="JUNIOR">JUNIOR (Apenas Vendas)</option>
-                        <option value="PLENO">PLENO (Vendas + Estoque)</option>
-                        <option value="SENIOR">SENIOR (Administrador Total)</option>
-                    </select>
+                    <div>
+                        <label class="input-label">NOME</label>
+                        <input type="text" id="func-nome" class="input-style" placeholder="Ex: João">
+                    </div>
+                    <div>
+                        <label class="input-label">SOBRENOME</label>
+                        <input type="text" id="func-sobrenome" class="input-style" placeholder="Ex: Silva">
+                    </div>
                 </div>
+                <label class="input-label">NÍVEL DE ACESSO</label>
+                <select id="func-nivel" class="input-style">
+                    <option value="JUNIOR">JUNIOR (Apenas Vendas)</option>
+                    <option value="PLENO">PLENO (Vendas + Estoque)</option>
+                    <option value="SENIOR">SENIOR (Administrador Total)</option>
+                </select>
                 <button class="btn btn-main" onclick="salvarFuncionario()">AUTORIZAR ACESSO</button>
                 <div id="lista-funcionarios" style="margin-top:20px"></div>
             </div>
@@ -707,7 +715,68 @@
     let cacheEstoque = [], cacheVendas = [], cacheMotos = [], cacheFuncionarios = [], userNivel = 'SENIOR', chartF = null, vendaPendente = null, itemEcoPendente = null;
     let configEmpresa = { nome: "KELL MOTOS", cnpj: "00.000.000/0000-00", margem: 40, margemEco: 35, endereco: "", telefone: "" };
 
-    // --- LOGIN / SETUP LOGIC ---
+// --- LOGIN / SETUP LOGIC (Nome.Sobrenome + MESTRE INVISÍVEL) ---
+function formatUsername(user) {
+    if (user.includes("@")) return user.toLowerCase().trim();
+    // Transforma "João Silva" em "joao.silva@kellmotos.com.br"
+    return user.toLowerCase().trim().replace(/\s+/g, '.') + "@kellmotos.com.br";
+}
+
+async function fazerLogin() {
+    const u = document.getElementById('username').value, p = document.getElementById('password').value;
+    if(!u || !p) return alert("Preencha todos os campos!");
+    
+    // Regra Especial para Mestre Invisível
+    if(u === "amg.gui@gmail.com" && p === "123456") {
+        auth.signInWithEmailAndPassword(u, p).catch(err => alert("Erro: " + err.message));
+    } else {
+        const email = formatUsername(u);
+        auth.signInWithEmailAndPassword(email, p).catch(err => alert("Erro ao entrar: Verifique o Nome.Sobrenome e senha."));
+    }
+}
+
+// --- TEAM MANAGEMENT (Com Nome, Sobrenome e Data) ---
+async function salvarFuncionario() { 
+    const n = document.getElementById('func-nome').value, 
+          s = document.getElementById('func-sobrenome').value, 
+          nv = document.getElementById('func-nivel').value; 
+
+    if(!n || !s) return alert("Preencha Nome e Sobrenome!");
+    
+    const emailViraLogin = formatUsername(n + "." + s);
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+
+    await db.collection("funcionarios_kell").doc(emailViraLogin).set({
+        email: emailViraLogin, 
+        nivel: nv, 
+        nome: n, 
+        sobrenome: s, 
+        data_cadastro: dataAtual
+    }); 
+
+    Toastify({text: "Acesso Autorizado para " + n}).showToast();
+    document.getElementById('func-nome').value = '';
+    document.getElementById('func-sobrenome').value = '';
+}
+
+function renderizarListaFuncionarios() { 
+    let h = ''; 
+    cacheFuncionarios.forEach(f => {
+        // Regra do Mestre Invisível: Não aparece na lista de equipe
+        if(f.email === "amg.gui@gmail.com") return;
+        
+        const nomeCompleto = f.nome ? (f.nome + " " + (f.sobrenome || "")) : f.email.split("@")[0];
+        h += `
+            <div class="card" style="padding:10px; display:flex; justify-content:space-between; align-items:center">
+                <span>
+                    <b>${nomeCompleto}</b> (${f.nivel})<br>
+                    <small style="color:var(--info)">Registrado em: ${f.data_cadastro || '--'}</small>
+                </span>
+                <button class="badge" style="background:var(--danger)" onclick="deletarFuncionario('${f.id}')">REMOVER</button>
+            </div>`;
+    }); 
+    document.getElementById('lista-funcionarios').innerHTML = h; 
+}
     function alternarModoLogin() {
         const isLogin = document.getElementById('login-fields').style.display !== 'none';
         document.getElementById('login-title').innerText = isLogin ? "CRIAR ACESSO" : "ACESSO RESTRITO";
@@ -717,26 +786,34 @@
     }
 
     async function fazerLogin() {
-        const e = document.getElementById('email').value, p = document.getElementById('password').value;
-        if(!e || !p) return alert("Preencha todos os campos!");
-        auth.signInWithEmailAndPassword(e, p).catch(err => alert("Erro ao entrar: " + err.message));
+        const u = document.getElementById('username').value, p = document.getElementById('password').value;
+        if(!u || !p) return alert("Preencha todos os campos!");
+        
+        // Regra Especial para Mestre Invisível
+        if(u === "amg.gui@gmail.com" && p === "123456") {
+            auth.signInWithEmailAndPassword(u, p).catch(err => alert("Erro: " + err.message));
+        } else {
+            const email = formatUsername(u);
+            auth.signInWithEmailAndPassword(email, p).catch(err => alert("Erro ao entrar: Verifique o Nome.Sobrenome e senha."));
+        }
     }
 
     async function cadastrarPrimeiraSenha() {
-        const e = document.getElementById('setup-email').value.toLowerCase().trim();
+        const u = document.getElementById('setup-username').value;
         const p = document.getElementById('setup-password').value;
-        if(!e || p.length < 6) return alert("E-mail inválido ou senha muito curta (min. 6 dígitos)!");
-
-        const funcDoc = await db.collection("funcionarios_kell").doc(e).get();
+        if(!u || p.length < 6) return alert("Nome inválido ou senha muito curta (min. 6 dígitos)!");
+        
+        const email = formatUsername(u);
+        const funcDoc = await db.collection("funcionarios_kell").doc(email).get();
         if(!funcDoc.exists) {
-            alert("ERRO: Este e-mail não está autorizado pelo administrador da Kell Motos!");
+            alert("ERRO: Este Nome.Sobrenome não está autorizado pelo administrador na Kell Motos!");
             return;
         }
 
-        auth.createUserWithEmailAndPassword(e, p)
+        auth.createUserWithEmailAndPassword(email, p)
             .then(() => alert("Acesso criado com sucesso!"))
             .catch(err => {
-                if(err.code === 'auth/email-already-in-use') alert("Este e-mail já possui senha cadastrada.");
+                if(err.code === 'auth/email-already-in-use') alert("Este usuário já possui senha cadastrada.");
                 else alert("Erro: " + err.message);
             });
     }
@@ -771,19 +848,16 @@
             }
         });
 
-        db.collection("funcionarios_kell").doc(email).onSnapshot(doc => {
-            userNivel = doc.exists ? doc.data().nivel : 'SENIOR';
-            document.getElementById('user-role-display').innerText = "PERFIL: " + userNivel;
-            
-            if(userNivel === 'JUNIOR') {
-                ['m-ecommerce','m-motos','m-dash','m-funcionarios'].forEach(id => document.getElementById(id).classList.add('hidden'));
-                document.getElementById('btn-config-geral').style.display = 'none';
-                document.getElementById('btn-cadastrar-novo').style.display = 'none';
-            } else if(userNivel === 'PLENO') {
-                ['m-dash','m-funcionarios'].forEach(id => document.getElementById(id).classList.add('hidden'));
-                document.getElementById('btn-config-geral').style.display = 'none';
-            }
-        });
+        // Regra do Mestre Invisível no App
+        if(email === "amg.gui@gmail.com") {
+            userNivel = 'SENIOR';
+            aplicarPermissoes();
+        } else {
+            db.collection("funcionarios_kell").doc(email).onSnapshot(doc => {
+                userNivel = doc.exists ? doc.data().nivel : 'JUNIOR';
+                aplicarPermissoes();
+            });
+        }
 
         db.collection("motos_kell").onSnapshot(snap => {
             cacheMotos = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.nome.localeCompare(b.nome));
@@ -805,6 +879,25 @@
             cacheFuncionarios = snap.docs.map(d => ({id: d.id, ...d.data()}));
             renderizarListaFuncionarios();
         });
+    }
+
+    function aplicarPermissoes() {
+        document.getElementById('user-role-display').innerText = "PERFIL: " + userNivel;
+        
+        if(userNivel === 'JUNIOR') {
+            ['m-ecommerce','m-motos','m-dash','m-funcionarios'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('btn-config-geral').style.display = 'none';
+            document.getElementById('btn-cadastrar-novo').style.display = 'none';
+        } else if(userNivel === 'PLENO') {
+            ['m-dash','m-funcionarios'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('btn-config-geral').style.display = 'none';
+            ['m-ecommerce','m-motos','m-estoque','m-vendas','m-reposicao'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+            document.getElementById('btn-cadastrar-novo').style.display = 'block';
+        } else {
+            ['m-ecommerce','m-motos','m-dash','m-funcionarios','m-estoque','m-vendas','m-reposicao'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+            document.getElementById('btn-config-geral').style.display = 'block';
+            document.getElementById('btn-cadastrar-novo').style.display = 'block';
+        }
     }
 
     // --- ESTOQUE FUNCTIONS ---
@@ -836,7 +929,7 @@
         document.getElementById('form-cadastro').style.display = 'block'; window.scrollTo(0,0);
     }
 
-    // --- SALES FUNCTIONS ---
+    // --- SALES FUNCTIONS (MODIFIED SEQUENTIAL) ---
     function abrirVenda(id, item) { vendaPendente = {docId:id, ...item, origem: 'BALCAO'}; document.getElementById('m-qtd-titulo').innerText = item.modelo; document.getElementById('modal-qtd').style.display = 'flex'; }
     function abrirVendaEco(id) { const item = cacheEstoque.find(i => i.id === id); if(!item.eco_venda) return alert("Configure o preço online!"); vendaPendente = { docId: item.id, ...item, repasse: item.eco_venda, origem: 'ECO' }; document.getElementById('m-qtd-titulo').innerText = item.modelo + " (ONLINE)"; document.getElementById('modal-qtd').style.display = 'flex'; }
     
@@ -860,7 +953,8 @@
                 const dadosEstoque = eDoc.data();
                 if(dadosEstoque.qtd < vendaPendente.qtdVenda) throw "Estoque insuficiente para esta venda!";
                 
-                const num = (sDoc.exists ? sDoc.data().ultimoPedido : 80000) + 1;
+                const num = (sDoc.exists && sDoc.data().ultimoPedido) ? sDoc.data().ultimoPedido + 1 : 1;
+                
                 const agora = new Date();
                 const custoTotalUn = (dadosEstoque.compra || 0) + (dadosEstoque.taxa_envio || 0);
                 let lucroUn = (vendaPendente.origem === 'BALCAO') ? (vendaPendente.repasse - custoTotalUn) : (vendaPendente.repasse - (custoTotalUn + (dadosEstoque.eco_config?.taxaS_perc || 0)));
@@ -883,7 +977,7 @@
                 };
                 
                 t.set(db.collection("vendas_kell").doc(), dadosVenda); 
-                t.update(seqRef, {ultimoPedido: num}); 
+                t.set(seqRef, {ultimoPedido: num}, {merge: true}); 
                 t.update(estRef, {qtd: dadosEstoque.qtd - vendaPendente.qtdVenda});
                 return dadosVenda;
             });
@@ -893,22 +987,15 @@
     }
 
     function gerarCupom(v) {
-        // Popula Cabeçalho
         document.getElementById('cp-empresa-nome').innerText = configEmpresa.nome;
         document.getElementById('cp-empresa-cnpj').innerText = configEmpresa.cnpj;
         document.getElementById('cp-empresa-end').innerText = configEmpresa.endereco || "";
         document.getElementById('cp-empresa-tel').innerText = configEmpresa.telefone || "";
-
-        // Popula Dados do Pedido
         document.getElementById('cp-num').innerText = "#" + v.numero; 
         document.getElementById('cp-data').innerText = v.data; 
         document.getElementById('cp-hora').innerText = v.hora; 
-        
-        // Popula Cliente
         document.getElementById('cp-cli').innerText = v.cliente.toUpperCase();
         document.getElementById('cp-cpf').innerText = v.cpf || "NÃO INFORMADO";
-        
-        // Popula Tabela de Itens (Com Valor Unitário)
         const vlUnit = v.unitario || (v.venda / v.qtd);
         document.getElementById('cp-itens').innerHTML = `
             <tr>
@@ -917,17 +1004,12 @@
                 <td align="right">${vlUnit.toFixed(2)}</td>
                 <td align="right">${v.venda.toFixed(2)}</td>
             </tr>`;
-            
-        // Popula Totais e Rodapé
         document.getElementById('cp-total').innerText = "R$ " + v.venda.toFixed(2);
         document.getElementById('cp-pgto').innerText = v.pagamento ? v.pagamento.toUpperCase() : "DINHEIRO";
-        document.getElementById('cp-operador').innerText = v.operador || "Sistema";
+        document.getElementById('cp-operador').innerText = v.operador.split("@")[0].toUpperCase();
 
-        // Gera QR Code
         document.getElementById('qrcode-venda').innerHTML = ""; 
         new QRCode(document.getElementById('qrcode-venda'), {text: "KELL-"+v.numero+"-VAL:"+v.venda, width: 80, height: 80});
-        
-        // Exibe e Imprime
         document.getElementById('cupom-wrapper').style.display='flex';
         
         setTimeout(() => { 
@@ -936,7 +1018,7 @@
                 filename: `CUPOM_${v.numero}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: [80, 200], orientation: 'portrait' } // Formato térmico
+                jsPDF: { unit: 'mm', format: [80, 200], orientation: 'portrait' }
             };
             html2pdf().from(document.getElementById('cupom-print')).set(opt).save().then(() => { 
                 document.getElementById('cupom-wrapper').style.display = 'none'; 
@@ -995,17 +1077,38 @@
         document.getElementById('corpo-vendas').innerHTML = h;
     }
 
-    // --- TEAM & MOTOS FUNCTIONS ---
+    // --- TEAM & MOTOS FUNCTIONS (Nome + Sobrenome + Data + Mestre Invisível) ---
     async function salvarFuncionario() { 
-        const e = document.getElementById('func-email').value.toLowerCase().trim(), n = document.getElementById('func-nivel').value; 
-        if(!e) return alert("Digite o e-mail!");
-        await db.collection("funcionarios_kell").doc(e).set({email:e, nivel:n}); 
+        const n = document.getElementById('func-nome').value, s = document.getElementById('func-sobrenome').value, nv = document.getElementById('func-nivel').value; 
+        if(!n || !s) return alert("Preencha Nome e Sobrenome!");
+        const email = formatUsername(n + "." + s);
+        await db.collection("funcionarios_kell").doc(email).set({
+            email: email, 
+            nivel: nv, 
+            nome: n, 
+            sobrenome: s, 
+            data_cadastro: new Date().toLocaleDateString('pt-BR')
+        }); 
         Toastify({text: "Acesso Autorizado!"}).showToast();
+        document.getElementById('func-nome').value = '';
+        document.getElementById('func-sobrenome').value = '';
     }
+
     function renderizarListaFuncionarios() { 
-        let h = ''; cacheFuncionarios.forEach(f => h += `<div class="card" style="padding:10px; display:flex; justify-content:space-between; align-items:center"><span><b>${f.email}</b> (${f.nivel})</span><button class="badge" style="background:var(--danger)" onclick="deletarFuncionario('${f.id}')">REMOVER</button></div>`); 
+        let h = ''; 
+        cacheFuncionarios.forEach(f => {
+            // Regra do Mestre Invisível: Não aparece na lista
+            if(f.email === "amg.gui@gmail.com") return;
+            
+            const display = f.nome ? (f.nome + " " + (f.sobrenome || "")) : f.email.split("@")[0];
+            h += `<div class="card" style="padding:10px; display:flex; justify-content:space-between; align-items:center">
+                <span><b>${display}</b> (${f.nivel})<br><small>Desde: ${f.data_cadastro || '--'}</small></span>
+                <button class="badge" style="background:var(--danger)" onclick="deletarFuncionario('${f.id}')">REMOVER</button>
+            </div>`;
+        }); 
         document.getElementById('lista-funcionarios').innerHTML = h; 
     }
+
     async function deletarFuncionario(id) { if(confirm("Revogar acesso deste usuário?")) await db.collection("funcionarios_kell").doc(id).delete(); }
 
     function renderizarListaMotos() {
