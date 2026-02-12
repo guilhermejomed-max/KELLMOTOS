@@ -1,13 +1,1898 @@
-// Function to generate report with updated margin settings
-function gerarRelatorioCompleto() {
-    var doc = new jsPDF();
-    doc.setMargins(5, 5, 5, 5); // Set margins to 5mm
-    // Additional code for generating the report
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KELL MOTOS - Business Intelligence v24.2 (Eco Fix)</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root { 
+            --primary: #2e7d32; 
+            --danger: #ef5350; 
+            --warning: #ffa726; 
+            --info: #0288d1;
+            --bg: #f4f7f6; 
+            --card-bg: #ffffff; 
+            --text: #333; 
+            --border: #ddd;
+            --sidebar-width: 260px; 
+            --eco: #673ab7;
+        }
+        body.dark-mode { 
+            --bg: #121212; 
+            --card-bg: #1e1e1e; 
+            --text: #e0e0e0; 
+            --border: #333;
+            --primary: #4caf50;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 0; 
+            transition: 0.3s; 
+            display: flex; 
+            min-height: 100vh; 
+            overflow-x: hidden; 
+        }
+        
+        /* Layout Sidebar */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            background: var(--card-bg); 
+            border-right: 1px solid var(--border); 
+            height: 100vh; 
+            position: fixed; 
+            left: 0; 
+            top: 0; 
+            transition: 0.3s; 
+            z-index: 1000; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .sidebar-header { 
+            padding: 20px; 
+            border-bottom: 1px solid var(--border); 
+            text-align: center; 
+        }
+        .logo-img { 
+            width: 100%; 
+            max-width: 180px; 
+            height: auto; 
+            border-radius: 10px; 
+            object-fit: contain; 
+        }
+        .sidebar-menu { 
+            flex: 1; 
+            padding: 15px 0; 
+            overflow-y: auto; 
+        }
+        .menu-item { 
+            padding: 15px 25px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+            font-weight: 600; 
+            color: var(--text); 
+            transition: 0.2s; 
+            border-left: 4px solid transparent; 
+        }
+        .menu-item:hover { 
+            background: rgba(0,0,0,0.05); 
+        }
+        .menu-item.active { 
+            background: rgba(46, 125, 50, 0.1); 
+            color: var(--primary); 
+            border-left: 4px solid var(--primary); 
+        }
+        .menu-item.eco-active { 
+            background: rgba(103, 58, 183, 0.1); 
+            color: var(--eco); 
+            border-left: 4px solid var(--eco); 
+        }
+        .sidebar-footer { 
+            padding: 20px; 
+            border-top: 1px solid var(--border); 
+            text-align: center; 
+        }
+        #user-role-display { 
+            font-size: 11px; 
+            margin-bottom: 10px; 
+            color: var(--primary); 
+            text-transform: uppercase; 
+            font-weight: 800; 
+            letter-spacing: 1px; 
+        }
+
+        /* Telas de Login */
+        #login-screen { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: var(--bg); 
+            z-index: 9999; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .login-card { 
+            background: var(--card-bg); 
+            padding: 40px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 380px; 
+            text-align: center; 
+        }
+
+        /* Estrutura Principal */
+        .main-content { 
+            flex: 1; 
+            margin-left: var(--sidebar-width); 
+            transition: 0.3s; 
+            padding: 20px; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+        .header-app { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 25px; 
+            gap: 10px; 
+        }
+        .nav-controls { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+        }
+        .hamburger { 
+            font-size: 24px; 
+            cursor: pointer; 
+            background: none; 
+            border: none; 
+            color: var(--text); 
+        }
+        
+        /* Componentes de Dashboard */
+        .card { 
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+            margin-bottom: 20px; 
+            border: 1px solid var(--border); 
+            position: relative; 
+        }
+        .dashboard { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 25px; 
+        }
+        .stat-card { 
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border); 
+            transition: 0.3s; 
+        }
+        .stat-card small { 
+            font-size: 11px; 
+            text-transform: uppercase; 
+            opacity: 0.8; 
+        }
+        .stat-card strong { 
+            font-size: 20px; 
+            display: block; 
+            margin-top: 8px; 
+        }
+        
+        /* Modo Privacidade */
+        .privacy-on strong { 
+            filter: blur(7px); 
+            user-select: none; 
+        }
+
+        /* Tabelas e Botões */
+        .table-responsive { 
+            overflow-x: auto; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+            min-width: 600px; 
+        }
+        th { 
+            background: var(--primary); 
+            color: white; 
+            padding: 12px; 
+            font-size: 13px; 
+            text-transform: uppercase; 
+            text-align: left;
+        }
+        td { 
+            padding: 12px; 
+            border-bottom: 1px solid var(--border); 
+            text-align: left; 
+            font-size: 14px; 
+        }
+        .input-style { 
+            width: 100%; 
+            padding: 12px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border); 
+            background: var(--bg); 
+            color: var(--text); 
+            box-sizing: border-box; 
+            font-size: 16px; 
+            margin-top: 5px; 
+        }
+        .input-label { 
+            font-size: 10px; 
+            font-weight: bold; 
+            color: var(--primary); 
+            text-transform: uppercase; 
+            margin-top: 10px; 
+            display: block; 
+        }
+        .btn { 
+            padding: 12px 18px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            color: white; 
+            transition: 0.2s; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 14px; 
+        }
+        .btn-main { 
+            background: var(--primary); 
+            width: 100%; 
+            margin-top: 10px; 
+        }
+        .badge { 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            border: none; 
+            color: white; 
+            cursor: pointer; 
+            font-size: 11px; 
+            font-weight: bold; 
+        }
+
+        /* Modais */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            z-index: 10001; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.85); 
+            align-items: center; 
+            justify-content: center; 
+            padding: 10px; 
+        }
+        .modal-content { 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 15px; 
+            width: 100%; 
+            max-width: 450px; 
+            text-align: center; 
+        }
+
+        /* ----- ESTILOS DO CUPOM (Melhorado) ----- */
+        #cupom-wrapper { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.95); 
+            z-index: 10002; 
+            overflow-y: auto; 
+            justify-content: center; 
+            padding: 20px; 
+        }
+        #cupom-print { 
+            background: #fff; 
+            width: 280px; 
+            padding: 10px; 
+            color: #000; 
+            font-family: 'Courier New', Courier, monospace; 
+            line-height: 1.2; 
+            box-sizing: border-box; 
+            border: 1px solid #eee; 
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .cp-header { 
+            text-align: center; 
+            margin-bottom: 10px; 
+        }
+        .cp-title { 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin-bottom: 5px;
+        }
+        .cp-info {
+            font-size: 10px;
+        }
+        .cp-divider { 
+            border-top: 1px dashed #000; 
+            margin: 8px 0; 
+        }
+        .cp-table { 
+            width: 100%; 
+            font-size: 11px; 
+            border-collapse: collapse; 
+        }
+        .cp-table th { 
+            background: none; 
+            color: #000; 
+            border-bottom: 1px dashed #000; 
+            padding: 4px 0; 
+            text-align: left; 
+            font-weight: bold;
+        }
+        .cp-table td { 
+            border-bottom: none; 
+            padding: 4px 0; 
+            text-align: left; 
+            vertical-align: top; 
+        }
+        .cp-row-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .cp-footer { 
+            text-align: center; 
+            font-size: 10px; 
+            margin-top: 15px; 
+            line-height: 1.4; 
+        }
+        .cp-legal {
+            font-size: 9px;
+            margin-top: 5px;
+            text-align: center;
+        }
+        
+        /* Utilitários */
+        .hidden { display: none !important; }
+        .moto-selector { height: 180px; overflow-y: auto; border: 1px solid var(--border); padding: 10px; background: var(--bg); margin-top: 8px; border-radius: 8px; }
+        .moto-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+        .top-item { display: flex; justify-content: space-between; padding: 8px; background: rgba(0,0,0,0.03); border-radius: 8px; margin-bottom: 5px; font-size: 13px; }
+
+        @media (max-width: 768px) { 
+            .sidebar { left: -260px; } 
+            .sidebar.active { left: 0; } 
+            .main-content { margin-left: 0; } 
+        }
+    </style>
+</head>
+<body class="privacy-on">
+
+    <div id="login-screen">
+        <div class="login-card">
+            <img src="Logo.jpg" style="width: 140px; margin-bottom: 20px; border-radius: 10px;" alt="Logo">
+            <h2 id="login-title" style="color: var(--primary); font-weight: 900;">ACESSO RESTRITO</h2>
+            
+            <div id="login-fields">
+                <input type="text" id="username" class="input-style" placeholder="Nome.Sobrenome ou E-mail">
+                <input type="password" id="password" class="input-style" placeholder="Senha de Acesso" style="margin-top: 10px;">
+                <button class="btn btn-main" style="height: 50px;" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
+            </div>
+
+            <div id="setup-fields" style="display: none;">
+                <p style="font-size: 13px; color: var(--info); margin-bottom: 15px;">Atenção: Seu Nome.Sobrenome deve estar autorizado na aba 'Equipe' pelo administrador.</p>
+                <input type="text" id="setup-username" class="input-style" placeholder="Seu Nome.Sobrenome">
+                <input type="password" id="setup-password" class="input-style" placeholder="Crie sua Senha (min. 6 car.)" style="margin-top: 10px;">
+                <button class="btn btn-main" style="height: 50px; background: var(--info);" onclick="cadastrarPrimeiraSenha()">REGISTRAR E ENTRAR</button>
+            </div>
+
+            <div style="margin-top: 20px; font-size: 13px;">
+                <a href="#" id="link-troca-modo" onclick="alternarModoLogin()" style="color: var(--info); text-decoration: none; font-weight: bold;">Primeiro Acesso / Criar Senha</a>
+            </div>
+        </div>
+    </div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header"><img src="Logo.jpg" class="logo-img" alt="Logo"></div>
+        <nav class="sidebar-menu">
+            <div class="menu-item active" id="m-estoque" onclick="mudarTab('estoque')">📦 Estoque</div>
+            <div class="menu-item" id="m-ecommerce" onclick="mudarTab('ecommerce')">🌐 E-Commerce</div>
+            <div class="menu-item" id="m-motos" onclick="mudarTab('motos')">🏍️ Motos</div>
+            <div class="menu-item" id="m-vendas" onclick="mudarTab('vendas')">💰 Vendas</div>
+            <div class="menu-item" id="m-boleto" onclick="mudarTab('boleto')">📄 Boleto</div>
+            <div class="menu-item" id="m-reposicao" onclick="mudarTab('reposicao')">🛒 Reposição</div>
+            <div class="menu-item" id="m-dash" onclick="mudarTab('dash')">📊 Dashboard</div>
+            <div class="menu-item" id="m-funcionarios" onclick="mudarTab('funcionarios')">👥 Equipe</div>
+        </nav>
+        <div class="sidebar-footer">
+            <div id="user-role-display">CARREGANDO...</div>
+            <button class="btn" style="background:var(--danger); width:100%" onclick="fazerLogout()">Encerrar Sessão</button>
+        </div>
+    </aside>
+
+    <main class="main-content" id="main-content" style="display: none;">
+        <header class="header-app">
+            <div class="nav-controls">
+                <button class="hamburger" onclick="toggleSidebar()">☰</button>
+                <h1 id="page-title" style="margin: 0; font-size: 22px; font-weight: 900; color: var(--primary);">ESTOQUE</h1>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" style="background:#444" id="btn-config-geral" onclick="toggleConfig()">⚙️</button>
+                <button class="btn" style="background:var(--info)" onclick="togglePrivacy()">👁️</button>
+                <button class="btn" style="background:#555" onclick="toggleDarkMode()">🌓</button>
+            </div>
+        </header>
+
+        <div id="sec-estoque">
+            <button class="btn btn-main" id="btn-cadastrar-novo" style="background: var(--info); margin-bottom: 15px;" onclick="toggleFormCadastro()">+ CADASTRAR NOVO PRODUTO</button>
+            
+            <div class="card" id="form-cadastro" style="display: none;">
+                <input type="hidden" id="edit-id">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                    <div><label class="input-label">NOME DO PRODUTO</label><input type="text" id="modelo" class="input-style"></div>
+                    <div><label class="input-label">CÓDIGO / EAN</label><input type="text" id="codigo" class="input-style"></div>
+                    <div><label class="input-label">QUANTIDADE</label><input type="number" id="qtd" class="input-style"></div>
+                    <div><label class="input-label">CUSTO UNITÁRIO</label><input type="number" id="compra" class="input-style" oninput="calcularSugerido()"></div>
+                    <div><label class="input-label">TAXA / ENVIO</label><input type="number" id="taxa_envio" class="input-style" value="0"></div>
+                    <div><label class="input-label">VALOR BALCÃO</label><input type="number" id="repasse" class="input-style"></div>
+                </div>
+                <div style="margin-top: 15px;"><label class="input-label">VINCULAR APLICAÇÕES (MOTOS):</label>
+                    <input type="text" id="busca-moto-cadastro" class="input-style" placeholder="Filtrar motos..." onkeyup="filtrarMotosCadastro()">
+                </div>
+                <div class="moto-selector" id="moto-selector-list"></div>
+                <button class="btn btn-main" onclick="salvarProduto()" style="margin-top: 15px;">SALVAR NO BANCO DE DADOS</button>
+            </div>
+
+            <div class="card">
+                <input type="text" id="busca" class="input-style" placeholder="🔍 Buscar por nome, código ou aplicação..." onkeyup="renderizarEstoque()">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr><th>DESCRIÇÃO DO PRODUTO</th><th>APLICAÇÃO</th><th>QTD</th><th>PREÇO</th><th>AÇÕES</th></tr>
+                        </thead>
+                        <tbody id="corpo-estoque"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-ecommerce" class="hidden">
+            <div class="card" id="card-calc-eco" style="display:none; border: 2px solid var(--eco);">
+                <h3 style="color:var(--eco)">Calculadora Online: <span id="label-peca-eco"></span></h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;">
+                    <div><label class="input-label">EMBALAGEM (R$)</label><input type="number" id="calc_emb" class="input-style" value="2.50" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label">TAXA DO SITE (%)</label><input type="number" id="calc_taxa_site" class="input-style" value="16.5" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label">TAXA FIXA (R$)</label><input type="number" id="calc_taxa_fixa" class="input-style" value="6.00" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label">FRETE (R$)</label><input type="number" id="calc_frete" class="input-style" value="0" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label">BRINDE (R$)</label><input type="number" id="calc_brinde" class="input-style" value="0" oninput="executarCalculoOnline()"></div>
+                    <div><label class="input-label" style="color:var(--eco)">LUCRO LÍQUIDO (%)</label><input type="number" id="calc_margem_alvo" class="input-style" oninput="executarCalculoOnline()"></div>
+                    <div style="grid-column: span 2;"><label class="input-label" style="color: var(--primary);">VALOR FINAL SUGERIDO</label><input type="text" id="calc_venda" class="input-style" readonly style="background:#f0ebff; border-color:var(--eco); font-weight:bold; font-size: 24px; text-align: center;"></div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-main" style="background:#555;" onclick="salvarPrecoOnline()">💾 SALVAR PREÇO</button>
+                    <button class="btn btn-main" style="background:var(--danger);" onclick="document.getElementById('card-calc-eco').style.display='none'">CANCELAR</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr><th>ITEM</th><th>CUSTO BASE</th><th>BALCÃO</th><th>E-COMMERCE</th><th>AÇÕES</th></tr>
+                        </thead>
+                        <tbody id="corpo-ecommerce"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-motos" class="hidden">
+            <div class="card">
+                <h3>Gerenciar Modelos de Motos</h3>
+                <div style="display:flex; gap:10px">
+                    <input type="text" id="nova-moto" class="input-style" placeholder="Ex: Honda CB 300F">
+                    <button class="btn btn-main" style="width:auto; margin:0" onclick="salvarMoto()">ADICIONAR</button>
+                </div>
+                <div id="lista-motos-gerencia" style="margin-top:20px; display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:10px"></div>
+            </div>
+        </div>
+
+        <div id="sec-vendas" class="hidden">
+            <div class="card">
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr><th>Nº PEDIDO</th><th>ORIGEM</th><th>CLIENTE</th><th>ITEM</th><th>VALOR TOTAL</th><th>AÇÕES</th></tr>
+                        </thead>
+                        <tbody id="corpo-vendas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-dash" class="hidden">
+            <div class="card" style="margin-bottom: 20px;">
+                <h3 style="margin-bottom:20px; color:var(--primary)">Resumo Financeiro</h3>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px">
+                    <div style="padding:15px; border-left:4px solid var(--primary); background:rgba(46,125,50,0.05)">
+                        <small style="display:block; font-size:11px; text-transform:uppercase; opacity:0.8; margin-bottom:5px">Faturamento Hoje</small>
+                        <strong style="font-size:24px; display:block" id="kpi-faturamento">R$ 0,00</strong>
+                    </div>
+                    <div style="padding:15px; border-left:4px solid var(--info); background:rgba(2,136,209,0.05)">
+                        <small style="display:block; font-size:11px; text-transform:uppercase; opacity:0.8; margin-bottom:5px">Lucro Estimado (30d)</small>
+                        <strong style="font-size:24px; display:block" id="kpi-lucro">R$ 0,00</strong>
+                    </div>
+                    <div id="kpi-est-card" style="padding:15px; border-left:4px solid var(--warning); background:rgba(255,167,38,0.05); display:none">
+                        <small style="display:block; font-size:11px; text-transform:uppercase; opacity:0.8; margin-bottom:5px">Custo de Estoque</small>
+                        <strong style="font-size:24px; display:block" id="kpi-estoque">R$ 0,00</strong>
+                    </div>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
+                <div class="card"><h3>Histórico de Vendas (7 Dias)</h3><canvas id="chart-fat"></canvas></div>
+                <div class="card"><h3>🏆 Produtos Mais Vendidos</h3><div id="top-produtos-lista"></div></div>
+            </div>
+            <div class="card" style="margin-top:20px">
+                <h3>Relatório Completo do Sistema</h3>
+                <p style="color:#666; font-size:13px; margin-bottom:15px">Baixe o histórico completo de vendas, formas de pagamento e desempenho de vendedores</p>
+                <button class="btn btn-main" onclick="gerarRelatorioCompleto()">📥 BAIXAR RELATÓRIO COMPLETO (PDF)</button>
+            </div>
+        </div>
+
+        <div id="sec-funcionarios" class="hidden">
+            <div class="card">
+                <h3>Gestão de Acessos</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
+                    <div>
+                        <label class="input-label">NOME</label>
+                        <input type="text" id="func-nome" class="input-style" placeholder="Ex: João">
+                    </div>
+                    <div>
+                        <label class="input-label">SOBRENOME</label>
+                        <input type="text" id="func-sobrenome" class="input-style" placeholder="Ex: Silva">
+                    </div>
+                </div>
+                <label class="input-label">NÍVEL DE ACESSO</label>
+                <select id="func-nivel" class="input-style">
+                    <option value="JUNIOR">JUNIOR (Apenas Vendas)</option>
+                    <option value="PLENO">PLENO (Vendas + Estoque)</option>
+                    <option value="SENIOR">SENIOR (Administrador Total)</option>
+                </select>
+                <button class="btn btn-main" onclick="salvarFuncionario()">AUTORIZAR ACESSO</button>
+                <div id="lista-funcionarios" style="margin-top:20px"></div>
+            </div>
+        </div>
+
+        <div id="sec-reposicao" class="hidden">
+            <div class="card">
+                <h3 style="color:var(--danger)">📦 Relatório de Itens em Falta</h3>
+                <div id="lista-reposicao-txt" style="padding:15px; background:rgba(0,0,0,0.03); border-radius:10px; white-space:pre-wrap; font-family:monospace; border: 1px dashed var(--danger);"></div>
+                <button class="btn btn-main" onclick="enviarWhatsapp()" style="margin-top:10px;">COMPARTILHAR VIA WHATSAPP</button>
+            </div>
+        </div>
+
+        <div id="sec-boleto" class="hidden">
+            <button class="btn btn-main" style="background: var(--info); margin-bottom: 15px;" onclick="toggleModalCadastroCliente()">+ CADASTRAR NOVO CLIENTE</button>
+            
+            <div class="card">
+                <h3>Contas a Receber (Boletos Pendentes)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr><th>CLIENTE</th><th>CPF/CNPJ</th><th>VALOR DEVIDO</th><th>AÇÕES</th></tr>
+                        </thead>
+                        <tbody id="corpo-boletos"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top:20px">
+                <h3>Histórico de Pagamentos</h3>
+                <p style="color:#666; font-size:13px; margin-bottom:15px">Clientes que já quitaram suas dívidas</p>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr><th>CLIENTE</th><th>CPF/CNPJ</th><th>AÇÕES</th></tr>
+                        </thead>
+                        <tbody id="corpo-historico-pagamentos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-cadastro-cliente" class="modal">
+        <div class="modal-content">
+            <h3>Cadastrar Novo Cliente</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
+                <div>
+                    <label class="input-label">NOME DO CLIENTE</label>
+                    <input type="text" id="boleto-cliente-nome" class="input-style" placeholder="Ex: João Silva">
+                </div>
+                <div>
+                    <label class="input-label">CPF / CNPJ</label>
+                    <input type="text" id="boleto-cliente-cpf" class="input-style" placeholder="000.000.000-00">
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px">
+                <div>
+                    <label class="input-label">TELEFONE</label>
+                    <input type="text" id="boleto-cliente-tel" class="input-style" placeholder="(00) 00000-0000">
+                </div>
+                <div>
+                    <label class="input-label">ENDEREÇO</label>
+                    <input type="text" id="boleto-cliente-end" class="input-style" placeholder="Rua Exemplo, 123">
+                </div>
+            </div>
+            <button class="btn btn-main" onclick="cadastrarCliente()">CADASTRAR CLIENTE</button>
+            <button class="btn" style="background:#777; width:100%; margin-top:5px" onclick="toggleModalCadastroCliente()">CANCELAR</button>
+            
+            <div style="margin-top:20px; max-height:300px; overflow-y:auto">
+                <h4 style="margin-bottom:10px">Clientes Cadastrados:</h4>
+                <div id="lista-clientes"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-extrato" class="modal">
+        <div class="modal-content" style="max-width:900px; max-height:90vh; overflow-y:auto">
+            <div id="extrato-visualizacao"></div>
+            <div style="display:flex; gap:10px; margin-top:20px">
+                <button class="btn btn-main" style="flex:1" onclick="baixarExtratoPDF()">💾 BAIXAR PDF</button>
+                <button class="btn" style="flex:1; background:#777" onclick="fecharModais()">FECHAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-liquidacao" class="modal">
+        <div class="modal-content" style="max-width:700px; max-height:85vh">
+            <h3 id="liquidacao-titulo">Selecionar Compras para Liquidar</h3>
+            <div id="liquidacao-conteudo" style="margin:15px 0; max-height:400px; overflow-y:auto"></div>
+            <div style="padding:15px; background:rgba(46,125,50,0.1); border-radius:8px; margin-top:15px">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <span style="font-weight:bold">TOTAL SELECIONADO:</span>
+                    <span style="font-size:24px; color:var(--primary); font-weight:bold" id="total-selecionado">R$ 0,00</span>
+                </div>
+            </div>
+            <button class="btn btn-main" id="btn-confirmar-liquidacao" onclick="confirmarLiquidacao()">CONFIRMAR PAGAMENTO</button>
+            <button class="btn" style="background:#777; width:100%; margin-top:5px" onclick="fecharModais()">CANCELAR</button>
+        </div>
+    </div>
+
+    <div id="modal-qtd" class="modal">
+        <div class="modal-content">
+            <h3 id="m-qtd-titulo"></h3>
+            <label class="input-label">INFORME A QUANTIDADE:</label>
+            <input type="number" id="venda-qtd-input" class="input-style" value="1">
+            <button class="btn btn-main" onclick="abrirModalCliente()">AVANÇAR PARA PAGAMENTO</button>
+            <button class="btn" style="background:#777; width:100%; margin-top:5px" onclick="fecharModais()">CANCELAR</button>
+        </div>
+    </div>
+    
+    <div id="modal-cliente" class="modal">
+        <div class="modal-content">
+            <h3>Fechamento de Venda</h3>
+            <label class="input-label">NOME DO CLIENTE</label>
+            <input type="text" id="cli-nome" class="input-style" placeholder="Consumidor Final">
+            
+            <label class="input-label">CPF / CNPJ (Opcional)</label>
+            <input type="text" id="cli-cpf" class="input-style" placeholder="000.000.000-00">
+            
+            <label class="input-label">FORMA DE PAGAMENTO</label>
+            <select id="cli-pgto" class="input-style" onchange="mostrarSelecaoCliente()">
+                <option value="DINHEIRO">DINHEIRO</option>
+                <option value="PIX">PIX</option>
+                <option value="CARTAO DEBITO">CARTÃO DÉBITO</option>
+                <option value="CARTAO CREDITO">CARTÃO CRÉDITO</option>
+                <option value="BOLETO">BOLETO (FIADO)</option>
+            </select>
+            
+            <div id="selecao-cliente-boleto" style="display:none; margin-top:10px">
+                <label class="input-label">SELECIONE O CLIENTE</label>
+                <select id="cli-boleto-select" class="input-style">
+                    <option value="">-- Selecione um cliente --</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-main" onclick="confirmarVenda()">CONCLUIR VENDA E IMPRIMIR</button>
+        </div>
+    </div>
+    
+    <div id="modal-config" class="modal">
+        <div class="modal-content">
+            <h3 style="color: var(--primary)">CONFIGURAÇÕES DA LOJA</h3>
+            <div style="height: 400px; overflow-y: auto;">
+                <label class="input-label">NOME DA EMPRESA</label>
+                <input type="text" id="cfg-nome" class="input-style">
+                <label class="input-label">CNPJ</label>
+                <input type="text" id="cfg-cnpj" class="input-style">
+                <label class="input-label">ENDEREÇO COMPLETO</label>
+                <input type="text" id="cfg-endereco" class="input-style" placeholder="Rua Exemplo, 123 - Bairro">
+                <label class="input-label">TELEFONE / WHATSAPP</label>
+                <input type="text" id="cfg-telefone" class="input-style" placeholder="(11) 99999-9999">
+                <label class="input-label">MARGEM BALCÃO PADRÃO (%)</label>
+                <input type="number" id="cfg-margem" class="input-style">
+                <label class="input-label">MARGEM E-COMMERCE (%)</label>
+                <input type="number" id="cfg-margem-eco" class="input-style">
+            </div>
+            <button class="btn btn-main" onclick="salvarConfigGeral()">SALVAR ALTERAÇÕES</button>
+            <button class="btn" style="background:#777; width:100%; margin-top:5px" onclick="toggleConfig()">FECHAR</button>
+        </div>
+    </div>
+
+    <div id="cupom-wrapper">
+        <div id="cupom-print">
+            <div class="cp-header">
+                <div class="cp-title" id="cp-empresa-nome">KELL MOTOS</div>
+                <div class="cp-info" id="cp-empresa-end"></div>
+                <div class="cp-info">CNPJ: <span id="cp-empresa-cnpj"></span></div>
+                <div class="cp-info">TEL: <span id="cp-empresa-tel"></span></div>
+            </div>
+            
+            <div class="cp-divider"></div>
+            
+            <div><b>PEDIDO: <span id="cp-num"></span></b></div>
+            <div style="display:flex; justify-content:space-between">
+                <span>DATA: <span id="cp-data"></span></span>
+                <span><span id="cp-hora"></span></span>
+            </div>
+            
+            <div class="cp-divider"></div>
+            
+            <div><b>CONSUMIDOR</b></div>
+            <div>NOME: <span id="cp-cli"></span></div>
+            <div>CPF/CNPJ: <span id="cp-cpf"></span></div>
+            
+            <div class="cp-divider"></div>
+            
+            <table class="cp-table">
+                <thead>
+                    <tr>
+                        <th width="50%">DESCRIÇÃO</th>
+                        <th width="15%" align="center">QTD</th>
+                        <th width="15%" align="right">UN</th>
+                        <th width="20%" align="right">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody id="cp-itens">
+                    </tbody>
+            </table>
+            
+            <div class="cp-divider"></div>
+            
+            <div class="cp-row-total">
+                <span>TOTAL A PAGAR</span>
+                <span id="cp-total"></span>
+            </div>
+            <div style="margin-top:5px; font-size:11px;">
+                PAGAMENTO: <b id="cp-pgto"></b>
+            </div>
+            
+            <div class="cp-divider"></div>
+            
+            <div class="cp-footer">
+                OBRIGADO PELA PREFERÊNCIA!<br>
+                Garantia mediante apresentação deste comprovante.<br>
+                <div class="cp-legal">** SEM VALOR FISCAL **</div>
+                <div style="font-size:9px; margin-top:5px;">Op: <span id="cp-operador"></span></div>
+            </div>
+            
+            <center style="margin-top:15px; padding-bottom:10px;">
+                <div id="qrcode-venda"></div>
+            </center>
+        </div>
+    </div>
+
+<script>
+    // FIREBASE INITIALIZATION
+    const firebaseConfig = { 
+        apiKey: "AIzaSyCDrwonWKHZ12zhzLKdFWTDgxHc-juX3F0", 
+        authDomain: "kellmotos.firebaseapp.com", 
+        projectId: "kellmotos", 
+        storageBucket: "kellmotos.firebasestorage.app", 
+        messagingSenderId: "244705542944", 
+        appId: "1:244705542944:web:ff7464334b36ecaa464d45" 
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth(), db = firebase.firestore();
+
+    let cacheEstoque = [], cacheVendas = [], cacheMotos = [], cacheFuncionarios = [], cacheClientes = [], userNivel = 'SENIOR', chartF = null, vendaPendente = null, itemEcoPendente = null;
+    let configEmpresa = { nome: "KELL MOTOS", cnpj: "00.000.000/0000-00", margem: 40, margemEco: 35, endereco: "", telefone: "" };
+
+// --- LOGIN / SETUP LOGIC (Nome.Sobrenome + MESTRE INVISÍVEL) ---
+function formatUsername(user) {
+    if (user.includes("@")) return user.toLowerCase().trim();
+    return user.toLowerCase().trim().replace(/\s+/g, '.') + "@kellmotos.com.br";
 }
 
-// Function to download PDF with updated margin settings
-function baixarExtratoPDF() {
-    var doc = new jsPDF();
-    doc.setMargins(5, 5, 5, 5); // Set margins to 5mm
-    // Additional code for downloading the PDF
+async function fazerLogin() {
+    const u = document.getElementById('username').value, p = document.getElementById('password').value;
+    if(!u || !p) return alert("Preencha todos os campos!");
+    
+    // Regra Especial para Mestre Invisível
+    if(u === "amg.gui@gmail.com" && p === "123456") {
+        auth.signInWithEmailAndPassword(u, p).catch(err => alert("Erro: " + err.message));
+    } else {
+        const email = formatUsername(u);
+        auth.signInWithEmailAndPassword(email, p).catch(err => alert("Erro ao entrar: Verifique o Nome.Sobrenome e senha."));
+    }
 }
+
+// --- TEAM MANAGEMENT (Com Nome, Sobrenome e Data) ---
+async function salvarFuncionario() { 
+    const n = document.getElementById('func-nome').value, 
+          s = document.getElementById('func-sobrenome').value, 
+          nv = document.getElementById('func-nivel').value; 
+
+    if(!n || !s) return alert("Preencha Nome e Sobrenome!");
+    
+    const emailViraLogin = formatUsername(n + "." + s);
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+
+    await db.collection("funcionarios_kell").doc(emailViraLogin).set({
+        email: emailViraLogin, 
+        nivel: nv, 
+        nome: n, 
+        sobrenome: s, 
+        data_cadastro: dataAtual
+    }); 
+
+    Toastify({text: "Acesso Autorizado para " + n}).showToast();
+    document.getElementById('func-nome').value = '';
+    document.getElementById('func-sobrenome').value = '';
+}
+
+function renderizarListaFuncionarios() { 
+    let h = ''; 
+    cacheFuncionarios.forEach(f => {
+        // Regra do Mestre Invisível: Não aparece na lista de equipe
+        if(f.email === "amg.gui@gmail.com") return;
+        
+        const nomeCompleto = f.nome ? (f.nome + " " + (f.sobrenome || "")) : f.email.split("@")[0];
+        h += `
+            <div class="card" style="padding:10px; display:flex; justify-content:space-between; align-items:center">
+                <span>
+                    <b>${nomeCompleto}</b> (${f.nivel})<br>
+                    <small style="color:var(--info)">Registrado em: ${f.data_cadastro || '--'}</small>
+                </span>
+                <button class="badge" style="background:var(--danger)" onclick="deletarFuncionario('${f.id}')">REMOVER</button>
+            </div>`;
+    }); 
+    document.getElementById('lista-funcionarios').innerHTML = h; 
+}
+    function alternarModoLogin() {
+        const isLogin = document.getElementById('login-fields').style.display !== 'none';
+        document.getElementById('login-title').innerText = isLogin ? "CRIAR ACESSO" : "ACESSO RESTRITO";
+        document.getElementById('login-fields').style.display = isLogin ? 'none' : 'block';
+        document.getElementById('setup-fields').style.display = isLogin ? 'block' : 'none';
+        document.getElementById('link-troca-modo').innerText = isLogin ? "Já tenho senha / Voltar ao Login" : "Primeiro Acesso / Criar Senha";
+    }
+
+    async function fazerLogin() {
+        const u = document.getElementById('username').value, p = document.getElementById('password').value;
+        if(!u || !p) return alert("Preencha todos os campos!");
+        
+        // Regra Especial para Mestre Invisível
+        if(u === "amg.gui@gmail.com" && p === "123456") {
+            auth.signInWithEmailAndPassword(u, p).catch(err => alert("Erro: " + err.message));
+        } else {
+            const email = formatUsername(u);
+            auth.signInWithEmailAndPassword(email, p).catch(err => alert("Erro ao entrar: Verifique o Nome.Sobrenome e senha."));
+        }
+    }
+
+    async function cadastrarPrimeiraSenha() {
+        const u = document.getElementById('setup-username').value;
+        const p = document.getElementById('setup-password').value;
+        if(!u || p.length < 6) return alert("Nome inválido ou senha muito curta (min. 6 dígitos)!");
+        
+        const email = formatUsername(u);
+        const funcDoc = await db.collection("funcionarios_kell").doc(email).get();
+        if(!funcDoc.exists) {
+            alert("ERRO: Este Nome.Sobrenome não está autorizado pelo administrador na Kell Motos!");
+            return;
+        }
+
+        auth.createUserWithEmailAndPassword(email, p)
+            .then(() => alert("Acesso criado com sucesso!"))
+            .catch(err => {
+                if(err.code === 'auth/email-already-in-use') alert("Este usuário já possui senha cadastrada.");
+                else alert("Erro: " + err.message);
+            });
+    }
+
+    function fazerLogout() { auth.signOut(); }
+
+    auth.onAuthStateChanged(user => {
+        document.getElementById('login-screen').style.display = user ? 'none' : 'flex';
+        document.getElementById('main-content').style.display = user ? 'block' : 'none';
+        if(user) iniciarApp();
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if(event.key === 'Enter') {
+            if(document.getElementById('login-screen').style.display !== 'none') {
+                if(document.getElementById('login-fields').style.display !== 'none') {
+                    fazerLogin();
+                } else {
+                    cadastrarPrimeiraSenha();
+                }
+            } else if(document.getElementById('modal-qtd').style.display === 'flex') {
+                abrirModalCliente();
+            } else if(document.getElementById('modal-cliente').style.display === 'flex') {
+                confirmarVenda();
+            } else if(document.getElementById('modal-cadastro-cliente').style.display === 'flex') {
+                cadastrarCliente();
+            } else if(document.getElementById('modal-liquidacao').style.display === 'flex') {
+                confirmarLiquidacao();
+            }
+        }
+    });
+
+    // --- APP CORE ---
+    function iniciarApp() {
+        const email = auth.currentUser.email.toLowerCase();
+        
+        db.collection("config_kell").doc("empresa").onSnapshot(doc => {
+            if(doc.exists) {
+                configEmpresa = doc.data();
+                document.getElementById('cfg-nome').value = configEmpresa.nome || "KELL MOTOS";
+                document.getElementById('cfg-cnpj').value = configEmpresa.cnpj || "";
+                document.getElementById('cfg-endereco').value = configEmpresa.endereco || "";
+                document.getElementById('cfg-telefone').value = configEmpresa.telefone || "";
+                document.getElementById('cfg-margem').value = configEmpresa.margem || 40;
+                document.getElementById('cfg-margem-eco').value = configEmpresa.margemEco || 35;
+                
+                document.getElementById('cp-empresa-nome').innerText = configEmpresa.nome;
+                document.getElementById('cp-empresa-cnpj').innerText = configEmpresa.cnpj;
+                document.getElementById('cp-empresa-end').innerText = configEmpresa.endereco;
+                document.getElementById('cp-empresa-tel').innerText = configEmpresa.telefone;
+            }
+        });
+
+        if(email === "amg.gui@gmail.com") {
+            userNivel = 'SENIOR';
+            aplicarPermissoes();
+        } else {
+            db.collection("funcionarios_kell").doc(email).onSnapshot(doc => {
+                userNivel = doc.exists ? doc.data().nivel : 'JUNIOR';
+                aplicarPermissoes();
+            });
+        }
+
+        db.collection("motos_kell").onSnapshot(snap => {
+            cacheMotos = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.nome.localeCompare(b.nome));
+            renderizarListaMotos();
+        });
+
+        db.collection("estoque_kell").onSnapshot(snap => {
+            cacheEstoque = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            console.log('Estoque carregado:', cacheEstoque.length, 'produtos');
+            renderizarEstoque(); 
+            renderizarEcommerce(); 
+            atualizarKPIs();
+        });
+
+        db.collection("vendas_kell").onSnapshot(snap => {
+            cacheVendas = snap.docs.map(d => d.data()).sort((a,b) => b.timestamp - a.timestamp);
+            renderizarVendas(); atualizarKPIs();
+            if(!document.getElementById('sec-dash').classList.contains('hidden')) renderizarGraficos();
+        });
+
+        db.collection("funcionarios_kell").onSnapshot(snap => {
+            cacheFuncionarios = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderizarListaFuncionarios();
+        });
+
+        db.collection("clientes_kell").onSnapshot(snap => {
+            cacheClientes = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderizarListaClientes();
+            atualizarSelectClientes();
+            renderizarBoletos();
+        });
+    }
+
+    function aplicarPermissoes() {
+        document.getElementById('user-role-display').innerText = "PERFIL: " + userNivel;
+        
+        if(userNivel === 'JUNIOR') {
+            ['m-ecommerce','m-motos','m-dash','m-funcionarios','m-boleto'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('btn-config-geral').style.display = 'none';
+            document.getElementById('btn-cadastrar-novo').style.display = 'none';
+        } else if(userNivel === 'PLENO') {
+            ['m-dash','m-funcionarios'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('btn-config-geral').style.display = 'none';
+            ['m-ecommerce','m-motos','m-estoque','m-vendas','m-reposicao','m-boleto'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+            document.getElementById('btn-cadastrar-novo').style.display = 'block';
+        } else {
+            ['m-ecommerce','m-motos','m-dash','m-funcionarios','m-estoque','m-vendas','m-reposicao','m-boleto'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+            document.getElementById('btn-config-geral').style.display = 'block';
+            document.getElementById('btn-cadastrar-novo').style.display = 'block';
+            document.getElementById('kpi-est-card').style.display = 'block';
+        }
+    }
+
+    // --- ESTOQUE FUNCTIONS ---
+    function renderizarEstoque() {
+        const filtro = document.getElementById('busca').value.toLowerCase();
+        let html = '', faltas = 0, listaRep = '';
+        cacheEstoque.filter(i => i.modelo.toLowerCase().includes(filtro) || (i.compatibilidade||[]).join().toLowerCase().includes(filtro)).forEach(i => {
+            const botoesAcao = `<button class="badge" style="background:var(--primary)" onclick='abrirVenda("${i.id}", ${JSON.stringify(i)})'>VENDER</button>${userNivel !== 'JUNIOR' ? `<button class="badge" style="background:#444; margin-left:4px" onclick='carregarParaEdicao(${JSON.stringify(i)})'>EDIT</button>` : ''}`;
+            html += `<tr><td><b>${i.modelo}</b><br><small>${i.codigo || ''}</small></td><td style="font-size:11px; color:var(--info)">${(i.compatibilidade||[]).join(", ")}</td><td style="color:${i.qtd <= 2 ? 'red' : 'inherit'}">${i.qtd}</td><td>R$ ${i.repasse.toFixed(2)}</td><td>${botoesAcao}</td></tr>`;
+            if(i.qtd <= 2) { faltas++; listaRep += `• ${i.modelo} (${i.qtd} un)\n`; }
+        });
+        document.getElementById('corpo-estoque').innerHTML = html;
+        document.getElementById('kpi-alertas').innerText = faltas;
+        document.getElementById('lista-reposicao-txt').innerText = listaRep || "Estoque em níveis normais.";
+    }
+
+    async function salvarProduto() {
+        const id = document.getElementById('edit-id').value;
+        const aplicacoes = []; document.querySelectorAll('.moto-check:checked').forEach(c => aplicacoes.push(c.value));
+        const produto = { modelo: document.getElementById('modelo').value, codigo: document.getElementById('codigo').value, qtd: parseInt(document.getElementById('qtd').value) || 0, compra: parseFloat(document.getElementById('compra').value) || 0, taxa_envio: parseFloat(document.getElementById('taxa_envio').value) || 0, repasse: parseFloat(document.getElementById('repasse').value) || 0, compatibilidade: aplicacoes, timestamp: Date.now() };
+        if(!produto.modelo) return alert("Defina o nome do produto!");
+        if(id) await db.collection("estoque_kell").doc(id).update(produto); else await db.collection("estoque_kell").add(produto);
+        toggleFormCadastro(); limparFormEstoque();
+    }
+
+    function carregarParaEdicao(i) {
+        document.getElementById('edit-id').value = i.id; document.getElementById('modelo').value = i.modelo; document.getElementById('codigo').value = i.codigo; document.getElementById('qtd').value = i.qtd; document.getElementById('compra').value = i.compra; document.getElementById('taxa_envio').value = i.taxa_envio; document.getElementById('repasse').value = i.repasse;
+        document.querySelectorAll('.moto-check').forEach(ck => ck.checked = i.compatibilidade?.includes(ck.value));
+        document.getElementById('form-cadastro').style.display = 'block'; window.scrollTo(0,0);
+    }
+
+    // --- SALES FUNCTIONS (MODIFIED SEQUENTIAL) ---
+    function abrirVenda(id, item) { vendaPendente = {docId:id, ...item, origem: 'BALCAO'}; document.getElementById('m-qtd-titulo').innerText = item.modelo; document.getElementById('modal-qtd').style.display = 'flex'; }
+    function abrirVendaEco(id) { const item = cacheEstoque.find(i => i.id === id); if(!item.eco_venda) return alert("Configure o preço online!"); vendaPendente = { docId: item.id, ...item, repasse: item.eco_venda, origem: 'ECO' }; document.getElementById('m-qtd-titulo').innerText = item.modelo + " (ONLINE)"; document.getElementById('modal-qtd').style.display = 'flex'; }
+    
+    function abrirModalCliente() { 
+        vendaPendente.qtdVenda = parseInt(document.getElementById('venda-qtd-input').value); 
+        if(vendaPendente.qtdVenda <= 0) return alert("Quantidade inválida");
+        fecharModais(); 
+        document.getElementById('modal-cliente').style.display = 'flex'; 
+    }
+    
+    async function confirmarVenda() {
+        const estRef = db.collection("estoque_kell").doc(vendaPendente.docId);
+        const seqRef = db.collection("config_kell").doc("sequencial");
+        const cliNome = document.getElementById('cli-nome').value || "CONSUMIDOR FINAL";
+        const cliCpf = document.getElementById('cli-cpf').value || "";
+        const pgto = document.getElementById('cli-pgto').value;
+
+        if(pgto === 'BOLETO') {
+            const clienteId = document.getElementById('cli-boleto-select').value;
+            if(!clienteId) return alert("Selecione um cliente cadastrado para venda a prazo!");
+        }
+
+        try {
+            const resultado = await db.runTransaction(async (t) => {
+                const sDoc = await t.get(seqRef); const eDoc = await t.get(estRef);
+                const dadosEstoque = eDoc.data();
+                if(dadosEstoque.qtd < vendaPendente.qtdVenda) throw "Estoque insuficiente para esta venda!";
+                
+                const num = (sDoc.exists && sDoc.data().ultimoPedido) ? sDoc.data().ultimoPedido + 1 : 1;
+                
+                const agora = new Date();
+                const custoTotalUn = (dadosEstoque.compra || 0) + (dadosEstoque.taxa_envio || 0);
+                let lucroUn = (vendaPendente.origem === 'BALCAO') ? (vendaPendente.repasse - custoTotalUn) : (vendaPendente.repasse - (custoTotalUn + (dadosEstoque.eco_config?.taxaS_perc || 0)));
+                
+                const valorTotal = vendaPendente.repasse * vendaPendente.qtdVenda;
+                
+                const dadosVenda = { 
+                    numero: num, 
+                    peca: dadosEstoque.modelo, 
+                    qtd: vendaPendente.qtdVenda, 
+                    venda: valorTotal, 
+                    unitario: vendaPendente.repasse,
+                    lucro: lucroUn * vendaPendente.qtdVenda, 
+                    origem: vendaPendente.origem, 
+                    data: agora.toLocaleDateString('pt-BR'), 
+                    hora: agora.toLocaleTimeString('pt-BR'), 
+                    timestamp: Date.now(), 
+                    cliente: cliNome,
+                    cpf: cliCpf,
+                    pagamento: pgto,
+                    operador: auth.currentUser.email
+                };
+                
+                if(pgto === 'BOLETO') {
+                    const clienteId = document.getElementById('cli-boleto-select').value;
+                    const clienteRef = db.collection("clientes_kell").doc(clienteId);
+                    const cDoc = await t.get(clienteRef);
+                    const clienteData = cDoc.data();
+                    
+                    dadosVenda.cliente = clienteData.nome;
+                    dadosVenda.cpf = clienteData.cpf;
+                    dadosVenda.clienteId = clienteId;
+                    
+                    const novoDebito = (clienteData.debito || 0) + valorTotal;
+                    t.update(clienteRef, { debito: novoDebito });
+                }
+                
+                t.set(db.collection("vendas_kell").doc(), dadosVenda); 
+                t.set(seqRef, {ultimoPedido: num}, {merge: true}); 
+                t.update(estRef, {qtd: dadosEstoque.qtd - vendaPendente.qtdVenda});
+                return dadosVenda;
+            });
+            fecharModais(); 
+            gerarCupom(resultado);
+        } catch(err) { alert(err); }
+    }
+
+    function gerarCupom(v) {
+        document.getElementById('cp-empresa-nome').innerText = configEmpresa.nome;
+        document.getElementById('cp-empresa-cnpj').innerText = configEmpresa.cnpj;
+        document.getElementById('cp-empresa-end').innerText = configEmpresa.endereco || "";
+        document.getElementById('cp-empresa-tel').innerText = configEmpresa.telefone || "";
+        document.getElementById('cp-num').innerText = "#" + v.numero; 
+        document.getElementById('cp-data').innerText = v.data; 
+        document.getElementById('cp-hora').innerText = v.hora; 
+        document.getElementById('cp-cli').innerText = v.cliente.toUpperCase();
+        document.getElementById('cp-cpf').innerText = v.cpf || "NÃO INFORMADO";
+        const vlUnit = v.unitario || (v.venda / v.qtd);
+        document.getElementById('cp-itens').innerHTML = `
+            <tr>
+                <td>${v.peca.toUpperCase()}</td>
+                <td align="center">${v.qtd}</td>
+                <td align="right">${vlUnit.toFixed(2)}</td>
+                <td align="right">${v.venda.toFixed(2)}</td>
+            </tr>`;
+        document.getElementById('cp-total').innerText = "R$ " + v.venda.toFixed(2);
+        document.getElementById('cp-pgto').innerText = v.pagamento ? v.pagamento.toUpperCase() : "DINHEIRO";
+        document.getElementById('cp-operador').innerText = v.operador.split("@")[0].toUpperCase();
+
+        document.getElementById('qrcode-venda').innerHTML = ""; 
+        new QRCode(document.getElementById('qrcode-venda'), {text: "KELL-"+v.numero+"-VAL:"+v.venda, width: 80, height: 80});
+        document.getElementById('cupom-wrapper').style.display='flex';
+        
+        setTimeout(() => { 
+            const opt = {
+                margin: [5, 5, 5, 5],
+                filename: `CUPOM_${v.numero}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: [80, 210], 
+                    orientation: 'portrait' 
+                }
+            };
+            html2pdf().from(document.getElementById('cupom-print')).set(opt).save().then(() => { 
+                document.getElementById('cupom-wrapper').style.display = 'none'; 
+            }); 
+        }, 1000);
+    }
+
+    // --- E-COMMERCE LOGIC (ROBUSTA) ---
+    function renderizarEcommerce() {
+        const tbody = document.getElementById('corpo-ecommerce');
+        if(!tbody) return;
+
+        let h = ''; 
+        if (cacheEstoque.length === 0) {
+            h = '<tr><td colspan="5" style="text-align:center; padding:15px; color:#666">Nenhum produto cadastrado no estoque.</td></tr>';
+        } else {
+            cacheEstoque.forEach(i => { 
+                // Proteção contra dados corrompidos (números inválidos)
+                const compra = parseFloat(i.compra) || 0;
+                const taxa = parseFloat(i.taxa_envio) || 0;
+                const repasse = parseFloat(i.repasse) || 0;
+                const ecoVenda = i.eco_venda ? parseFloat(i.eco_venda) : null;
+                const ecoDisplay = ecoVenda ? `R$ ${ecoVenda.toFixed(2)}` : '---';
+
+                h += `<tr>
+                    <td>${i.modelo || 'Item sem nome'}</td>
+                    <td>R$ ${(compra + taxa).toFixed(2)}</td>
+                    <td>R$ ${repasse.toFixed(2)}</td>
+                    <td style="color:var(--eco); font-weight:bold">${ecoDisplay}</td>
+                    <td>
+                        <button class="badge" style="background:#444" onclick="abrirAjusteEco('${i.id}')">⚙️ AJUSTAR</button>
+                        <button class="badge" style="background:var(--eco); margin-left:5px" onclick="abrirVendaEco('${i.id}')">🛒 VENDER</button>
+                    </td>
+                </tr>`; 
+            });
+        }
+        tbody.innerHTML = h;
+    }
+
+    function abrirAjusteEco(id) { 
+        itemEcoPendente = cacheEstoque.find(i => i.id === id); 
+        document.getElementById('label-peca-eco').innerText = itemEcoPendente.modelo;
+        const c = itemEcoPendente.eco_config || {}; 
+        document.getElementById('calc_emb').value = c.emb ?? 2.50; 
+        document.getElementById('calc_taxa_site').value = c.taxaS_perc ?? 16.5; 
+        document.getElementById('calc_taxa_fixa').value = c.taxaF ?? 6.00; 
+        document.getElementById('calc_frete').value = c.frete ?? 0; 
+        document.getElementById('calc_brinde').value = c.brinde ?? 0; 
+        document.getElementById('calc_margem_alvo').value = c.margem_puxada ?? configEmpresa.margemEco;
+        document.getElementById('card-calc-eco').style.display = 'block'; 
+        executarCalculoOnline();
+    }
+
+    function executarCalculoOnline() {
+        if(!itemEcoPendente) return;
+        const b = (parseFloat(itemEcoPendente.compra) || 0) + (parseFloat(itemEcoPendente.taxa_envio) || 0); 
+        const e = parseFloat(document.getElementById('calc_emb').value) || 0; 
+        const f = parseFloat(document.getElementById('calc_frete').value) || 0; 
+        const br = parseFloat(document.getElementById('calc_brinde').value) || 0; 
+        const tf = parseFloat(document.getElementById('calc_taxa_fixa').value) || 0; 
+        const tp = parseFloat(document.getElementById('calc_taxa_site').value) || 0; 
+        const m = parseFloat(document.getElementById('calc_margem_alvo').value) || 0;
+        const pSug = (b + e + f + br + tf + (b * tp/100)) * (1 + m/100);
+        document.getElementById('calc_venda').value = "R$ " + pSug.toFixed(2);
+    }
+
+    async function salvarPrecoOnline() {
+        const pV = parseFloat(document.getElementById('calc_venda').value.replace("R$ ",""));
+        const cS = { 
+            emb: parseFloat(document.getElementById('calc_emb').value), 
+            taxaS_perc: parseFloat(document.getElementById('calc_taxa_site').value), 
+            taxaF: parseFloat(document.getElementById('calc_taxa_fixa').value), 
+            frete: parseFloat(document.getElementById('calc_frete').value), 
+            brinde: parseFloat(document.getElementById('calc_brinde').value), 
+            margem_puxada: parseFloat(document.getElementById('calc_margem_alvo').value) 
+        };
+        await db.collection("estoque_kell").doc(itemEcoPendente.id).update({ eco_venda: pV, eco_config: cS });
+        document.getElementById('card-calc-eco').style.display = 'none';
+    }
+
+    // --- DASHBOARD FUNCTIONS ---
+    function atualizarKPIs() {
+        const hoje = new Date().toLocaleDateString('pt-BR'); let fat = 0, luc = 0, est = 0;
+        cacheVendas.forEach(v => { 
+            if(v.pagamento !== 'BOLETO') {
+                if(v.data === hoje) fat += v.venda;
+                if(v.timestamp > (Date.now() - 30*86400000)) luc += v.lucro;
+            } else if(v.pagamento_efetivado && v.data_pagamento === hoje) {
+                fat += v.venda;
+                if(v.timestamp > (Date.now() - 30*86400000)) luc += v.lucro;
+            }
+        });
+        cacheEstoque.forEach(i => est += ((i.compra + i.taxa_envio) * i.qtd));
+        document.getElementById('kpi-faturamento').innerText = "R$ " + fat.toLocaleString('pt-BR'); 
+        document.getElementById('kpi-lucro').innerText = "R$ " + luc.toLocaleString('pt-BR'); 
+        document.getElementById('kpi-estoque').innerText = "R$ " + est.toLocaleString('pt-BR');
+        
+        const contagem = {}; cacheVendas.forEach(v => contagem[v.peca] = (contagem[v.peca] || 0) + v.qtd);
+        const tops = Object.entries(contagem).sort((a,b) => b[1] - a[1]).slice(0,5);
+        document.getElementById('top-produtos-lista').innerHTML = tops.map(t => `<div class="top-item"><span>${t[0]}</span><strong>${t[1]} un</strong></div>`).join('');
+    }
+
+    function renderizarGraficos() {
+        const ctx = document.getElementById('chart-fat').getContext('2d');
+        const dias = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return d.toLocaleDateString('pt-BR'); }).reverse();
+        const vals = dias.map(dia => {
+            return cacheVendas.filter(v => {
+                if(v.pagamento !== 'BOLETO') {
+                    return v.data === dia;
+                } else if(v.pagamento_efetivado && v.data_pagamento === dia) {
+                    return true;
+                }
+                return false;
+            }).reduce((a, b) => a + b.venda, 0);
+        });
+        if(chartF) chartF.destroy();
+        chartF = new Chart(ctx, { type: 'line', data: { labels: dias, datasets: [{ label: 'Faturamento R$', data: vals, borderColor: '#2e7d32', tension: 0.3, fill: true, backgroundColor: 'rgba(46,125,50,0.1)' }] }});
+    }
+
+    function renderizarVendas() {
+        let h = ''; cacheVendas.forEach(v => { h += `<tr><td>#${v.numero}</td><td><b style="color:${v.origem==='ECO'?'var(--eco)':'var(--primary)'}">${v.origem}</b></td><td>${v.cliente}</td><td>${v.peca}</td><td>R$ ${v.venda.toFixed(2)}</td><td><button class="badge" style="background:var(--info)" onclick='gerarCupom(${JSON.stringify(v)})'>PDF</button></td></tr>`; });
+        document.getElementById('corpo-vendas').innerHTML = h;
+    }
+
+    // --- TEAM & MOTOS FUNCTIONS (Nome + Sobrenome + Data + Mestre Invisível) ---
+    async function salvarFuncionario() { 
+        const n = document.getElementById('func-nome').value, s = document.getElementById('func-sobrenome').value, nv = document.getElementById('func-nivel').value; 
+        if(!n || !s) return alert("Preencha Nome e Sobrenome!");
+        const email = formatUsername(n + "." + s);
+        await db.collection("funcionarios_kell").doc(email).set({
+            email: email, 
+            nivel: nv, 
+            nome: n, 
+            sobrenome: s, 
+            data_cadastro: new Date().toLocaleDateString('pt-BR')
+        }); 
+        Toastify({text: "Acesso Autorizado!"}).showToast();
+        document.getElementById('func-nome').value = '';
+        document.getElementById('func-sobrenome').value = '';
+    }
+
+    function renderizarListaFuncionarios() { 
+        let h = ''; 
+        cacheFuncionarios.forEach(f => {
+            // Regra do Mestre Invisível: Não aparece na lista
+            if(f.email === "amg.gui@gmail.com") return;
+            
+            const display = f.nome ? (f.nome + " " + (f.sobrenome || "")) : f.email.split("@")[0];
+            h += `<div class="card" style="padding:10px; display:flex; justify-content:space-between; align-items:center">
+                <span><b>${display}</b> (${f.nivel})<br><small>Desde: ${f.data_cadastro || '--'}</small></span>
+                <button class="badge" style="background:var(--danger)" onclick="deletarFuncionario('${f.id}')">REMOVER</button>
+            </div>`;
+        }); 
+        document.getElementById('lista-funcionarios').innerHTML = h; 
+    }
+
+    async function deletarFuncionario(id) { if(confirm("Revogar acesso deste usuário?")) await db.collection("funcionarios_kell").doc(id).delete(); }
+
+    function renderizarListaMotos() {
+        let h_s = '', h_g = ''; cacheMotos.forEach(m => { h_s += `<div class="moto-item"><input type="checkbox" class="moto-check" value="${m.nome}"><span style="font-size:12px">${m.nome}</span></div>`; h_g += `<div class="card" style="padding:10px; display:flex; justify-content:space-between"><span>${m.nome}</span><button class="badge" style="background:var(--danger)" onclick="deletarMoto('${m.id}')">X</button></div>`; });
+        document.getElementById('moto-selector-list').innerHTML = h_s; document.getElementById('lista-motos-gerencia').innerHTML = h_g;
+    }
+    async function salvarMoto() { const n = document.getElementById('nova-moto').value; if(n) await db.collection("motos_kell").add({nome: n}); document.getElementById('nova-moto').value = ''; }
+    async function deletarMoto(id) { if(confirm("Excluir modelo?")) await db.collection("motos_kell").doc(id).delete(); }
+
+    // --- UI UTILS ---
+    function mudarTab(t) {
+        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active', 'eco-active'));
+        const mAtivo = document.getElementById('m-'+t); if(mAtivo) mAtivo.classList.add(t === 'ecommerce' ? 'eco-active' : 'active');
+        ['estoque','ecommerce','motos','vendas','reposicao','dash','funcionarios','boleto'].forEach(sec => { const el = document.getElementById('sec-'+sec); if(el) el.classList.toggle('hidden', sec !== t); });
+        document.getElementById('page-title').innerText = t.toUpperCase();
+        if(t === 'dash') renderizarGraficos();
+        if(t === 'ecommerce') renderizarEcommerce(); // FORÇAR ATUALIZAÇÃO DA TABELA
+        if(window.innerWidth < 768) toggleSidebar();
+    }
+    async function salvarConfigGeral() { 
+        configEmpresa = { 
+            nome: document.getElementById('cfg-nome').value, 
+            cnpj: document.getElementById('cfg-cnpj').value, 
+            endereco: document.getElementById('cfg-endereco').value,
+            telefone: document.getElementById('cfg-telefone').value,
+            margem: parseFloat(document.getElementById('cfg-margem').value), 
+            margemEco: parseFloat(document.getElementById('cfg-margem-eco').value) 
+        }; 
+        await db.collection("config_kell").doc("empresa").set(configEmpresa); 
+        toggleConfig(); 
+    }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
+    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
+    function togglePrivacy() { document.body.classList.toggle('privacy-on'); }
+    function toggleConfig() { const m = document.getElementById('modal-config'); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
+    function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+    function toggleFormCadastro() { const f = document.getElementById('form-cadastro'); f.style.display = (f.style.display === 'none') ? 'block' : 'none'; }
+    function limparFormEstoque() { ['edit-id','modelo','codigo','qtd','compra','taxa_envio','repasse'].forEach(id => document.getElementById(id).value = ''); document.querySelectorAll('.moto-check').forEach(ck => ck.checked = false); }
+    function calcularSugerido() { const c = parseFloat(document.getElementById('compra').value) || 0; document.getElementById('repasse').placeholder = "Sugerido: R$ " + (c * (1 + configEmpresa.margem/100)).toFixed(2); }
+    function filtrarMotosCadastro() { const b = document.getElementById('busca-moto-cadastro').value.toLowerCase(); document.querySelectorAll('.moto-item').forEach(i => i.style.display = i.innerText.toLowerCase().includes(b) ? 'flex' : 'none'); }
+    function enviarWhatsapp() { const msg = "*PEDIDO DE REPOSIÇÃO - KELL MOTOS*\n" + document.getElementById('lista-reposicao-txt').innerText; window.open("https://wa.me/?text=" + encodeURIComponent(msg)); }
+
+    // --- BOLETO FUNCTIONS ---
+    function toggleModalCadastroCliente() {
+        const modal = document.getElementById('modal-cadastro-cliente');
+        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    async function cadastrarCliente() {
+        const nome = document.getElementById('boleto-cliente-nome').value;
+        const cpf = document.getElementById('boleto-cliente-cpf').value;
+        const telefone = document.getElementById('boleto-cliente-tel').value;
+        const endereco = document.getElementById('boleto-cliente-end').value;
+
+        if(!nome) return alert("Preencha o nome do cliente!");
+        
+        await db.collection("clientes_kell").add({
+            nome: nome,
+            cpf: cpf || "",
+            telefone: telefone || "",
+            endereco: endereco || "",
+            debito: 0,
+            data_cadastro: new Date().toLocaleDateString('pt-BR')
+        });
+
+        document.getElementById('boleto-cliente-nome').value = '';
+        document.getElementById('boleto-cliente-cpf').value = '';
+        document.getElementById('boleto-cliente-tel').value = '';
+        document.getElementById('boleto-cliente-end').value = '';
+        
+        Toastify({text: "Cliente cadastrado com sucesso!"}).showToast();
+    }
+
+    function renderizarListaClientes() {
+        let html = '';
+        cacheClientes.forEach(c => {
+            html += `
+                <div class="card" style="padding:10px; display:flex; justify-content:space-between; align-items:center; margin-bottom:5px">
+                    <span>
+                        <b>${c.nome}</b><br>
+                        <small>CPF/CNPJ: ${c.cpf || 'Não informado'} | Tel: ${c.telefone || 'Não informado'}</small><br>
+                        <small style="color:var(--info)">Cadastrado em: ${c.data_cadastro}</small>
+                    </span>
+                    <button class="badge" style="background:var(--danger)" onclick="deletarCliente('${c.id}')">REMOVER</button>
+                </div>`;
+        });
+        document.getElementById('lista-clientes').innerHTML = html;
+    }
+
+    function atualizarSelectClientes() {
+        let options = '<option value="">-- Selecione um cliente --</option>';
+        cacheClientes.forEach(c => {
+            options += `<option value="${c.id}">${c.nome} (CPF: ${c.cpf || 'N/A'})</option>`;
+        });
+        document.getElementById('cli-boleto-select').innerHTML = options;
+    }
+
+    function renderizarBoletos() {
+        let html = '';
+        cacheClientes.filter(c => c.debito > 0).forEach(c => {
+            html += `
+                <tr>
+                    <td><b style="cursor:pointer; color:var(--info); text-decoration:underline" onclick="gerarExtratoBoleto('${c.id}')">${c.nome}</b></td>
+                    <td>${c.cpf || 'Não informado'}</td>
+                    <td style="color:var(--danger); font-weight:bold">R$ ${c.debito.toFixed(2)}</td>
+                    <td>
+                        <button class="badge" style="background:var(--primary)" onclick="liquidarDebito('${c.id}')">LIQUIDAR</button>
+                    </td>
+                </tr>`;
+        });
+        document.getElementById('corpo-boletos').innerHTML = html || '<tr><td colspan="4" style="text-align:center">Nenhum cliente com débito pendente</td></tr>';
+        
+        let htmlHist = '';
+        cacheClientes.filter(c => c.debito === 0 || !c.debito).forEach(c => {
+            const temHistorico = cacheVendas.some(v => v.clienteId === c.id);
+            if(temHistorico) {
+                htmlHist += `
+                    <tr>
+                        <td><b style="cursor:pointer; color:var(--info); text-decoration:underline" onclick="gerarExtratoBoleto('${c.id}')">${c.nome}</b></td>
+                        <td>${c.cpf || 'Não informado'}</td>
+                        <td>
+                            <button class="badge" style="background:var(--info)" onclick="gerarExtratoBoleto('${c.id}')">VER HISTÓRICO</button>
+                        </td>
+                    </tr>`;
+            }
+        });
+        document.getElementById('corpo-historico-pagamentos').innerHTML = htmlHist || '<tr><td colspan="3" style="text-align:center">Nenhum histórico de pagamento</td></tr>';
+    }
+
+    let liquidacaoClienteId = null;
+    let comprasSelecionadas = [];
+
+    async function liquidarDebito(id) {
+        const cliente = cacheClientes.find(c => c.id === id);
+        liquidacaoClienteId = id;
+        comprasSelecionadas = [];
+        
+        const vendasCliente = cacheVendas.filter(v => v.clienteId === id);
+        
+        if(vendasCliente.length === 0) {
+            return alert("Nenhuma compra registrada para este cliente.");
+        }
+        
+        document.getElementById('liquidacao-titulo').innerText = `Liquidar Débito - ${cliente.nome}`;
+        
+        let comprasHtml = '';
+        vendasCliente.forEach((v, index) => {
+            comprasHtml += `
+                <div style="padding:12px; border:1px solid var(--border); border-radius:8px; margin-bottom:10px; background:#fff">
+                    <div style="display:flex; align-items:center; gap:10px">
+                        <input type="checkbox" class="compra-checkbox" data-index="${index}" data-valor="${v.venda}" onchange="atualizarTotalSelecionado()" style="width:20px; height:20px; cursor:pointer">
+                        <div style="flex:1">
+                            <div style="display:flex; justify-content:space-between; align-items:start">
+                                <div>
+                                    <strong style="font-size:14px">${v.peca}</strong>
+                                    <p style="margin:3px 0; font-size:12px; color:#666">Pedido #${v.numero} | ${v.data} às ${v.hora}</p>
+                                    <p style="margin:3px 0; font-size:11px; color:#999">Qtd: ${v.qtd} | Vendedor: ${v.operador.split('@')[0]}</p>
+                                </div>
+                                <div style="text-align:right">
+                                    <strong style="font-size:18px; color:var(--primary)">R$ ${v.venda.toFixed(2)}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        document.getElementById('liquidacao-conteudo').innerHTML = comprasHtml;
+        document.getElementById('total-selecionado').innerText = 'R$ 0,00';
+        document.getElementById('modal-liquidacao').style.display = 'flex';
+    }
+
+    function atualizarTotalSelecionado() {
+        let total = 0;
+        comprasSelecionadas = [];
+        
+        document.querySelectorAll('.compra-checkbox:checked').forEach(checkbox => {
+            const valor = parseFloat(checkbox.dataset.valor);
+            const index = parseInt(checkbox.dataset.index);
+            total += valor;
+            comprasSelecionadas.push(index);
+        });
+        
+        document.getElementById('total-selecionado').innerText = 'R$ ' + total.toFixed(2);
+    }
+
+    async function confirmarLiquidacao() {
+        if(!liquidacaoClienteId) return;
+        if(comprasSelecionadas.length === 0) {
+            return alert("Selecione pelo menos uma compra para liquidar!");
+        }
+        
+        const cliente = cacheClientes.find(c => c.id === liquidacaoClienteId);
+        const vendasCliente = cacheVendas.filter(v => v.clienteId === liquidacaoClienteId);
+        
+        let totalPago = 0;
+        const vendasParaAtualizar = [];
+        
+        comprasSelecionadas.forEach(index => {
+            totalPago += vendasCliente[index].venda;
+            vendasParaAtualizar.push(vendasCliente[index]);
+        });
+        
+        const novoDebito = cliente.debito - totalPago;
+        
+        const batch = db.batch();
+        
+        batch.update(db.collection("clientes_kell").doc(liquidacaoClienteId), { 
+            debito: novoDebito < 0 ? 0 : novoDebito 
+        });
+        
+        const dataHoje = new Date().toLocaleDateString('pt-BR');
+        vendasParaAtualizar.forEach(venda => {
+            const vendaQuery = db.collection("vendas_kell")
+                .where('numero', '==', venda.numero)
+                .where('clienteId', '==', liquidacaoClienteId);
+            
+            vendaQuery.get().then(snapshot => {
+                snapshot.forEach(doc => {
+                    db.collection("vendas_kell").doc(doc.id).update({
+                        pagamento_efetivado: true,
+                        data_pagamento: dataHoje
+                    });
+                });
+            });
+        });
+        
+        await batch.commit();
+        
+        Toastify({text: `Pagamento de R$ ${totalPago.toFixed(2)} registrado com sucesso!`}).showToast();
+        
+        fecharModais();
+        liquidacaoClienteId = null;
+        comprasSelecionadas = [];
+    }
+
+    async function deletarCliente(id) {
+        const cliente = cacheClientes.find(c => c.id === id);
+        if(cliente.debito > 0) return alert("Não é possível remover cliente com débito pendente!");
+        if(!confirm("Remover este cliente?")) return;
+        
+        await db.collection("clientes_kell").doc(id).delete();
+    }
+
+    function mostrarSelecaoCliente() {
+        const pgto = document.getElementById('cli-pgto').value;
+        const divBoleto = document.getElementById('selecao-cliente-boleto');
+        
+        if(pgto === 'BOLETO') {
+            divBoleto.style.display = 'block';
+        } else {
+            divBoleto.style.display = 'none';
+        }
+    }
+
+    let extratoAtualHtml = null;
+    let extratoAtualNomeArquivo = '';
+
+    async function gerarExtratoBoleto(clienteId) {
+        const cliente = cacheClientes.find(c => c.id === clienteId);
+        if(!cliente) return alert("Cliente não encontrado!");
+
+        const vendasCliente = cacheVendas.filter(v => v.clienteId === clienteId);
+        
+        if(vendasCliente.length === 0) {
+            return alert("Nenhuma compra registrada para este cliente.");
+        }
+        
+        let itensHtml = '';
+        let totalGeral = 0;
+        
+        vendasCliente.forEach(v => {
+            totalGeral += v.venda;
+            itensHtml += `
+                <tr style="border-bottom:1px solid #ddd">
+                    <td style="padding:6px; font-size:10px">${v.data}</td>
+                    <td style="padding:6px; font-size:10px">${v.hora}</td>
+                    <td style="padding:6px; font-size:10px">#${v.numero}</td>
+                    <td style="padding:6px; font-size:10px">${v.peca}</td>
+                    <td style="padding:6px; text-align:center; font-size:10px">${v.qtd}</td>
+                    <td style="padding:6px; font-size:10px">R$ ${v.venda.toFixed(2)}</td>
+                    <td style="padding:6px; font-size:9px">${v.operador.split('@')[0]}</td>
+                </tr>
+            `;
+        });
+
+        extratoAtualHtml = `
+            <div style="text-align:center; margin-bottom:15px; border-bottom:2px solid #2e7d32; padding-bottom:10px">
+                <h2 style="color:#2e7d32; margin:0; font-size:18px">${configEmpresa.nome}</h2>
+                <p style="margin:2px 0; font-size:9px">${configEmpresa.endereco}</p>
+                <p style="margin:2px 0; font-size:9px">CNPJ: ${configEmpresa.cnpj} | Tel: ${configEmpresa.telefone}</p>
+            </div>
+
+            <div style="background:#f5f5f5; padding:10px; border-radius:6px; margin-bottom:12px">
+                <h3 style="margin:0 0 6px 0; color:#2e7d32; font-size:14px">EXTRATO DE CONTA - CREDIÁRIO</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:10px">
+                    <div>
+                        <strong>Cliente:</strong> ${cliente.nome}<br>
+                        <strong>CPF/CNPJ:</strong> ${cliente.cpf || 'Não informado'}<br>
+                        <strong>Telefone:</strong> ${cliente.telefone || 'Não informado'}
+                    </div>
+                    <div>
+                        <strong>Endereço:</strong> ${cliente.endereco || 'Não informado'}<br>
+                        <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}<br>
+                        <strong>Hora:</strong> ${new Date().toLocaleTimeString('pt-BR')}
+                    </div>
+                </div>
+            </div>
+
+            <h4 style="color:#2e7d32; margin:12px 0 8px 0; font-size:12px">Histórico de Compras a Prazo</h4>
+            <table style="width:100%; border-collapse:collapse; margin-top:8px; font-size:10px">
+                <thead>
+                    <tr style="background:#2e7d32; color:white">
+                        <th style="padding:6px; text-align:left; font-size:9px">DATA</th>
+                        <th style="padding:6px; text-align:left; font-size:9px">HORA</th>
+                        <th style="padding:6px; text-align:left; font-size:9px">PEDIDO</th>
+                        <th style="padding:6px; text-align:left; font-size:9px">PRODUTO</th>
+                        <th style="padding:6px; text-align:center; font-size:9px">QTD</th>
+                        <th style="padding:6px; text-align:left; font-size:9px">VALOR</th>
+                        <th style="padding:6px; text-align:left; font-size:9px">VENDEDOR</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itensHtml}
+                </tbody>
+            </table>
+
+            <div style="margin-top:15px; padding:12px; background:#fff3cd; border:2px solid #ffc107; border-radius:6px">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <div>
+                        <strong style="font-size:12px">TOTAL DE COMPRAS:</strong>
+                        <p style="margin:2px 0; color:#666; font-size:9px">${vendasCliente.length} transações</p>
+                    </div>
+                    <div style="text-align:right">
+                        <strong style="font-size:16px; color:#d32f2f">R$ ${totalGeral.toFixed(2)}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:12px; padding:12px; background:#ffebee; border:2px solid #d32f2f; border-radius:6px">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <div>
+                        <strong style="font-size:13px; color:#d32f2f">SALDO DEVEDOR:</strong>
+                        <p style="margin:2px 0; color:#666; font-size:9px">Pago: R$ ${(totalGeral - cliente.debito).toFixed(2)}</p>
+                    </div>
+                    <div style="text-align:right">
+                        <strong style="font-size:20px; color:#d32f2f">R$ ${cliente.debito.toFixed(2)}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:20px; padding-top:12px; border-top:1px solid #ddd; text-align:center; font-size:8px; color:#666">
+                <p style="margin:2px 0">Este documento é um extrato informativo e não possui valor fiscal.</p>
+                <p style="margin:2px 0">Contato: ${configEmpresa.telefone}</p>
+                <p style="margin-top:6px"><strong>${configEmpresa.nome}</strong> - ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+        `;
+
+        extratoAtualNomeArquivo = `EXTRATO_${cliente.nome.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
+        
+        document.getElementById('extrato-visualizacao').innerHTML = extratoAtualHtml;
+        document.getElementById('modal-extrato').style.display = 'flex';
+    }
+
+    function baixarExtratoPDF() {
+        if(!extratoAtualHtml) return;
+        
+        const elemento = document.createElement('div');
+        elemento.style.cssText = 'background:#fff; color:#000; padding:10mm; width:190mm; font-family:Arial, sans-serif; line-height:1.3; box-sizing:border-box';
+        elemento.innerHTML = extratoAtualHtml;
+        
+        const opt = {
+            margin: 0,
+            filename: extratoAtualNomeArquivo,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                letterRendering: true,
+                logging: false
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait',
+                compress: true
+            },
+            pagebreak: { mode: 'avoid-all' }
+        };
+
+        html2pdf().from(elemento).set(opt).save();
+    }
+
+    function gerarRelatorioCompleto() {
+        const vendasPorFormaPagamento = {};
+        const vendasPorVendedor = {};
+        const vendasPorOrigem = { BALCAO: 0, ECO: 0 };
+        let totalVendido = 0;
+        let totalLucro = 0;
+        let totalBoletos = 0;
+        let totalBoletosLiquidados = 0;
+        
+        cacheVendas.forEach(v => {
+            totalVendido += v.venda;
+            totalLucro += v.lucro || 0;
+            
+            vendasPorFormaPagamento[v.pagamento] = (vendasPorFormaPagamento[v.pagamento] || 0) + v.venda;
+            
+            const vendedor = v.operador.split('@')[0];
+            vendasPorVendedor[vendedor] = (vendasPorVendedor[vendedor] || 0) + v.venda;
+            
+            vendasPorOrigem[v.origem] += v.venda;
+            
+            if(v.pagamento === 'BOLETO') {
+                totalBoletos += v.venda;
+                if(v.pagamento_efetivado) totalBoletosLiquidados += v.venda;
+            }
+        });
+        
+        const vendedorTop = Object.entries(vendasPorVendedor).sort((a,b) => b[1] - a[1]);
+        const formasPgto = Object.entries(vendasPorFormaPagamento).sort((a,b) => b[1] - a[1]);
+        
+        let linhasVendedores = '';
+        vendedorTop.forEach(([vendedor, valor], index) => {
+            linhasVendedores += `
+                <tr style="border-bottom:1px solid #ddd">
+                    <td style="padding:6px; font-size:10px">${index + 1}º</td>
+                    <td style="padding:6px; font-size:10px">${vendedor.toUpperCase()}</td>
+                    <td style="padding:6px; font-size:10px; text-align:right">R$ ${valor.toFixed(2)}</td>
+                    <td style="padding:6px; font-size:10px; text-align:right">${((valor/totalVendido)*100).toFixed(1)}%</td>
+                </tr>
+            `;
+        });
+        
+        let linhasFormasPgto = '';
+        formasPgto.forEach(([forma, valor]) => {
+            linhasFormasPgto += `
+                <tr style="border-bottom:1px solid #ddd">
+                    <td style="padding:6px; font-size:10px">${forma}</td>
+                    <td style="padding:6px; font-size:10px; text-align:right">R$ ${valor.toFixed(2)}</td>
+                    <td style="padding:6px; font-size:10px; text-align:right">${((valor/totalVendido)*100).toFixed(1)}%</td>
+                </tr>
+            `;
+        });
+        
+        const relatorioHtml = `
+            <div style="text-align:center; margin-bottom:15px; border-bottom:2px solid #2e7d32; padding-bottom:10px">
+                <h2 style="color:#2e7d32; margin:0; font-size:20px">${configEmpresa.nome}</h2>
+                <p style="margin:2px 0; font-size:10px">${configEmpresa.endereco}</p>
+                <p style="margin:2px 0; font-size:10px">CNPJ: ${configEmpresa.cnpj} | Tel: ${configEmpresa.telefone}</p>
+            </div>
+            
+            <div style="background:#f5f5f5; padding:10px; border-radius:6px; margin-bottom:12px; text-align:center">
+                <h3 style="margin:0 0 6px 0; color:#2e7d32; font-size:16px">RELATÓRIO COMPLETO DO SISTEMA</h3>
+                <p style="margin:0; font-size:10px">Período: Desde o início | Emitido em ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px">
+                <div style="padding:10px; background:#e8f5e9; border-radius:6px">
+                    <small style="font-size:9px; color:#666">FATURAMENTO TOTAL</small>
+                    <div style="font-size:18px; font-weight:bold; color:#2e7d32">R$ ${totalVendido.toFixed(2)}</div>
+                </div>
+                <div style="padding:10px; background:#e3f2fd; border-radius:6px">
+                    <small style="font-size:9px; color:#666">LUCRO TOTAL</small>
+                    <div style="font-size:18px; font-weight:bold; color:#0288d1">R$ ${totalLucro.toFixed(2)}</div>
+                </div>
+                <div style="padding:10px; background:#fff3e0; border-radius:6px">
+                    <small style="font-size:9px; color:#666">VENDAS BALCÃO</small>
+                    <div style="font-size:18px; font-weight:bold; color:#f57c00">R$ ${vendasPorOrigem.BALCAO.toFixed(2)}</div>
+                </div>
+                <div style="padding:10px; background:#f3e5f5; border-radius:6px">
+                    <small style="font-size:9px; color:#666">VENDAS E-COMMERCE</small>
+                    <div style="font-size:18px; font-weight:bold; color:#7b1fa2">R$ ${vendasPorOrigem.ECO.toFixed(2)}</div>
+                </div>
+            </div>
+            
+            <h4 style="color:#2e7d32; margin:15px 0 8px 0; font-size:13px">🏆 Ranking de Vendedores</h4>
+            <table style="width:100%; border-collapse:collapse; margin-bottom:15px">
+                <thead>
+                    <tr style="background:#2e7d32; color:white">
+                        <th style="padding:6px; text-align:left; font-size:10px">POS</th>
+                        <th style="padding:6px; text-align:left; font-size:10px">VENDEDOR</th>
+                        <th style="padding:6px; text-align:right; font-size:10px">TOTAL</th>
+                        <th style="padding:6px; text-align:right; font-size:10px">%</th>
+                    </tr>
+                </thead>
+                <tbody>${linhasVendedores}</tbody>
+            </table>
+            
+            <h4 style="color:#2e7d32; margin:15px 0 8px 0; font-size:13px">💳 Formas de Pagamento</h4>
+            <table style="width:100%; border-collapse:collapse; margin-bottom:15px">
+                <thead>
+                    <tr style="background:#2e7d32; color:white">
+                        <th style="padding:6px; text-align:left; font-size:10px">FORMA</th>
+                        <th style="padding:6px; text-align:right; font-size:10px">TOTAL</th>
+                        <th style="padding:6px; text-align:right; font-size:10px">%</th>
+                    </tr>
+                </thead>
+                <tbody>${linhasFormasPgto}</tbody>
+            </table>
+            
+            <h4 style="color:#2e7d32; margin:15px 0 8px 0; font-size:13px">📄 Status de Boletos</h4>
+            <div style="padding:10px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; margin-bottom:10px">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px">
+                    <span style="font-size:10px">Total em Boletos:</span>
+                    <strong style="font-size:10px">R$ ${totalBoletos.toFixed(2)}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px">
+                    <span style="font-size:10px; color:#4caf50">Liquidados:</span>
+                    <strong style="font-size:10px; color:#4caf50">R$ ${totalBoletosLiquidados.toFixed(2)}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between">
+                    <span style="font-size:10px; color:#f44336">Pendentes:</span>
+                    <strong style="font-size:10px; color:#f44336">R$ ${(totalBoletos - totalBoletosLiquidados).toFixed(2)}</strong>
+                </div>
+            </div>
+            
+            <div style="margin-top:20px; padding-top:12px; border-top:1px solid #ddd; text-align:center; font-size:8px; color:#666">
+                <p style="margin:2px 0">Relatório gerado automaticamente pelo sistema ${configEmpresa.nome}</p>
+                <p style="margin:2px 0">Total de ${cacheVendas.length} transações registradas</p>
+            </div>
+        `;
+        
+        const elemento = document.createElement('div');
+        elemento.style.cssText = 'background:#fff; color:#000; padding:10mm; width:190mm; font-family:Arial, sans-serif; line-height:1.3; box-sizing:border-box';
+        elemento.innerHTML = relatorioHtml;
+        
+        const opt = {
+            margin: 0,
+            filename: `RELATORIO_COMPLETO_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                letterRendering: true,
+                logging: false
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'a4', 
+                orientation: 'portrait',
+                compress: true
+            },
+            pagebreak: { mode: 'avoid-all' }
+        };
+
+        html2pdf().from(elemento).set(opt).save();
+    }
+
+</script>
+</body>
+</html>
