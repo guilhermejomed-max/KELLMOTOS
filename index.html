@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KELL MOTOS - Business Intelligence v24.0</title>
+    <title>KELL MOTOS - Business Intelligence v24.2 (Eco Fix)</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
@@ -829,7 +829,6 @@
 // --- LOGIN / SETUP LOGIC (Nome.Sobrenome + MESTRE INVISÍVEL) ---
 function formatUsername(user) {
     if (user.includes("@")) return user.toLowerCase().trim();
-    // Transforma "João Silva" em "joao.silva@kellmotos.com.br"
     return user.toLowerCase().trim().replace(/\s+/g, '.') + "@kellmotos.com.br";
 }
 
@@ -971,7 +970,6 @@ function renderizarListaFuncionarios() {
                 document.getElementById('cfg-margem').value = configEmpresa.margem || 40;
                 document.getElementById('cfg-margem-eco').value = configEmpresa.margemEco || 35;
                 
-                // Atualiza prévia no cupom
                 document.getElementById('cp-empresa-nome').innerText = configEmpresa.nome;
                 document.getElementById('cp-empresa-cnpj').innerText = configEmpresa.cnpj;
                 document.getElementById('cp-empresa-end').innerText = configEmpresa.endereco;
@@ -979,7 +977,6 @@ function renderizarListaFuncionarios() {
             }
         });
 
-        // Regra do Mestre Invisível no App
         if(email === "amg.gui@gmail.com") {
             userNivel = 'SENIOR';
             aplicarPermissoes();
@@ -998,7 +995,9 @@ function renderizarListaFuncionarios() {
         db.collection("estoque_kell").onSnapshot(snap => {
             cacheEstoque = snap.docs.map(d => ({id: d.id, ...d.data()}));
             console.log('Estoque carregado:', cacheEstoque.length, 'produtos');
-            renderizarEstoque(); renderizarEcommerce(); atualizarKPIs();
+            renderizarEstoque(); 
+            renderizarEcommerce(); 
+            atualizarKPIs();
         });
 
         db.collection("vendas_kell").onSnapshot(snap => {
@@ -1195,36 +1194,75 @@ function renderizarListaFuncionarios() {
         }, 1000);
     }
 
-    // --- E-COMMERCE LOGIC ---
+    // --- E-COMMERCE LOGIC (ROBUSTA) ---
     function renderizarEcommerce() {
+        const tbody = document.getElementById('corpo-ecommerce');
+        if(!tbody) return;
+
         let h = ''; 
-        if(!cacheEstoque || cacheEstoque.length === 0) {
-            h = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#999">Nenhum produto cadastrado ainda. Vá em "Estoque" e cadastre produtos primeiro.</td></tr>';
+        if (cacheEstoque.length === 0) {
+            h = '<tr><td colspan="5" style="text-align:center; padding:15px; color:#666">Nenhum produto cadastrado no estoque.</td></tr>';
         } else {
             cacheEstoque.forEach(i => { 
-                h += `<tr><td>${i.modelo}</td><td>R$ ${(i.compra + (i.taxa_envio || 0)).toFixed(2)}</td><td>R$ ${i.repasse.toFixed(2)}</td><td style="color:var(--eco); font-weight:bold">R$ ${i.eco_venda?.toFixed(2) || '---'}</td><td><button class="badge" style="background:#444" onclick="abrirAjusteEco('${i.id}')">⚙️ AJUSTAR</button><button class="badge" style="background:var(--eco); margin-left:5px" onclick="abrirVendaEco('${i.id}')">🛒 VENDER</button></td></tr>`; 
+                // Proteção contra dados corrompidos (números inválidos)
+                const compra = parseFloat(i.compra) || 0;
+                const taxa = parseFloat(i.taxa_envio) || 0;
+                const repasse = parseFloat(i.repasse) || 0;
+                const ecoVenda = i.eco_venda ? parseFloat(i.eco_venda) : null;
+                const ecoDisplay = ecoVenda ? `R$ ${ecoVenda.toFixed(2)}` : '---';
+
+                h += `<tr>
+                    <td>${i.modelo || 'Item sem nome'}</td>
+                    <td>R$ ${(compra + taxa).toFixed(2)}</td>
+                    <td>R$ ${repasse.toFixed(2)}</td>
+                    <td style="color:var(--eco); font-weight:bold">${ecoDisplay}</td>
+                    <td>
+                        <button class="badge" style="background:#444" onclick="abrirAjusteEco('${i.id}')">⚙️ AJUSTAR</button>
+                        <button class="badge" style="background:var(--eco); margin-left:5px" onclick="abrirVendaEco('${i.id}')">🛒 VENDER</button>
+                    </td>
+                </tr>`; 
             });
         }
-        const el = document.getElementById('corpo-ecommerce');
-        if(el) el.innerHTML = h;
+        tbody.innerHTML = h;
     }
 
     function abrirAjusteEco(id) { 
-        itemEcoPendente = cacheEstoque.find(i => i.id === id); document.getElementById('label-peca-eco').innerText = itemEcoPendente.modelo;
-        const c = itemEcoPendente.eco_config || {}; document.getElementById('calc_emb').value = c.emb ?? 2.50; document.getElementById('calc_taxa_site').value = c.taxaS_perc ?? 16.5; document.getElementById('calc_taxa_fixa').value = c.taxaF ?? 6.00; document.getElementById('calc_frete').value = c.frete ?? 0; document.getElementById('calc_brinde').value = c.brinde ?? 0; document.getElementById('calc_margem_alvo').value = c.margem_puxada ?? configEmpresa.margemEco;
-        document.getElementById('card-calc-eco').style.display = 'block'; executarCalculoOnline();
+        itemEcoPendente = cacheEstoque.find(i => i.id === id); 
+        document.getElementById('label-peca-eco').innerText = itemEcoPendente.modelo;
+        const c = itemEcoPendente.eco_config || {}; 
+        document.getElementById('calc_emb').value = c.emb ?? 2.50; 
+        document.getElementById('calc_taxa_site').value = c.taxaS_perc ?? 16.5; 
+        document.getElementById('calc_taxa_fixa').value = c.taxaF ?? 6.00; 
+        document.getElementById('calc_frete').value = c.frete ?? 0; 
+        document.getElementById('calc_brinde').value = c.brinde ?? 0; 
+        document.getElementById('calc_margem_alvo').value = c.margem_puxada ?? configEmpresa.margemEco;
+        document.getElementById('card-calc-eco').style.display = 'block'; 
+        executarCalculoOnline();
     }
 
     function executarCalculoOnline() {
         if(!itemEcoPendente) return;
-        const b = itemEcoPendente.compra + (itemEcoPendente.taxa_envio || 0); const e = parseFloat(document.getElementById('calc_emb').value) || 0; const f = parseFloat(document.getElementById('calc_frete').value) || 0; const br = parseFloat(document.getElementById('calc_brinde').value) || 0; const tf = parseFloat(document.getElementById('calc_taxa_fixa').value) || 0; const tp = parseFloat(document.getElementById('calc_taxa_site').value) || 0; const m = parseFloat(document.getElementById('calc_margem_alvo').value) || 0;
+        const b = (parseFloat(itemEcoPendente.compra) || 0) + (parseFloat(itemEcoPendente.taxa_envio) || 0); 
+        const e = parseFloat(document.getElementById('calc_emb').value) || 0; 
+        const f = parseFloat(document.getElementById('calc_frete').value) || 0; 
+        const br = parseFloat(document.getElementById('calc_brinde').value) || 0; 
+        const tf = parseFloat(document.getElementById('calc_taxa_fixa').value) || 0; 
+        const tp = parseFloat(document.getElementById('calc_taxa_site').value) || 0; 
+        const m = parseFloat(document.getElementById('calc_margem_alvo').value) || 0;
         const pSug = (b + e + f + br + tf + (b * tp/100)) * (1 + m/100);
         document.getElementById('calc_venda').value = "R$ " + pSug.toFixed(2);
     }
 
     async function salvarPrecoOnline() {
         const pV = parseFloat(document.getElementById('calc_venda').value.replace("R$ ",""));
-        const cS = { emb: parseFloat(document.getElementById('calc_emb').value), taxaS_perc: parseFloat(document.getElementById('calc_taxa_site').value), taxaF: parseFloat(document.getElementById('calc_taxa_fixa').value), frete: parseFloat(document.getElementById('calc_frete').value), brinde: parseFloat(document.getElementById('calc_brinde').value), margem_puxada: parseFloat(document.getElementById('calc_margem_alvo').value) };
+        const cS = { 
+            emb: parseFloat(document.getElementById('calc_emb').value), 
+            taxaS_perc: parseFloat(document.getElementById('calc_taxa_site').value), 
+            taxaF: parseFloat(document.getElementById('calc_taxa_fixa').value), 
+            frete: parseFloat(document.getElementById('calc_frete').value), 
+            brinde: parseFloat(document.getElementById('calc_brinde').value), 
+            margem_puxada: parseFloat(document.getElementById('calc_margem_alvo').value) 
+        };
         await db.collection("estoque_kell").doc(itemEcoPendente.id).update({ eco_venda: pV, eco_config: cS });
         document.getElementById('card-calc-eco').style.display = 'none';
     }
@@ -1321,6 +1359,7 @@ function renderizarListaFuncionarios() {
         ['estoque','ecommerce','motos','vendas','reposicao','dash','funcionarios','boleto'].forEach(sec => { const el = document.getElementById('sec-'+sec); if(el) el.classList.toggle('hidden', sec !== t); });
         document.getElementById('page-title').innerText = t.toUpperCase();
         if(t === 'dash') renderizarGraficos();
+        if(t === 'ecommerce') renderizarEcommerce(); // FORÇAR ATUALIZAÇÃO DA TABELA
         if(window.innerWidth < 768) toggleSidebar();
     }
     async function salvarConfigGeral() { 
