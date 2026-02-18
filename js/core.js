@@ -15,9 +15,12 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// --- LISTA DE MESTRES (SEMPRE SENIOR) ---
-// Adicione aqui os emails que nunca podem perder acesso
-const EMAILS_MESTRES = ["amg.gui@gmail.com", "admin@kellmotos.com.br"];
+// --- LISTA DE MESTRES (SEMPRE SENIOR - IGNORA O BANCO) ---
+// Adicione aqui todos os e-mails que devem ter acesso total OBRIGATÓRIO
+const EMAILS_MESTRES = [
+    "amg.gui@gmail.com", 
+    "admin@kellmotos.com.br"
+];
 
 // --- ESTADO GLOBAL ---
 let cacheEstoque=[], cacheVendas=[], cacheMotos=[], cacheFuncionarios=[], cacheClientes=[], cacheDespesas=[];
@@ -101,17 +104,17 @@ async function cadastrarPrimeiraSenha() {
     const email = formatUsername(u);
 
     // === RECUPERAÇÃO DO ADMIN (SEGURANÇA) ===
-    if(u.toLowerCase() === 'admin') {
-        const dadosAdmin = { email: email, nome: "Administrador", nivel: "SENIOR", criado_em: Date.now() };
+    // Se for um dos mestres tentando criar senha, libera e força SENIOR no banco
+    if(EMAILS_MESTRES.includes(email) || u.toLowerCase() === 'admin') {
+        const dadosAdmin = { email: email, nome: "Master Admin", nivel: "SENIOR", criado_em: Date.now() };
         try {
             await auth.createUserWithEmailAndPassword(email, p);
             await db.collection("funcionarios_kell").doc(email).set(dadosAdmin);
-            alert("Conta ADMIN criada! O sistema entrará automaticamente.");
+            alert("Conta MASTER criada/restaurada! O sistema entrará automaticamente.");
         } catch(e) {
             if(e.code === 'auth/email-already-in-use') {
-                // Se o email existe, garante que o banco de dados também tenha o admin
                 await db.collection("funcionarios_kell").doc(email).set(dadosAdmin, {merge: true});
-                alert("O usuário Admin já existia. Permissões restauradas.\nVolte e faça login com sua senha.");
+                alert("Usuário Mestre identificado. Permissões restauradas.\nVolte e faça login.");
                 alternarModoLogin();
             } else {
                 alert("Erro Admin: " + e.message);
@@ -124,14 +127,14 @@ async function cadastrarPrimeiraSenha() {
     const doc = await db.collection("funcionarios_kell").doc(email).get();
     
     if(!doc.exists) {
-        return alert(`ACESSO NÃO LIBERADO!\n\nO usuário "${email}" não foi encontrado no sistema.\n\nPeça para o Administrador cadastrar seu Nome e Sobrenome no menu 'Equipe'.`);
+        return alert(`ACESSO NÃO LIBERADO!\n\nO usuário "${email}" não foi encontrado.\n\nPeça para o Admin cadastrar seu Nome no menu 'Equipe'.`);
     }
     
     auth.createUserWithEmailAndPassword(email, p)
-        .then(() => alert("Senha criada com sucesso! Entrando..."))
+        .then(() => alert("Senha criada! Entrando..."))
         .catch(e => {
             if(e.code === 'auth/email-already-in-use') {
-                alert("Você já tem senha cadastrada. Volte e faça login.");
+                alert("Você já tem senha. Volte e faça login.");
                 alternarModoLogin();
             } else {
                 alert("Erro ao criar senha: " + e.message);
@@ -152,11 +155,12 @@ auth.onAuthStateChanged(u => {
         }
         iniciarApp(); 
         
-        // Redireciona com pequeno delay para garantir carregamento do nível
+        // Redireciona com delay
         setTimeout(() => {
+            // Se for JUNIOR vai pra vendas, se for SENIOR ou PLENO vai pra Dash
             if(userNivel === 'JUNIOR') mudarTab('vendas');
             else mudarTab('dash');
-        }, 1200); 
+        }, 1500); 
     } else {
         if(loginScreen) loginScreen.style.display = 'flex';
         if(mainContent) mainContent.style.display = 'none';
@@ -172,28 +176,38 @@ function iniciarApp() {
         if(window.atualizarConfigUI) atualizarConfigUI();
     });
 
-    // --- LÓGICA DE NÍVEL BLINDADA ---
+    // --- LÓGICA DE NÍVEL BLINDADA (AQUI ESTÁ A CORREÇÃO) ---
     db.collection("funcionarios_kell").doc(email).onSnapshot(d => {
-        // 1. Verifica se é um Mestre (Hardcoded)
-        if(EMAILS_MESTRES.includes(email) || email.startsWith('admin@')) {
+        
+        // 1. REGRA SUPREMA: Se estiver na lista EMAILS_MESTRES, é SENIOR e ponto final.
+        // Isso ignora qualquer coisa que esteja escrita no banco de dados.
+        if (EMAILS_MESTRES.includes(email)) {
             userNivel = 'SENIOR';
+            
+            // Opcional: Corrige o banco silenciosamente para ficar bonito no cadastro
+            if (d.exists && d.data().nivel !== 'SENIOR') {
+                db.collection("funcionarios_kell").doc(email).update({nivel: 'SENIOR'});
+            }
         } 
-        // 2. Se não for mestre, busca do banco
+        // 2. Se não for mestre, obedece o banco
         else if (d.exists) {
             userNivel = d.data().nivel;
         } 
-        // 3. Se não achar, padrão é Junior
+        // 3. Se não achar nada, vira JUNIOR por segurança
         else {
             userNivel = 'JUNIOR';
         }
         
+        // Atualiza a interface
         if(document.getElementById('user-role-display')) {
             document.getElementById('user-role-display').innerText = userNivel;
         }
+        
+        // Reaplica as permissões imediatamente
         aplicarPermissoes();
     });
 
-    // Carregamento de Dados em Tempo Real
+    // Carregamento de Dados
     db.collection("estoque_kell").onSnapshot(s => {
         cacheEstoque = s.docs.map(d => ({id: d.id, ...d.data()}));
         if(window.renderizarEstoque) renderizarEstoque();
@@ -255,7 +269,7 @@ function aplicarPermissoes() {
     const todosMenus = ['m-dash','m-estoque','m-vendas','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos'];
     const btnConfig = document.getElementById('btn-config-geral');
 
-    // 1. Esconde tudo primeiro
+    // 1. Esconde tudo
     todosMenus.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
@@ -272,7 +286,7 @@ function aplicarPermissoes() {
         permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos'];
     } 
     else { 
-        // JUNIOR (Padrão)
+        // JUNIOR
         permitidos = ['m-estoque', 'm-vendas', 'm-motos'];
     }
 
