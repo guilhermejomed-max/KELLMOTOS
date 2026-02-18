@@ -46,10 +46,18 @@ async function registrarAuditoria(colecao, docId, acao, detalhes) {
     }
 }
 
-// --- AUTH SYSTEM ---
+// --- AUTH SYSTEM (CORRIGIDO) ---
 function formatUsername(u) { 
-    // Garante formato email (ex: admin -> admin@kellmotos.com.br)
-    return u.includes("@") ? u.toLowerCase().trim() : u.toLowerCase().trim().replace(/\s+/g,'.') + "@kellmotos.com.br"; 
+    if(!u) return "";
+    // 1. Converte para minusculo e remove espaços das pontas
+    let clean = u.toLowerCase().trim();
+    // 2. Substitui qualquer espaço no meio por ponto
+    clean = clean.replace(/\s+/g, '.');
+    // 3. Remove pontos duplicados ou pontos no final/início (Ex: "joao." vira "joao")
+    clean = clean.replace(/\.+/g, '.').replace(/^\./, '').replace(/\.$/, '');
+    
+    // Se já for email, retorna. Se não, adiciona o domínio.
+    return clean.includes("@") ? clean : clean + "@kellmotos.com.br"; 
 }
 
 async function fazerLogin() {
@@ -60,7 +68,9 @@ async function fazerLogin() {
         return Toastify({text: "Preencha todos os campos", style:{background:"var(--danger)"}}).showToast();
     }
 
-    auth.signInWithEmailAndPassword(formatUsername(u), p)
+    const emailFormatado = formatUsername(u);
+
+    auth.signInWithEmailAndPassword(emailFormatado, p)
         .catch(e => {
             console.error(e);
             let msg = "Usuário ou senha inválidos";
@@ -78,7 +88,7 @@ function alternarModoLogin() {
     if(l.style.display !== 'none') {
         l.style.display = 'none';
         s.style.display = 'block';
-        document.getElementById('login-title').innerText = "CRIAR ACESSO";
+        document.getElementById('login-title').innerText = "CRIAR SENHA";
     } else {
         l.style.display = 'block';
         s.style.display = 'none';
@@ -90,48 +100,47 @@ async function cadastrarPrimeiraSenha() {
     const u = document.getElementById('setup-username').value;
     const p = document.getElementById('setup-password').value;
     
-    if(!u || p.length < 6) return alert("Dados inválidos. Senha min. 6 caracteres.");
+    if(!u || p.length < 6) return alert("A senha deve ter no mínimo 6 caracteres.");
     
     const email = formatUsername(u);
 
-    // --- CORREÇÃO CRÍTICA: LIBERAÇÃO DO ADMIN ---
-    // Se o usuário for 'admin', o sistema cria automaticamente sem verificação prévia
+    // --- LIBERAÇÃO MASTER ADMIN ---
     if(u.toLowerCase() === 'admin') {
         try {
-            // 1. Cria no Authentication
             await auth.createUserWithEmailAndPassword(email, p);
-            
-            // 2. Cria no Banco de Dados como SENIOR
             await db.collection("funcionarios_kell").doc(email).set({
-                email: email,
-                nome: "Administrador",
-                nivel: "SENIOR",
-                criado_em: Date.now()
+                email: email, nome: "Administrador", nivel: "SENIOR", criado_em: Date.now()
             });
-
-            alert("Conta ADMIN criada com sucesso! O sistema fará login.");
-            return; // O onAuthStateChanged vai lidar com o login
+            alert("Conta ADMIN criada! O sistema entrará automaticamente.");
+            return;
         } catch(e) {
-            // Se der erro (ex: email já existe), tenta logar
             if(e.code === 'auth/email-already-in-use') {
                 alert("O Admin já existe. Volte e faça login.");
                 alternarModoLogin();
-            } else {
-                alert("Erro ao criar admin: " + e.message);
-            }
+            } else { alert("Erro: " + e.message); }
             return;
         }
     }
-    // --------------------------------------------
+    // ------------------------------
 
-    // Para outros usuários, verifica se o Admin liberou
+    // Verifica se o Admin liberou este email no banco
     const d = await db.collection("funcionarios_kell").doc(email).get();
     
-    if(!d.exists) return alert("Usuário não autorizado! Peça para o Admin liberar seu acesso no menu Equipe.");
+    if(!d.exists) {
+        return alert(`ACESSO NEGADO!\n\nO usuário "${email}" não foi encontrado.\n\nPeça para o Admin cadastrar seu Nome e Sobrenome exatamente como você digitou.`);
+    }
     
+    // Se existe no banco, cria a autenticação (senha)
     auth.createUserWithEmailAndPassword(email, p)
-        .then(() => alert("Conta criada! Faça login."))
-        .catch(e => alert(e.message));
+        .then(() => alert("Sucesso! Sua senha foi criada. O sistema entrará automaticamente."))
+        .catch(e => {
+            if(e.code === 'auth/email-already-in-use') {
+                alert("Você já criou uma senha para este usuário.\nVolte e faça login normalmente.");
+                alternarModoLogin();
+            } else {
+                alert("Erro ao criar senha: " + e.message);
+            }
+        });
 }
 
 // Observador de Login
@@ -147,7 +156,7 @@ auth.onAuthStateChanged(u => {
         }
         iniciarApp(); 
         
-        // Redirecionamento inteligente baseado no nível (delay para carregar o nível)
+        // Redirecionamento
         setTimeout(() => {
             if(userNivel === 'JUNIOR') mudarTab('vendas');
             else mudarTab('dash');
@@ -161,23 +170,22 @@ auth.onAuthStateChanged(u => {
 function iniciarApp() {
     const email = auth.currentUser.email;
     
-    // Configurações Empresa
+    // Configurações
     db.collection("config_kell").doc("empresa").onSnapshot(d => {
         if(d.exists) configEmpresa = d.data();
         if(window.atualizarConfigUI) atualizarConfigUI();
     });
 
-    // Permissões Funcionário
+    // Nível do Usuário
     db.collection("funcionarios_kell").doc(email).onSnapshot(d => {
         userNivel = d.exists ? d.data().nivel : (email.includes('admin') ? 'SENIOR' : 'JUNIOR');
-        
         if(document.getElementById('user-role-display')) {
             document.getElementById('user-role-display').innerText = userNivel;
         }
         aplicarPermissoes();
     });
 
-    // Listeners Real-time
+    // Listeners
     db.collection("estoque_kell").onSnapshot(s => {
         cacheEstoque = s.docs.map(d => ({id: d.id, ...d.data()}));
         if(window.renderizarEstoque) renderizarEstoque();
@@ -188,9 +196,7 @@ function iniciarApp() {
     db.collection("vendas_kell").orderBy('timestamp','desc').limit(200).onSnapshot(s => {
         cacheVendas = s.docs.map(d => ({id: d.id, ...d.data()}));
         if(window.renderizarVendas) renderizarVendas();
-        
         if(window.atualizarKPIs) atualizarKPIs();
-        
         if(document.getElementById('sec-dash') && !document.getElementById('sec-dash').classList.contains('hidden')) {
             if(window.renderizarGraficos) renderizarGraficos();
         }
@@ -211,57 +217,43 @@ function iniciarApp() {
     db.collection("funcionarios_kell").onSnapshot(s => { cacheFuncionarios = s.docs.map(d=>({id:d.id,...d.data()})); if(window.renderizarListaFuncionarios) renderizarListaFuncionarios(); });
 }
 
-// --- NAVEGAÇÃO ---
 function mudarTab(t) {
     const tabs = ['estoque','vendas','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos'];
-    
-    // 1. Esconde Todas
     tabs.forEach(id => {
         const el = document.getElementById('sec-' + id);
         if(el) el.classList.add('hidden');
     });
-
-    // 2. Mostra Alvo
     const target = document.getElementById('sec-' + t);
     if(target) target.classList.remove('hidden');
     
-    // 3. Atualiza Menu (Visual)
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     const activeMenu = document.getElementById('m-' + t);
     if(activeMenu) activeMenu.classList.add('active');
 
-    // 4. Título da Página
     const title = t.charAt(0).toUpperCase() + t.slice(1);
     if(document.getElementById('page-title')) {
         document.getElementById('page-title').innerText = title === 'Dash' ? 'Dashboard' : title;
     }
     
-    // 5. Força Renderização de Gráfico e KPIs
     if(t === 'dash') {
         requestAnimationFrame(() => {
             if(window.atualizarKPIs) atualizarKPIs();
-            setTimeout(() => {
-                if(window.renderizarGraficos) renderizarGraficos();
-            }, 100);
+            setTimeout(() => { if(window.renderizarGraficos) renderizarGraficos(); }, 100);
         });
     }
 }
 
-// --- SISTEMA DE PERMISSÕES HIERÁRQUICO ---
 function aplicarPermissoes() {
     const todosMenus = ['m-dash','m-estoque','m-vendas','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos'];
     const btnConfig = document.getElementById('btn-config-geral');
 
-    // 1. Esconde tudo
     todosMenus.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
     });
     if(btnConfig) btnConfig.style.display = 'none';
 
-    // 2. Define permitidos
     let permitidos = [];
-
     if(userNivel === 'SENIOR') {
         permitidos = todosMenus;
         if(btnConfig) btnConfig.style.display = 'block';
@@ -269,11 +261,10 @@ function aplicarPermissoes() {
     else if (userNivel === 'PLENO') {
         permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos'];
     } 
-    else { // JUNIOR
+    else { 
         permitidos = ['m-estoque', 'm-vendas', 'm-motos'];
     }
 
-    // 3. Mostra permitidos
     permitidos.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'flex';
