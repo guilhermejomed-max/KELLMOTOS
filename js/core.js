@@ -28,10 +28,34 @@ let configEmpresa = {
     custo_fixo_medio: 2.00
 };
 
-// --- SISTEMA DE AUDITORIA ---
+// --- FUNÇÃO DE FORMATAÇÃO DE USUÁRIO (CRÍTICA) ---
+// Transforma "João Silva" em "joao.silva@kellmotos.com.br"
+// Remove acentos, espaços e força minúsculas
+function formatUsername(u) { 
+    if(!u) return "";
+    
+    let clean = u.toLowerCase().trim();
+    
+    // Remove acentos (Normalize NFD e remove diacríticos)
+    clean = clean.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // Substitui espaços por pontos
+    clean = clean.replace(/\s+/g, '.');
+    
+    // Remove caracteres especiais que não sejam letras, números, ponto ou @
+    clean = clean.replace(/[^a-z0-9.@]/g, "");
+    
+    // Remove pontos duplicados ou nas pontas
+    clean = clean.replace(/\.+/g, '.').replace(/^\./, '').replace(/\.$/, '');
+    
+    // Adiciona domínio se não tiver
+    return clean.includes("@") ? clean : clean + "@kellmotos.com.br"; 
+}
+
+// --- LOGS ---
 async function registrarAuditoria(colecao, docId, acao, detalhes) {
     try {
-        const log = {
+        await db.collection("logs_auditoria").add({
             timestamp: Date.now(),
             data: new Date().toLocaleString('pt-BR'),
             usuario: auth.currentUser ? auth.currentUser.email : 'SISTEMA',
@@ -39,44 +63,26 @@ async function registrarAuditoria(colecao, docId, acao, detalhes) {
             doc_afetado: docId,
             acao: acao,
             detalhes: detalhes 
-        };
-        await db.collection("logs_auditoria").add(log);
-    } catch(e) {
-        console.error("Falha ao auditar:", e);
-    }
+        });
+    } catch(e) { console.error("Log erro:", e); }
 }
 
-// --- AUTH SYSTEM (CORRIGIDO) ---
-function formatUsername(u) { 
-    if(!u) return "";
-    // 1. Converte para minusculo e remove espaços das pontas
-    let clean = u.toLowerCase().trim();
-    // 2. Substitui qualquer espaço no meio por ponto
-    clean = clean.replace(/\s+/g, '.');
-    // 3. Remove pontos duplicados ou pontos no final/início (Ex: "joao." vira "joao")
-    clean = clean.replace(/\.+/g, '.').replace(/^\./, '').replace(/\.$/, '');
-    
-    // Se já for email, retorna. Se não, adiciona o domínio.
-    return clean.includes("@") ? clean : clean + "@kellmotos.com.br"; 
-}
-
+// --- LOGIN & CADASTRO ---
 async function fazerLogin() {
     const u = document.getElementById('username').value;
     const p = document.getElementById('password').value;
     
-    if(!u || !p) {
-        return Toastify({text: "Preencha todos os campos", style:{background:"var(--danger)"}}).showToast();
-    }
+    if(!u || !p) return Toastify({text: "Preencha todos os campos", style:{background:"var(--danger)"}}).showToast();
 
-    const emailFormatado = formatUsername(u);
+    const email = formatUsername(u);
 
-    auth.signInWithEmailAndPassword(emailFormatado, p)
+    auth.signInWithEmailAndPassword(email, p)
         .catch(e => {
-            console.error(e);
-            let msg = "Usuário ou senha inválidos";
+            let msg = "Erro desconhecido: " + e.message;
             if(e.code === 'auth/user-not-found') msg = "Usuário não encontrado. Cadastre-se primeiro.";
             if(e.code === 'auth/wrong-password') msg = "Senha incorreta.";
-            Toastify({text: msg, style:{background:"var(--danger)"}}).showToast();
+            if(e.code === 'auth/invalid-email') msg = "Formato de usuário inválido.";
+            alert(msg);
         });
 }
 
@@ -104,38 +110,43 @@ async function cadastrarPrimeiraSenha() {
     
     const email = formatUsername(u);
 
-    // --- LIBERAÇÃO MASTER ADMIN ---
+    // === MODO ADMIN DE EMERGÊNCIA ===
+    // Se o usuário for 'admin', força a criação e a permissão
     if(u.toLowerCase() === 'admin') {
+        const dadosAdmin = { email: email, nome: "Administrador", nivel: "SENIOR", criado_em: Date.now() };
+        
         try {
+            // Tenta criar usuário no Auth
             await auth.createUserWithEmailAndPassword(email, p);
-            await db.collection("funcionarios_kell").doc(email).set({
-                email: email, nome: "Administrador", nivel: "SENIOR", criado_em: Date.now()
-            });
+            // Salva no banco
+            await db.collection("funcionarios_kell").doc(email).set(dadosAdmin);
             alert("Conta ADMIN criada! O sistema entrará automaticamente.");
-            return;
         } catch(e) {
+            // Se já existe o login, mas talvez não o banco, força a correção do banco
             if(e.code === 'auth/email-already-in-use') {
-                alert("O Admin já existe. Volte e faça login.");
+                await db.collection("funcionarios_kell").doc(email).set(dadosAdmin, {merge: true});
+                alert("O usuário Admin já existia. Permissões restauradas. \n\nPor favor, volte para a tela de Login e entre com a senha que você criou anteriormente.");
                 alternarModoLogin();
-            } else { alert("Erro: " + e.message); }
-            return;
+            } else {
+                alert("Erro Admin: " + e.message);
+            }
         }
+        return;
     }
-    // ------------------------------
+    // =================================
 
-    // Verifica se o Admin liberou este email no banco
-    const d = await db.collection("funcionarios_kell").doc(email).get();
+    // Fluxo Normal (Funcionários)
+    const doc = await db.collection("funcionarios_kell").doc(email).get();
     
-    if(!d.exists) {
-        return alert(`ACESSO NEGADO!\n\nO usuário "${email}" não foi encontrado.\n\nPeça para o Admin cadastrar seu Nome e Sobrenome exatamente como você digitou.`);
+    if(!doc.exists) {
+        return alert(`ACESSO NEGADO para: ${email}\n\nO Administrador precisa liberar seu acesso no menu 'Equipe' antes de você criar a senha.\n\nCertifique-se de digitar seu nome exatamente como foi cadastrado.`);
     }
     
-    // Se existe no banco, cria a autenticação (senha)
     auth.createUserWithEmailAndPassword(email, p)
-        .then(() => alert("Sucesso! Sua senha foi criada. O sistema entrará automaticamente."))
+        .then(() => alert("Senha criada com sucesso! Entrando..."))
         .catch(e => {
             if(e.code === 'auth/email-already-in-use') {
-                alert("Você já criou uma senha para este usuário.\nVolte e faça login normalmente.");
+                alert("Você já possui senha cadastrada. Volte e faça login.");
                 alternarModoLogin();
             } else {
                 alert("Erro ao criar senha: " + e.message);
@@ -143,7 +154,7 @@ async function cadastrarPrimeiraSenha() {
         });
 }
 
-// Observador de Login
+// --- INICIALIZAÇÃO ---
 auth.onAuthStateChanged(u => {
     const loginScreen = document.getElementById('login-screen');
     const mainContent = document.getElementById('main-content');
@@ -152,15 +163,16 @@ auth.onAuthStateChanged(u => {
         if(loginScreen) loginScreen.style.display = 'none';
         if(mainContent) mainContent.style.display = 'block';
         if(document.getElementById('user-name-display')) {
+            // Mostra apenas o nome antes do @
             document.getElementById('user-name-display').innerText = u.email.split('@')[0];
         }
         iniciarApp(); 
         
-        // Redirecionamento
+        // Redireciona após carregar o nível
         setTimeout(() => {
             if(userNivel === 'JUNIOR') mudarTab('vendas');
             else mudarTab('dash');
-        }, 800); 
+        }, 1000); 
     } else {
         if(loginScreen) loginScreen.style.display = 'flex';
         if(mainContent) mainContent.style.display = 'none';
@@ -168,24 +180,25 @@ auth.onAuthStateChanged(u => {
 });
 
 function iniciarApp() {
+    if(!auth.currentUser) return;
     const email = auth.currentUser.email;
     
-    // Configurações
     db.collection("config_kell").doc("empresa").onSnapshot(d => {
         if(d.exists) configEmpresa = d.data();
         if(window.atualizarConfigUI) atualizarConfigUI();
     });
 
-    // Nível do Usuário
     db.collection("funcionarios_kell").doc(email).onSnapshot(d => {
+        // Se for admin, garante SENIOR. Se não achar, garante JUNIOR
         userNivel = d.exists ? d.data().nivel : (email.includes('admin') ? 'SENIOR' : 'JUNIOR');
+        
         if(document.getElementById('user-role-display')) {
             document.getElementById('user-role-display').innerText = userNivel;
         }
         aplicarPermissoes();
     });
 
-    // Listeners
+    // Carregamento de Dados
     db.collection("estoque_kell").onSnapshot(s => {
         cacheEstoque = s.docs.map(d => ({id: d.id, ...d.data()}));
         if(window.renderizarEstoque) renderizarEstoque();
@@ -247,12 +260,14 @@ function aplicarPermissoes() {
     const todosMenus = ['m-dash','m-estoque','m-vendas','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos'];
     const btnConfig = document.getElementById('btn-config-geral');
 
+    // 1. Esconde tudo
     todosMenus.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'none';
     });
     if(btnConfig) btnConfig.style.display = 'none';
 
+    // 2. Define o que mostrar
     let permitidos = [];
     if(userNivel === 'SENIOR') {
         permitidos = todosMenus;
@@ -262,9 +277,11 @@ function aplicarPermissoes() {
         permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos'];
     } 
     else { 
+        // JUNIOR
         permitidos = ['m-estoque', 'm-vendas', 'm-motos'];
     }
 
+    // 3. Mostra os permitidos
     permitidos.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'flex';
