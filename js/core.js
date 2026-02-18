@@ -108,8 +108,11 @@ auth.onAuthStateChanged(u => {
         }
         iniciarApp(); 
         
-        // FORÇA O DASHBOARD SER A TELA INICIAL
-        setTimeout(() => mudarTab('dash'), 500); 
+        // Se for JUNIOR, força ir para Vendas, senão Dash
+        setTimeout(() => {
+            if(userNivel === 'JUNIOR') mudarTab('vendas');
+            else mudarTab('dash');
+        }, 500); 
     } else {
         if(loginScreen) loginScreen.style.display = 'flex';
         if(mainContent) mainContent.style.display = 'none';
@@ -125,13 +128,15 @@ function iniciarApp() {
         if(window.atualizarConfigUI) atualizarConfigUI();
     });
 
-    // Permissões Funcionário
+    // Permissões Funcionário (AQUI DEFINE O NÍVEL)
     db.collection("funcionarios_kell").doc(email).onSnapshot(d => {
+        // Se não achar no banco, assume JUNIOR (exceto se for o admin hardcoded)
         userNivel = d.exists ? d.data().nivel : (email === "amg.gui@gmail.com" ? 'SENIOR' : 'JUNIOR');
+        
         if(document.getElementById('user-role-display')) {
             document.getElementById('user-role-display').innerText = userNivel;
         }
-        aplicarPermissoes();
+        aplicarPermissoes(); // <--- Chama a função corrigida
     });
 
     // Listeners Real-time
@@ -146,10 +151,8 @@ function iniciarApp() {
         cacheVendas = s.docs.map(d => ({id: d.id, ...d.data()}));
         if(window.renderizarVendas) renderizarVendas();
         
-        // Tenta atualizar KPI imediatamente
         if(window.atualizarKPIs) atualizarKPIs();
         
-        // Atualiza gráfico se dash visível
         if(document.getElementById('sec-dash') && !document.getElementById('sec-dash').classList.contains('hidden')) {
             if(window.renderizarGraficos) renderizarGraficos();
         }
@@ -197,16 +200,47 @@ function mudarTab(t) {
     
     // 5. Força Renderização de Gráfico e KPIs (Se for Dashboard)
     if(t === 'dash') {
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             if(window.atualizarKPIs) atualizarKPIs();
-            if(window.renderizarGraficos) renderizarGraficos();
-        }, 150); 
+            setTimeout(() => {
+                if(window.renderizarGraficos) renderizarGraficos();
+            }, 100);
+        });
     }
-} // <--- AQUI ESTAVA FALTANDO ESSA CHAVE
+}
 
+// --- SISTEMA DE PERMISSÕES (CORRIGIDO) ---
 function aplicarPermissoes() {
-    const els = ['m-estoque','m-vendas','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-dash','m-funcionarios','m-motos'];
-    els.forEach(id => {
+    // 1. Lista de todos os IDs de menu
+    const todosMenus = ['m-dash','m-estoque','m-vendas','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos'];
+    const btnConfig = document.getElementById('btn-config-geral');
+
+    // 2. Esconde tudo inicialmente
+    todosMenus.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.style.display = 'none';
+    });
+    if(btnConfig) btnConfig.style.display = 'none';
+
+    // 3. Define o que cada nível pode ver
+    let permitidos = [];
+
+    if(userNivel === 'SENIOR') {
+        // SENIOR: Vê tudo
+        permitidos = todosMenus;
+        if(btnConfig) btnConfig.style.display = 'block';
+    } 
+    else if (userNivel === 'PLENO') {
+        // PLENO: Vê quase tudo, menos Equipe, Despesas e Configurações
+        permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos'];
+    } 
+    else {
+        // JUNIOR: Apenas Vendas, Estoque (Consulta) e Motos
+        permitidos = ['m-estoque', 'm-vendas', 'm-motos'];
+    }
+
+    // 4. Mostra apenas os permitidos
+    permitidos.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.style.display = 'flex';
     });
