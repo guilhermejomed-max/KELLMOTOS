@@ -33,41 +33,181 @@ function renderizarEstoque() {
         `;
     } else {
         filtered.forEach(p => {
-            const badge = (p.qtd || 0) <= 2
-                ? `<span class="status-badge bg-red"><i class="ri-alarm-warning-line"></i> BAIXO (${p.qtd || 0})</span>`
-                : `<span class="status-badge bg-green">${p.qtd || 0} UN</span>`;
+            const qtdAtual = parseInt(p.qtd) || 0;
+            const precoVenda = parseFloat(p.repasse) || 0;
+
+            const badge = qtdAtual <= 2
+                ? `
+                    <span class="status-badge bg-red">
+                        <i class="ri-alarm-warning-line"></i>
+                        BAIXO (${qtdAtual})
+                    </span>
+                  `
+                : `
+                    <span class="status-badge bg-green">
+                        <i class="ri-checkbox-circle-line"></i>
+                        ${qtdAtual} UN
+                    </span>
+                  `;
 
             const imagem = p.imagem
-                ? `<img src="${p.imagem}" alt="${p.modelo || 'Produto'}" style="width:56px;height:56px;object-fit:cover;border-radius:12px;border:1px solid var(--border-color);background:#fff;">`
-                : `<div style="width:56px;height:56px;border-radius:12px;border:1px dashed var(--border-color);display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-body);">
+                ? `
+                    <img 
+                        src="${p.imagem}" 
+                        alt="${p.modelo || 'Produto'}" 
+                        style="
+                            width:56px;
+                            height:56px;
+                            object-fit:cover;
+                            border-radius:14px;
+                            border:1px solid var(--border-color);
+                            background:#fff;
+                            box-shadow: var(--shadow-sm);
+                            flex-shrink:0;
+                        "
+                    >
+                  `
+                : `
+                    <div style="
+                        width:56px;
+                        height:56px;
+                        border-radius:14px;
+                        border:1px dashed var(--border-color);
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        color:var(--text-muted);
+                        background:var(--bg-body);
+                        flex-shrink:0;
+                    ">
                         <i class="ri-image-line" style="font-size:20px;"></i>
-                   </div>`;
+                    </div>
+                  `;
+
+            const compatibilidadeLista = Array.isArray(p.compatibilidade) ? p.compatibilidade : [];
+            const compatibilidadeTexto = compatibilidadeLista.length
+                ? compatibilidadeLista.slice(0, 3).join(', ')
+                : 'Sem compatibilidade informada';
+
+            const compatibilidadeExtra = compatibilidadeLista.length > 3
+                ? ` +${compatibilidadeLista.length - 3}`
+                : '';
 
             const pString = JSON.stringify(p).replace(/"/g, '&quot;');
 
             html += `
                 <tr>
                     <td>
-                        <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:12px; min-width:240px;">
                             ${imagem}
-                            <div>
-                                <b>${p.modelo || '-'}</b><br>
-                                <small style="color:var(--text-muted); font-size:11px">${p.codigo || 'S/C'}</small>
-                                <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
-                                    ${((p.compatibilidade || []).slice(0, 3).join(', ')) || 'Sem compatibilidade informada'}
+                            <div style="min-width:0;">
+                                <div style="
+                                    font-weight:800;
+                                    color:var(--text-main);
+                                    font-size:13px;
+                                    line-height:1.2;
+                                    margin-bottom:4px;
+                                ">
+                                    ${p.modelo || '-'}
+                                </div>
+
+                                <div style="
+                                    display:flex;
+                                    align-items:center;
+                                    gap:6px;
+                                    flex-wrap:wrap;
+                                ">
+                                    <span style="
+                                        font-size:10px;
+                                        font-weight:800;
+                                        color:var(--primary);
+                                        background:rgba(16,185,129,0.10);
+                                        border:1px solid rgba(16,185,129,0.15);
+                                        padding:4px 8px;
+                                        border-radius:999px;
+                                        letter-spacing:0.2px;
+                                    ">
+                                        ${p.codigo || 'S/C'}
+                                    </span>
+
+                                    ${qtdAtual <= 2 ? `
+                                        <span style="
+                                            font-size:10px;
+                                            font-weight:800;
+                                            color:#b91c1c;
+                                            background:rgba(239,68,68,0.12);
+                                            border:1px solid rgba(239,68,68,0.18);
+                                            padding:4px 8px;
+                                            border-radius:999px;
+                                            letter-spacing:0.2px;
+                                        ">
+                                            Reposição
+                                        </span>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
                     </td>
-                    <td>${badge}</td>
-                    <td style="font-weight:700">R$ ${(parseFloat(p.repasse) || 0).toFixed(2)}</td>
-                    <td style="text-align:right">
-                        <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-                            <button class="btn btn-sm btn-primary" onclick='abrirVenda("${p.id}",${pString})'>
+
+                    <td>
+                        <div style="
+                            font-size:12px;
+                            color:var(--text-main);
+                            line-height:1.4;
+                            max-width:250px;
+                        ">
+                            ${compatibilidadeTexto}
+                            <span style="color:var(--text-muted); font-weight:700;">${compatibilidadeExtra}</span>
+                        </div>
+                    </td>
+
+                    <td>
+                        ${badge}
+                    </td>
+
+                    <td style="font-weight:800; white-space:nowrap;">
+                        R$ ${precoVenda.toFixed(2)}
+                    </td>
+
+                    <td style="text-align:right;">
+                        <div style="
+                            display:flex;
+                            gap:8px;
+                            justify-content:flex-end;
+                            align-items:center;
+                            flex-wrap:wrap;
+                        ">
+                            <button 
+                                class="btn btn-primary btn-sm" 
+                                style="
+                                    min-width:42px;
+                                    height:38px;
+                                    padding:0 12px;
+                                    border-radius:10px;
+                                    box-shadow: 0 4px 12px rgba(16,185,129,0.20);
+                                "
+                                title="Vender produto"
+                                onclick='abrirVenda("${p.id}",${pString})'
+                            >
                                 <i class="ri-shopping-cart-line"></i>
                             </button>
+
                             ${userNivel !== 'JUNIOR' ? `
-                                <button class="btn btn-sm btn-secondary" onclick='carregarParaEdicao(${pString})'>
+                                <button 
+                                    class="btn btn-secondary btn-sm" 
+                                    style="
+                                        min-width:42px;
+                                        height:38px;
+                                        padding:0 12px;
+                                        border-radius:10px;
+                                        border:1px solid var(--border-color);
+                                        background:var(--bg-card);
+                                        color:var(--text-main);
+                                        font-weight:700;
+                                    "
+                                    title="Editar produto"
+                                    onclick='carregarParaEdicao(${pString})'
+                                >
                                     <i class="ri-pencil-line"></i>
                                 </button>
                             ` : ''}
@@ -81,8 +221,8 @@ function renderizarEstoque() {
     corpo.innerHTML = html;
 
     const faltas = lista
-        .filter(i => (i.qtd || 0) <= 2)
-        .map(i => `• ${i.modelo} (Atual: ${i.qtd || 0})`)
+        .filter(i => (parseInt(i.qtd) || 0) <= 2)
+        .map(i => `• ${i.modelo} (Atual: ${parseInt(i.qtd) || 0})`)
         .join('\n');
 
     const reposicao = document.getElementById('lista-reposicao-txt');
@@ -107,8 +247,8 @@ function toggleFormCadastro() {
         const editId = document.getElementById('edit-id');
         if (!editId || !editId.value) {
             limparFormEstoque();
-            if (titulo) titulo.innerText = 'Cadastro de Produto';
-            if (btn) btn.innerText = 'Salvar';
+            if (titulo) titulo.innerText = 'Novo produto';
+            if (btn) btn.innerHTML = '<i class="ri-save-3-line"></i> Salvar produto';
             atualizarModoProduto('Novo cadastro');
         }
     }
@@ -152,8 +292,9 @@ function limparFormEstoque() {
 
     const titulo = document.getElementById('form-cadastro-titulo');
     const btn = document.getElementById('btn-salvar-produto');
-    if (titulo) titulo.innerText = 'Cadastro de Produto';
-    if (btn) btn.innerText = 'Salvar';
+
+    if (titulo) titulo.innerText = 'Novo produto';
+    if (btn) btn.innerHTML = '<i class="ri-save-3-line"></i> Salvar produto';
 
     atualizarSugestaoPreco(0);
     atualizarModoProduto('Novo cadastro');
@@ -206,7 +347,6 @@ function atualizarPreviewImagem(src) {
     }
 }
 
-// Essas duas funções estavam faltando no HTML novo
 function previewImagemProduto(event) {
     const file = event?.target?.files && event.target.files[0];
     if (!file) return;
@@ -365,8 +505,8 @@ function carregarParaEdicao(p) {
     const titulo = document.getElementById('form-cadastro-titulo');
     const btn = document.getElementById('btn-salvar-produto');
 
-    if (titulo) titulo.innerText = 'Editar Produto';
-    if (btn) btn.innerText = 'Atualizar Produto';
+    if (titulo) titulo.innerText = 'Editar produto';
+    if (btn) btn.innerHTML = '<i class="ri-save-3-line"></i> Atualizar produto';
 
     atualizarModoProduto('Editando produto');
     calcularSugerido();
@@ -401,5 +541,10 @@ document.addEventListener('DOMContentLoaded', function () {
             atualizarSugestaoPreco(valor);
         });
         repasse.dataset.bindedSugestao = "true";
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-produto');
+    if (btnSalvar && !btnSalvar.querySelector('i')) {
+        btnSalvar.innerHTML = '<i class="ri-save-3-line"></i> Salvar produto';
     }
 });
