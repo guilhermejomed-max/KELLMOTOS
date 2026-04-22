@@ -22,6 +22,190 @@
         #cupom-print { width: 72mm !important; background: #fff; color: #000; padding: 2mm; font-family: monospace; font-size: 11px; }
         .chart-container { position: relative; height: 300px; width: 100%; }
         .moto-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; }
+
+        /* ===== Produto / Estoque - upgrade visual ===== */
+        .product-form-card {
+            padding: 28px;
+            border-radius: 22px;
+            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(16,185,129,0.02) 100%);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+        }
+        .form-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+        .section-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(16,185,129,0.10);
+            color: var(--primary-hover);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            margin-bottom: 10px;
+        }
+        .section-subtitle {
+            margin: 6px 0 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .product-form-layout {
+            display: grid;
+            grid-template-columns: 330px minmax(0, 1fr);
+            gap: 22px;
+            align-items: start;
+        }
+        .product-image-panel {
+            background: linear-gradient(180deg, rgba(16,185,129,0.05) 0%, rgba(99,102,241,0.03) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 18px;
+        }
+        .image-upload-box {
+            position: relative;
+            min-height: 290px;
+            border: 2px dashed rgba(16,185,129,0.20);
+            border-radius: 18px;
+            background: var(--bg-body);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            cursor: pointer;
+            transition: .25s ease;
+        }
+        .image-upload-box:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(16,185,129,0.08);
+            transform: translateY(-1px);
+        }
+        .image-upload-box input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 3;
+        }
+        .image-upload-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 24px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .image-upload-placeholder i {
+            font-size: 40px;
+            color: var(--primary);
+        }
+        .image-upload-placeholder strong {
+            color: var(--text-main);
+            font-size: 16px;
+        }
+        #preview-imagem-produto {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .product-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px 16px;
+        }
+        .product-highlight-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin: 18px 0;
+        }
+        .product-highlight-card {
+            background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.04));
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 14px 16px;
+            min-height: 84px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .product-highlight-card span {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            margin-bottom: 6px;
+        }
+        .product-highlight-card strong {
+            color: var(--text-main);
+            font-size: 24px;
+            line-height: 1.1;
+            letter-spacing: -.4px;
+        }
+        .moto-selector-list {
+            max-height: 164px;
+            overflow: auto;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: var(--bg-body);
+        }
+        .form-actions-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .product-table tbody td:first-child {
+            min-width: 280px;
+        }
+        @media (max-width: 1024px) {
+            .product-form-layout {
+                grid-template-columns: 1fr;
+            }
+            .product-image-panel {
+                order: -1;
+            }
+        }
+        @media (max-width: 768px) {
+            .product-form-card {
+                padding: 18px;
+                border-radius: 18px;
+            }
+            .form-card-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .form-card-header .btn {
+                width: 100%;
+            }
+            .product-form-grid,
+            .product-highlight-row {
+                grid-template-columns: 1fr;
+            }
+            .image-upload-box {
+                min-height: 220px;
+            }
+            .form-actions-row {
+                flex-direction: column;
+            }
+            .form-actions-row .btn {
+                width: 100%;
+            }
+        }
+
     </style>
 </head>
 <body class="privacy-on">
