@@ -808,3 +808,88 @@ body.dark-mode .product-table .btn-sm.btn-secondary:hover {
         width: 120px;
     }
 }
+/* =========================
+   LABELS VISÍVEIS EM POP-UPS E FORMULÁRIOS
+   ========================= */
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.field-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 0;
+    padding-left: 2px;
+}
+
+.field-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: -2px;
+    margin-bottom: 2px;
+}
+
+.modal-body .input-style,
+.card .input-style {
+    margin-bottom: 0;
+}
+
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+}
+
+.form-grid-4 {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-section-title {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 4px 0 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal-subtle-box {
+    background: var(--bg-body);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 14px;
+}
+
+body.dark-mode .modal-subtle-box {
+    background: rgba(15, 23, 42, 0.65);
+}
+
+@media (max-width: 768px) {
+    .form-grid-2,
+    .form-grid-3,
+    .form-grid-4 {
+        grid-template-columns: 1fr;
+    }
+}
