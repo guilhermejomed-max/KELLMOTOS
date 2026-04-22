@@ -1,46 +1,77 @@
 let chartF = null;
 let listaItensNF = [];
-let clienteExtratoAtual = null; // Variável para controlar o filtro do extrato
+let clienteExtratoAtual = null;
 
-// --- DASHBOARD KPI ---
+// =========================
+// CLIENTES NO SELECT DO FIADO
+// =========================
+function atualizarSelectClientes() {
+    const select = document.getElementById('cli-boleto-select');
+    if (!select) return;
+
+    const clientes = (typeof cacheClientes !== 'undefined' && Array.isArray(cacheClientes))
+        ? [...cacheClientes]
+        : [];
+
+    clientes.sort((a, b) => {
+        const nomeA = (a.nome || '').toLowerCase();
+        const nomeB = (b.nome || '').toLowerCase();
+        return nomeA.localeCompare(nomeB, 'pt-BR');
+    });
+
+    let html = `<option value="">Selecione um cliente</option>`;
+
+    clientes.forEach(c => {
+        const nome = c.nome || 'Cliente sem nome';
+        const cpf = c.cpf ? ` • CPF: ${c.cpf}` : '';
+        const telefone = c.telefone ? ` • Tel: ${c.telefone}` : '';
+        html += `<option value="${c.id}">${nome}${cpf}${telefone}</option>`;
+    });
+
+    select.innerHTML = html;
+}
+
+// =========================
+// DASHBOARD KPI
+// =========================
 function atualizarKPIs() {
     const hj = new Date().toLocaleDateString('pt-BR');
     let fat = 0, luc = 0, est = 0;
-    
-    // Proteção contra undefined
+
     const vendas = (typeof cacheVendas !== 'undefined' && Array.isArray(cacheVendas)) ? cacheVendas : [];
     const estoque = (typeof cacheEstoque !== 'undefined' && Array.isArray(cacheEstoque)) ? cacheEstoque : [];
 
     vendas.forEach(v => {
-        if(v.data === hj) {
+        if (v.data === hj) {
             fat += (parseFloat(v.venda) || 0);
             luc += (parseFloat(v.lucro) || 0);
         }
     });
-    
+
     estoque.forEach(p => est += ((parseFloat(p.compra) || 0) * (parseFloat(p.qtd) || 0)));
-    
-    // ADICIONADO A CLASSE 'blur-sensitive' PARA O MODO PRIVACIDADE FUNCIONAR
-    if(document.getElementById('kpi-faturamento')) 
-        document.getElementById('kpi-faturamento').innerHTML = `R$ <span class="blur-sensitive">${fat.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>`;
-    
-    if(document.getElementById('kpi-lucro'))
-        document.getElementById('kpi-lucro').innerHTML = `R$ <span class="blur-sensitive">${luc.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>`;
-    
-    if(document.getElementById('kpi-estoque'))
-        document.getElementById('kpi-estoque').innerHTML = `R$ <span class="blur-sensitive">${est.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>`;
-    
-    // TOP PRODUTOS
-    const counts = {}; 
+
+    if (document.getElementById('kpi-faturamento'))
+        document.getElementById('kpi-faturamento').innerHTML =
+            `R$ <span class="blur-sensitive">${fat.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+
+    if (document.getElementById('kpi-lucro'))
+        document.getElementById('kpi-lucro').innerHTML =
+            `R$ <span class="blur-sensitive">${luc.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+
+    if (document.getElementById('kpi-estoque'))
+        document.getElementById('kpi-estoque').innerHTML =
+            `R$ <span class="blur-sensitive">${est.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+
+    const counts = {};
     vendas.forEach(v => {
         const n = v.peca || 'Item';
         counts[n] = (counts[n] || 0) + (v.qtd || 0);
     });
-    
+
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    
+
     const elLista = document.getElementById('top-produtos-lista');
-    if(elLista) {
+    if (elLista) {
         elLista.innerHTML = top.length ? top.map((t, i) => `
             <div class="moto-item" style="justify-content:space-between; padding: 8px 0; border-bottom:1px solid #eee;">
                 <span><b style="color:var(--primary)">${i + 1}.</b> ${t[0]}</span>
@@ -50,25 +81,21 @@ function atualizarKPIs() {
     }
 }
 
-// --- GRÁFICOS (Bar Chart) ---
+// =========================
+// GRÁFICOS
+// =========================
 function renderizarGraficos() {
-    // 1. Verifica se o elemento existe e se está visível
     const canvas = document.getElementById('chart-fat');
     if (!canvas) return;
-    
-    // Se a aba estiver oculta (display:none), o Chart.js falha. 
-    // Só renderiza se tiver altura.
-    if (canvas.clientHeight === 0) return; 
+    if (canvas.clientHeight === 0) return;
 
     const ctx = canvas.getContext('2d');
-    
-    // 2. Destrói gráfico anterior corretamente para não bugar
+
     if (chartF) {
         chartF.destroy();
         chartF = null;
     }
 
-    // 3. Prepara Dados (Últimos 7 dias)
     const labels = [];
     const dataValues = [];
     const vendas = (typeof cacheVendas !== 'undefined') ? cacheVendas : [];
@@ -77,75 +104,75 @@ function renderizarGraficos() {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const dataStr = d.toLocaleDateString('pt-BR');
-        
-        labels.push(dataStr.slice(0, 5)); // Mostra apenas dia/mês (ex: 18/02)
-        
+
+        labels.push(dataStr.slice(0, 5));
+
         const totalDia = vendas
             .filter(v => v.data === dataStr)
             .reduce((acc, curr) => acc + (parseFloat(curr.venda) || 0), 0);
-            
+
         dataValues.push(totalDia);
     }
-    
-    // 4. Cria o Gráfico
-    chartF = new Chart(ctx, { 
-        type: 'bar', 
+
+    chartF = new Chart(ctx, {
+        type: 'bar',
         data: {
-            labels: labels, 
+            labels: labels,
             datasets: [{
-                label: 'Faturamento (R$)', 
-                data: dataValues, 
-                backgroundColor: '#10b981', 
+                label: 'Faturamento (R$)',
+                data: dataValues,
+                backgroundColor: '#10b981',
                 borderRadius: 6,
                 barThickness: 20
             }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { display: false }
             },
-            scales: { 
-                y: { 
+            scales: {
+                y: {
                     beginAtZero: true,
                     grid: { color: '#f1f5f9' },
-                    ticks: { callback: function(value) { return 'R$ ' + value; } }
+                    ticks: {
+                        callback: function (value) { return 'R$ ' + value; }
+                    }
                 },
                 x: {
                     grid: { display: false }
                 }
-            } 
+            }
         }
     });
 }
 
-// --- EXTRATO DETALHADO (VERSÃO PROFISSIONAL - PDF COMPLETO) ---
+// =========================
+// EXTRATO COMPLETO
+// =========================
 function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
     clienteExtratoAtual = id;
     const cl = cacheClientes.find(c => c.id === id);
     if (!cl) return;
-    
-    // Filtro de Vendas
+
     let vendas = cacheVendas.filter(v => v.clienteId === id);
 
     if (dataInicio || dataFim) {
         vendas = vendas.filter(v => {
-            // Converte "DD/MM/AAAA" para objeto Date
             const partes = v.data.split('/');
             const dataVenda = new Date(partes[2], partes[1] - 1, partes[0]);
-            
-            // Ajusta inicio e fim
+
             const dInicio = dataInicio ? new Date(dataInicio) : new Date(0);
             const dFim = dataFim ? new Date(dataFim) : new Date();
-            dFim.setHours(23, 59, 59); // Garante o dia todo
+            dFim.setHours(23, 59, 59);
 
             return dataVenda >= dInicio && dataVenda <= dFim;
         });
     }
 
     vendas.sort((a, b) => b.timestamp - a.timestamp);
-    
+
     let totalComprado = 0, totalPago = 0, totalDevendo = 0, htmlLinhas = '';
 
     vendas.forEach(v => {
@@ -154,7 +181,7 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
         if (v.pagamento_efetivado) totalPago += valor;
         else totalDevendo += valor;
 
-        const statusBadge = v.pagamento_efetivado 
+        const statusBadge = v.pagamento_efetivado
             ? `<span style="color:#059669; font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; font-size:10px;">PAGO</span>`
             : `<span style="color:#dc2626; font-weight:bold; background:#fee2e2; padding:2px 6px; border-radius:4px; font-size:10px;">ABERTO</span>`;
 
@@ -169,10 +196,9 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
 
     const saldoFinal = cl.debito > 0 ? cl.debito : totalDevendo;
 
-    // --- HTML DO EXTRATO PROFISSIONAL ---
     document.getElementById('extrato-visualizacao').innerHTML = `
         <div style="padding:20px; font-family:'Plus Jakarta Sans', sans-serif; width:100%; box-sizing:border-box;">
-            
+
             <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #0f172a; padding-bottom:15px;">
                 <h2 style="margin:0; color:#0f172a; font-size:22px; text-transform:uppercase; letter-spacing:-0.5px;">${configEmpresa.nome}</h2>
                 <div style="font-size:11px; color:#64748b; margin-top:5px; line-height:1.4;">
@@ -251,7 +277,7 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
                 <p style="font-size:9px; text-align:justify; color:#64748b; line-height:1.4; margin-bottom:30px; border-top:1px solid #e2e8f0; padding-top:10px;">
                     <strong>TERMO DE RECONHECIMENTO DE DÍVIDA:</strong> Reconheço(emos) a exatidão desta conta e a dívida nela discriminada, comprometendo-me(nos) a pagá-la na data de vencimento ou quando solicitada. O não pagamento sujeitará o devedor às penalidades da lei e restrição de crédito.
                 </p>
-                
+
                 <div style="display:flex; justify-content:center; margin-top:10px;">
                     <div style="text-align:center; width:70%;">
                         <div style="border-top:1px dashed #0f172a; margin-bottom:5px;"></div>
@@ -277,34 +303,36 @@ function aplicarFiltroExtrato() {
 
 function baixarExtratoPDF() {
     const el = document.getElementById('extrato-visualizacao');
-    const opt = { 
-        margin: 5, // Margem pequena para não cortar
-        filename: `Extrato_${clienteExtratoAtual}.pdf`, 
+    const opt = {
+        margin: 5,
+        filename: `Extrato_${clienteExtratoAtual}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true }, 
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().from(el).set(opt).save();
 }
 
-// --- DRE GERENCIAL ---
+// =========================
+// DRE GERENCIAL
+// =========================
 function gerarRelatorioGeral() {
-    let receitaBruta=0, custosProdutos=0, impostosTotal=0, taxasPgtoTotal=0, lucroLiquido=0;
+    let receitaBruta = 0, custosProdutos = 0, impostosTotal = 0, taxasPgtoTotal = 0, lucroLiquido = 0;
 
-    if(typeof cacheVendas !== 'undefined') {
+    if (typeof cacheVendas !== 'undefined') {
         cacheVendas.forEach(v => {
             const vendaVal = parseFloat(v.venda) || 0;
             const lucroVal = parseFloat(v.lucro) || 0;
-            
+
             receitaBruta += vendaVal;
             lucroLiquido += lucroVal;
-            
+
             if (v.financeiro) {
                 custosProdutos += (parseFloat(v.financeiro.custo_prod) || 0);
                 impostosTotal += (parseFloat(v.financeiro.impostos) || 0);
                 taxasPgtoTotal += (parseFloat(v.financeiro.taxas_pgto) || 0);
-            } else { 
-                custosProdutos += (vendaVal * 0.6); 
+            } else {
+                custosProdutos += (vendaVal * 0.6);
             }
         });
     }
@@ -314,30 +342,30 @@ function gerarRelatorioGeral() {
             <h2 style="text-align:center; margin-bottom:5px;">${configEmpresa.nome}</h2>
             <h3 style="text-align:center; margin-top:0;">DRE GERENCIAL - SINTÉTICO</h3>
             <hr style="border:1px dashed #000">
-            
+
             <div style="display:flex; justify-content:space-between; margin:10px 0;">
                 <b>(+) RECEITA OPERACIONAL BRUTA</b>
                 <b>R$ <span class="blur-sensitive">${receitaBruta.toFixed(2)}</span></b>
             </div>
-            
+
             <div style="display:flex; justify-content:space-between; color:#b91c1c;">
                 <span>(-) CUSTOS DOS PRODUTOS (CMV)</span>
                 <span>R$ <span class="blur-sensitive">${custosProdutos.toFixed(2)}</span></span>
             </div>
-             <div style="display:flex; justify-content:space-between; color:#b91c1c;">
+            <div style="display:flex; justify-content:space-between; color:#b91c1c;">
                 <span>(-) TAXAS E IMPOSTOS ESTIMADOS</span>
                 <span>R$ <span class="blur-sensitive">${(impostosTotal + taxasPgtoTotal).toFixed(2)}</span></span>
             </div>
 
             <hr style="border:1px solid #000; margin: 15px 0;">
-            
+
             <div style="display:flex; justify-content:space-between; font-size:18px;">
                 <b>(=) LUCRO LÍQUIDO ESTIMADO</b>
                 <b style="color:${lucroLiquido >= 0 ? 'green' : 'red'}">R$ <span class="blur-sensitive">${lucroLiquido.toFixed(2)}</span></b>
             </div>
-            
+
             <div style="margin-top:20px; font-size:12px; text-align:center;">
-                Margem Líquida Atual: ${receitaBruta > 0 ? ((lucroLiquido/receitaBruta)*100).toFixed(1) : 0}%
+                Margem Líquida Atual: ${receitaBruta > 0 ? ((lucroLiquido / receitaBruta) * 100).toFixed(1) : 0}%
             </div>
         </div>
     `;
@@ -351,12 +379,13 @@ function baixarRelatorioPDF() {
     html2pdf().from(document.getElementById('relatorio-preview-box')).set(opt).save();
 }
 
-// --- DESPESAS E BOLETOS ---
+// =========================
+// DESPESAS E BOLETOS
+// =========================
 function renderizarBoletos() {
-    if(typeof cacheClientes === 'undefined') return;
-    const dev = cacheClientes.filter(c => c.debito > 0.01); // Filtra apenas > 1 centavo
-    
-    // ADICIONADO 'blur-sensitive' NA COLUNA DA DÍVIDA
+    if (typeof cacheClientes === 'undefined') return;
+    const dev = cacheClientes.filter(c => c.debito > 0.01);
+
     document.getElementById('corpo-boletos').innerHTML = dev.map(c => `
         <tr style="cursor:pointer; transition:0.2s;" onmouseover="this.style.background='var(--bg-body)'" onmouseout="this.style.background='transparent'">
             <td onclick="abrirExtratoCompleto('${c.id}')">
@@ -371,7 +400,7 @@ function renderizarBoletos() {
             </td>
         </tr>
     `).join('');
-    
+
     const hist = cacheClientes.filter(c => !c.debito || c.debito <= 0.01);
     document.getElementById('corpo-historico-pagamentos').innerHTML = hist.map(c => `
         <tr>
@@ -383,49 +412,59 @@ function renderizarBoletos() {
 }
 
 function renderizarDespesas() {
-    if(typeof cacheDespesas === 'undefined') return;
-    let h='', t=0;
-    cacheDespesas.forEach(d => { t+=d.valor; h+=`<tr><td>${d.data}</td><td>${d.fornecedor}</td><td>${d.descricao}</td><td>R$ <span class="blur-sensitive">${d.valor.toFixed(2)}</span></td><td><button onclick="db.collection('despesas_kell').doc('${d.id}').delete()">X</button></td></tr>`; });
+    if (typeof cacheDespesas === 'undefined') return;
+    let h = '', t = 0;
+    cacheDespesas.forEach(d => {
+        t += d.valor;
+        h += `<tr><td>${d.data}</td><td>${d.fornecedor}</td><td>${d.descricao}</td><td>R$ <span class="blur-sensitive">${d.valor.toFixed(2)}</span></td><td><button onclick="db.collection('despesas_kell').doc('${d.id}').delete()">X</button></td></tr>`;
+    });
     document.getElementById('corpo-despesas').innerHTML = h;
     document.getElementById('total-despesas-mes').innerText = "R$ " + t.toFixed(2);
 }
 
 async function liquidarDebito(id) {
-    if(confirm("Deseja zerar a dívida deste cliente? Certifique-se que o pagamento foi recebido.")) {
+    if (confirm("Deseja zerar a dívida deste cliente? Certifique-se que o pagamento foi recebido.")) {
         await db.collection("clientes_kell").doc(id).update({ debito: 0 });
-        Toastify({text: "Dívida baixada com sucesso!", style:{background: "var(--primary)"}}).showToast();
+        Toastify({ text: "Dívida baixada com sucesso!", style: { background: "var(--primary)" } }).showToast();
     }
 }
 
 async function salvarDespesa() {
-    const d = { fornecedor: document.getElementById('desp-fornecedor').value, descricao: document.getElementById('desp-descricao').value, valor: parseFloat(document.getElementById('desp-valor').value)||0, data: document.getElementById('desp-data').value.split('-').reverse().join('/'), tipo: 'SIMPLES', timestamp: Date.now() };
+    const d = {
+        fornecedor: document.getElementById('desp-fornecedor').value,
+        descricao: document.getElementById('desp-descricao').value,
+        valor: parseFloat(document.getElementById('desp-valor').value) || 0,
+        data: document.getElementById('desp-data').value.split('-').reverse().join('/'),
+        tipo: 'SIMPLES',
+        timestamp: Date.now()
+    };
     await db.collection("despesas_kell").add(d);
 }
 
 function mudarAbaDespesa(t) {
-    document.getElementById('view-desp-simples').style.display = t==='simples'?'block':'none';
-    document.getElementById('view-desp-nf').style.display = t==='nf'?'block':'none';
-    
-    document.getElementById('tab-desp-simples').classList.toggle('btn-primary', t==='simples');
-    document.getElementById('tab-desp-simples').classList.toggle('btn-secondary', t!=='simples');
-    document.getElementById('tab-desp-nf').classList.toggle('btn-primary', t==='nf');
-    document.getElementById('tab-desp-nf').classList.toggle('btn-secondary', t!=='nf');
+    document.getElementById('view-desp-simples').style.display = t === 'simples' ? 'block' : 'none';
+    document.getElementById('view-desp-nf').style.display = t === 'nf' ? 'block' : 'none';
+
+    document.getElementById('tab-desp-simples').classList.toggle('btn-primary', t === 'simples');
+    document.getElementById('tab-desp-simples').classList.toggle('btn-secondary', t !== 'simples');
+    document.getElementById('tab-desp-nf').classList.toggle('btn-primary', t === 'nf');
+    document.getElementById('tab-desp-nf').classList.toggle('btn-secondary', t !== 'nf');
 }
 
 function buscarProdParaNF() {
-    const q=document.getElementById('nf-busca-prod').value.toLowerCase();
-    const div=document.getElementById('nf-sugestoes');
-    if(q.length<2) { div.style.display='none'; return; }
-    const f=(typeof cacheEstoque !== 'undefined' ? cacheEstoque : []).filter(p=>p.modelo.toLowerCase().includes(q));
-    div.innerHTML = f.map(p=>`<div style="padding:10px; cursor:pointer; border-bottom:1px solid #eee;" onclick='selecionarProdNF(${JSON.stringify(p)})'>${p.modelo}</div>`).join('');
-    div.style.display='block';
+    const q = document.getElementById('nf-busca-prod').value.toLowerCase();
+    const div = document.getElementById('nf-sugestoes');
+    if (q.length < 2) { div.style.display = 'none'; return; }
+    const f = (typeof cacheEstoque !== 'undefined' ? cacheEstoque : []).filter(p => p.modelo.toLowerCase().includes(q));
+    div.innerHTML = f.map(p => `<div style="padding:10px; cursor:pointer; border-bottom:1px solid #eee;" onclick='selecionarProdNF(${JSON.stringify(p)})'>${p.modelo}</div>`).join('');
+    div.style.display = 'block';
 }
 
 function selecionarProdNF(p) {
-    document.getElementById('nf-prod-id').value=p.id; 
-    document.getElementById('nf-prod-nome').value=p.modelo;
-    document.getElementById('nf-prod-custo').value=p.compra;
-    document.getElementById('nf-sugestoes').style.display='none';
+    document.getElementById('nf-prod-id').value = p.id;
+    document.getElementById('nf-prod-nome').value = p.modelo;
+    document.getElementById('nf-prod-custo').value = p.compra;
+    document.getElementById('nf-sugestoes').style.display = 'none';
 }
 
 function addProdutoNaListaNF() {
@@ -434,12 +473,12 @@ function addProdutoNaListaNF() {
         nome: document.getElementById('nf-prod-nome').value,
         qtd: parseFloat(document.getElementById('nf-prod-qtd').value),
         custo: parseFloat(document.getElementById('nf-prod-custo').value),
-        venda: parseFloat(document.getElementById('nf-prod-venda').value)||0
+        venda: parseFloat(document.getElementById('nf-prod-venda').value) || 0
     };
-    if(!i.nome) return;
-    i.total = i.qtd*i.custo;
+    if (!i.nome) return;
+    i.total = i.qtd * i.custo;
     listaItensNF.push(i); renderizarListaItensNF();
-    
+
     document.getElementById('nf-prod-id').value = '';
     document.getElementById('nf-prod-nome').value = '';
     document.getElementById('nf-prod-qtd').value = '';
@@ -448,40 +487,40 @@ function addProdutoNaListaNF() {
 }
 
 function renderizarListaItensNF() {
-    let h='', t=0;
-    listaItensNF.forEach((i,x)=>{
-        t+=i.total;
-        h+=`<tr><td>${i.nome}</td><td>${i.qtd}</td><td>${i.total.toFixed(2)}</td><td><button class="btn btn-sm btn-danger" onclick="listaItensNF.splice(${x},1);renderizarListaItensNF()">X</button></td></tr>`;
+    let h = '', t = 0;
+    listaItensNF.forEach((i, x) => {
+        t += i.total;
+        h += `<tr><td>${i.nome}</td><td>${i.qtd}</td><td>${i.total.toFixed(2)}</td><td><button class="btn btn-sm btn-danger" onclick="listaItensNF.splice(${x},1);renderizarListaItensNF()">X</button></td></tr>`;
     });
-    document.getElementById('nf-lista-itens').innerHTML=h;
-    if(document.getElementById('nf-soma-itens')) document.getElementById('nf-soma-itens').innerText="R$ "+t.toFixed(2);
+    document.getElementById('nf-lista-itens').innerHTML = h;
+    if (document.getElementById('nf-soma-itens')) document.getElementById('nf-soma-itens').innerText = "R$ " + t.toFixed(2);
 }
 
 async function finalizarEntradaNF() {
-    if(listaItensNF.length===0) return alert("Adicione itens à lista primeiro.");
-    
+    if (listaItensNF.length === 0) return alert("Adicione itens à lista primeiro.");
+
     const batch = db.batch();
     listaItensNF.forEach(i => {
-        if(i.id_existente) {
+        if (i.id_existente) {
             batch.update(db.collection("estoque_kell").doc(i.id_existente), {
                 qtd: firebase.firestore.FieldValue.increment(i.qtd),
-                compra: i.custo, 
+                compra: i.custo,
                 repasse: i.venda || undefined
             });
         } else {
             const ref = db.collection("estoque_kell").doc();
             batch.set(ref, {
-                modelo: i.nome, 
-                qtd: i.qtd, 
-                compra: i.custo, 
-                repasse: i.venda||0, 
-                timestamp:Date.now()
+                modelo: i.nome,
+                qtd: i.qtd,
+                compra: i.custo,
+                repasse: i.venda || 0,
+                timestamp: Date.now()
             });
         }
     });
-    
+
     const nfValor = parseFloat(document.getElementById('nf-valor-total').value) || 0;
-    if(nfValor > 0) {
+    if (nfValor > 0) {
         const dRef = db.collection("despesas_kell").doc();
         batch.set(dRef, {
             fornecedor: document.getElementById('nf-fornecedor').value || 'Fornecedor NF',
@@ -494,9 +533,9 @@ async function finalizarEntradaNF() {
     }
 
     await batch.commit();
-    listaItensNF=[]; renderizarListaItensNF();
-    Toastify({text: "Entrada de Nota Fiscal concluída!", style:{background: "var(--primary)"}}).showToast();
-    
+    listaItensNF = []; renderizarListaItensNF();
+    Toastify({ text: "Entrada de Nota Fiscal concluída!", style: { background: "var(--primary)" } }).showToast();
+
     document.getElementById('nf-numero').value = '';
     document.getElementById('nf-valor-total').value = '';
     document.getElementById('nf-fornecedor').value = '';
@@ -504,7 +543,7 @@ async function finalizarEntradaNF() {
 
 function toggleModalCadastroCliente() {
     const m = document.getElementById('modal-cadastro-cliente');
-    m.style.display = m.style.display==='flex'?'none':'flex';
+    m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
 }
 
 async function cadastrarCliente() {
@@ -516,8 +555,15 @@ async function cadastrarCliente() {
         debito: 0,
         timestamp: Date.now()
     };
-    if(!c.nome) return alert("Nome obrigatório");
+    if (!c.nome) return alert("Nome obrigatório");
     await db.collection("clientes_kell").add(c);
-    Toastify({text:"Cliente Cadastrado", style:{background: "var(--primary)"}}).showToast();
+    Toastify({ text: "Cliente Cadastrado", style: { background: "var(--primary)" } }).showToast();
     toggleModalCadastroCliente();
+
+    // Atualiza imediatamente o select do fiado
+    setTimeout(() => {
+        if (typeof atualizarSelectClientes === 'function') {
+            atualizarSelectClientes();
+        }
+    }, 300);
 }
