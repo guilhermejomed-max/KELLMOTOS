@@ -667,3 +667,144 @@ body.dark-mode .product-app-tag {
     .product-cell { align-items:flex-start; }
     .product-thumb { width:50px; height:50px; }
 }
+/* =========================
+   AÇÕES DO ESTOQUE - AJUSTE FINAL
+   ========================= */
+
+.product-table table {
+    min-width: 980px;
+}
+
+.product-table thead th:last-child,
+.product-table tbody td:last-child {
+    min-width: 140px;
+    width: 140px;
+}
+
+.product-table tbody td:last-child {
+    text-align: right;
+}
+
+.product-table tbody td:last-child > div {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.btn-sm {
+    min-width: 42px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 700;
+    gap: 6px;
+}
+
+.btn-sm i {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.product-table .btn-sm.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.22);
+}
+
+.product-table .btn-sm.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(16, 185, 129, 0.32);
+}
+
+.product-table .btn-sm.btn-secondary {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.product-table .btn-sm.btn-secondary:hover {
+    background: var(--bg-body);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.product-table .btn-sm.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.24);
+}
+
+.product-table .btn-sm.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(239, 68, 68, 0.34);
+}
+
+.product-table tbody tr td {
+    vertical-align: middle;
+}
+
+.product-table tbody tr td:first-child {
+    min-width: 270px;
+}
+
+.product-table tbody tr td:nth-child(2) {
+    min-width: 220px;
+}
+
+.product-table tbody tr td:nth-child(3) {
+    min-width: 130px;
+}
+
+.product-table tbody tr td:nth-child(4) {
+    min-width: 120px;
+}
+
+.product-table .action-btn-label {
+    display: none;
+}
+
+body.dark-mode .product-table .btn-sm.btn-secondary {
+    background: rgba(15, 23, 42, 0.82);
+    color: var(--text-main);
+    border-color: #334155;
+}
+
+body.dark-mode .product-table .btn-sm.btn-secondary:hover {
+    background: rgba(30, 41, 59, 0.95);
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.25);
+}
+
+@media (max-width: 768px) {
+    .product-table table {
+        min-width: 860px;
+    }
+
+    .btn-sm {
+        min-width: 38px;
+        height: 36px;
+        padding: 0 10px;
+        border-radius: 9px;
+    }
+
+    .btn-sm i {
+        font-size: 15px;
+    }
+
+    .product-table thead th:last-child,
+    .product-table tbody td:last-child {
+        min-width: 120px;
+        width: 120px;
+    }
+}
