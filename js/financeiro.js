@@ -1,4 +1,4 @@
-let chartF = null;
+﻿let chartF = null;
 let listaItensNF = [];
 let clienteExtratoAtual = null;
 
@@ -185,12 +185,17 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
             ? `<span style="color:#059669; font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; font-size:10px;">PAGO</span>`
             : `<span style="color:#dc2626; font-weight:bold; background:#fee2e2; padding:2px 6px; border-radius:4px; font-size:10px;">ABERTO</span>`;
 
+        const podeSelecionar = !v.pagamento_efetivado;
+
         htmlLinhas += `
         <tr style="border-bottom:1px solid #eee;">
             <td style="padding:6px; font-size:11px;">${v.data}<br><span style="color:#999; font-size:9px;">${v.hora}</span></td>
             <td style="padding:6px; font-size:11px; color:#334155;">${v.peca}</td>
             <td style="padding:6px; text-align:right; font-size:11px; font-weight:bold;">R$ <span class="blur-sensitive">${valor.toFixed(2)}</span></td>
             <td style="padding:6px; text-align:center;">${statusBadge}</td>
+            <td style="padding:6px; text-align:center;">
+                ${podeSelecionar ? `<input type="checkbox" class="checkbox-liquidacao" data-venda-id="${v.id}" data-valor="${valor.toFixed(2)}" onchange="atualizarResumoLiquidacao()">` : '-'}
+            </td>
         </tr>`;
     });
 
@@ -259,6 +264,16 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
                 </div>
             </div>
 
+            <div data-html2canvas-ignore="true" class="no-print" style="margin-bottom:12px; display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" style="padding:6px 10px; font-size:11px;" onclick="toggleSelecaoDebitosCliente(true)">Marcar em aberto</button>
+                    <button class="btn btn-secondary" style="padding:6px 10px; font-size:11px;" onclick="toggleSelecaoDebitosCliente(false)">Limpar seleção</button>
+                </div>
+                <div id="resumo-liquidacao" style="font-size:11px; color:#475569; font-weight:700;">
+                    Nenhum debito selecionado
+                </div>
+            </div>
+
             <table style="width:100%; border-collapse: collapse; font-size:11px;">
                 <thead>
                     <tr style="background:#f1f5f9; color:#475569; border-top:1px solid #cbd5e1; border-bottom:1px solid #cbd5e1;">
@@ -266,12 +281,17 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
                         <th style="padding:8px; text-align:left;">Descrição / Serviço</th>
                         <th style="padding:8px; text-align:right; width:20%;">Valor</th>
                         <th style="padding:8px; text-align:center; width:15%;">Status</th>
+                        <th style="padding:8px; text-align:center; width:13%;">Receber</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${htmlLinhas || '<tr><td colspan="4" style="text-align:center; padding:15px; font-style:italic; color:#94a3b8;">Nenhum registro encontrado no período.</td></tr>'}
+                    ${htmlLinhas || '<tr><td colspan="5" style="text-align:center; padding:15px; font-style:italic; color:#94a3b8;">Nenhum registro encontrado no período.</td></tr>'}
                 </tbody>
             </table>
+
+            <div data-html2canvas-ignore="true" class="no-print" style="margin-top:12px; display:flex; justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="liquidarDebitosSelecionados('${cl.id}')">Receber selecionados</button>
+            </div>
 
             <div style="margin-top:40px; page-break-inside: avoid;">
                 <p style="font-size:9px; text-align:justify; color:#64748b; line-height:1.4; margin-bottom:30px; border-top:1px solid #e2e8f0; padding-top:10px;">
@@ -293,8 +313,8 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
         </div>
     `;
     document.getElementById('modal-extrato').style.display = 'flex';
+    atualizarResumoLiquidacao();
 }
-
 function aplicarFiltroExtrato() {
     const inicio = document.getElementById('filtro-extrato-inicio').value;
     const fim = document.getElementById('filtro-extrato-fim').value;
@@ -313,6 +333,30 @@ function baixarExtratoPDF() {
     html2pdf().from(el).set(opt).save();
 }
 
+function obterDebitosSelecionados() {
+    return [...document.querySelectorAll('.checkbox-liquidacao:checked')].map(el => ({
+        id: el.dataset.vendaId,
+        valor: parseFloat(el.dataset.valor) || 0
+    }));
+}
+
+function atualizarResumoLiquidacao() {
+    const resumo = document.getElementById('resumo-liquidacao');
+    if (!resumo) return;
+
+    const itens = obterDebitosSelecionados();
+    const total = itens.reduce((soma, item) => soma + item.valor, 0);
+    resumo.innerText = itens.length
+        ? `${itens.length} debito(s) selecionado(s) • R$ ${total.toFixed(2)}`
+        : 'Nenhum debito selecionado';
+}
+
+function toggleSelecaoDebitosCliente(marcar) {
+    document.querySelectorAll('.checkbox-liquidacao').forEach(el => {
+        el.checked = marcar;
+    });
+    atualizarResumoLiquidacao();
+}
 // =========================
 // DRE GERENCIAL
 // =========================
@@ -423,10 +467,39 @@ function renderizarDespesas() {
 }
 
 async function liquidarDebito(id) {
-    if (confirm("Deseja zerar a dívida deste cliente? Certifique-se que o pagamento foi recebido.")) {
-        await db.collection("clientes_kell").doc(id).update({ debito: 0 });
-        Toastify({ text: "Dívida baixada com sucesso!", style: { background: "var(--primary)" } }).showToast();
-    }
+    abrirExtratoCompleto(id);
+}
+
+async function liquidarDebitosSelecionados(id = clienteExtratoAtual) {
+    const selecionados = obterDebitosSelecionados();
+    if (!id) return;
+    if (selecionados.length === 0) return alert("Selecione pelo menos um débito em aberto.");
+
+    const totalRecebido = selecionados.reduce((soma, item) => soma + item.valor, 0);
+    if (!confirm(`Confirmar recebimento de R$ ${totalRecebido.toFixed(2)} em ${selecionados.length} débito(s)?`)) return;
+
+    const clienteRef = db.collection("clientes_kell").doc(id);
+
+    await db.runTransaction(async t => {
+        const clienteDoc = await t.get(clienteRef);
+        if (!clienteDoc.exists) throw new Error("Cliente não encontrado.");
+
+        const debitoAtual = parseFloat(clienteDoc.data().debito) || 0;
+        const novoDebito = Math.max(0, debitoAtual - totalRecebido);
+
+        selecionados.forEach(item => {
+            const vendaRef = db.collection("vendas_kell").doc(item.id);
+            t.update(vendaRef, {
+                pagamento_efetivado: true,
+                data_pagamento: new Date().toLocaleString('pt-BR')
+            });
+        });
+
+        t.update(clienteRef, { debito: novoDebito });
+    });
+
+    Toastify({ text: "Baixa realizada com sucesso!", style: { background: "var(--primary)" } }).showToast();
+    abrirExtratoCompleto(id);
 }
 
 async function salvarDespesa() {
@@ -567,3 +640,8 @@ async function cadastrarCliente() {
         }
     }, 300);
 }
+
+
+
+
+

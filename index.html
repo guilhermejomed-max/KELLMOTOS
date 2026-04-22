@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -12,6 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -301,17 +302,22 @@
                 <input type="hidden" id="edit-id">
                 <div class="product-form-layout">
                     <div class="product-image-panel">
-                        <label class="input-label">Imagem do produto</label>
+                        <label class="input-label">Imagens do produto</label>
                         <div class="image-upload-box" onclick="document.getElementById('imagem-produto').click()">
-                            <input id="imagem-produto" type="file" accept="image/*" onchange="previewImagemProduto(event)">
-                            <img id="preview-imagem-produto" alt="Prévia do produto" style="display:none;">
+                            <input id="imagem-produto" type="file" accept="image/*" multiple onchange="previewImagemProduto(event)">
+                            <img id="preview-imagem-produto" alt="Prévia principal do produto" style="display:none;">
                             <div id="imagem-placeholder" class="image-upload-placeholder">
                                 <i class="ri-image-add-line"></i>
-                                <strong>Adicionar imagem</strong>
-                                <span>Toque para selecionar uma foto da peça</span>
+                                <strong>Adicionar imagens</strong>
+                                <span>Toque para selecionar uma ou mais fotos da peça</span>
                             </div>
                         </div>
-                        <input id="imagem-url" class="input-style" placeholder="ou cole a URL da imagem" oninput="atualizarPreviewPorURL(this.value)">
+                        <div id="contador-imagens-produto" style="margin-top:10px; font-size:12px; color:var(--text-muted); font-weight:700;">Nenhuma imagem selecionada</div>
+                        <div id="preview-imagens-produto-lista" style="display:none; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin-top:12px;"></div>
+                        <div style="display:flex; gap:10px; margin-top:12px; align-items:center;">
+                            <input id="imagem-url" class="input-style" placeholder="ou cole a URL de uma imagem" style="margin:0;">
+                            <button type="button" class="btn btn-secondary" onclick="adicionarImagemPorURL()">Adicionar URL</button>
+                        </div>
                     </div>
                     <div>
                         <div class="product-form-grid">
@@ -479,6 +485,8 @@
     
     <div id="modal-cliente" class="modal"><div class="modal-content"><div class="modal-header">Venda<button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="text" id="cli-nome" class="input-style" placeholder="Cliente"><select id="cli-pgto" class="input-style" onchange="mostrarSelecaoCliente()"><option value="DINHEIRO">Dinheiro</option><option value="PIX">Pix</option><option value="CARTAO">Cartão</option><option value="BOLETO">Fiado</option></select><div id="selecao-cliente-boleto" style="display: none;"><select id="cli-boleto-select" class="input-style"></select></div></div><div class="modal-footer"><button class="btn btn-primary" onclick="confirmarVenda()">Concluir</button></div></div></div>
 
+    <div id="modal-produto-detalhes" class="modal"><div class="modal-content" style="max-width:980px;"><div class="modal-header">Produto<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="produto-detalhes-conteudo"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Fechar</button></div></div></div>
+
     <div id="modal-cadastro-cliente" class="modal"><div class="modal-content"><div class="modal-header">Novo Cliente<button onclick="toggleModalCadastroCliente()">X</button></div><div class="modal-body"><input id="boleto-cliente-nome" class="input-style" placeholder="Nome"><input id="boleto-cliente-cpf" class="input-style" placeholder="CPF"><input id="boleto-cliente-tel" class="input-style" placeholder="Tel"><input id="boleto-cliente-end" class="input-style" placeholder="Endereço"></div><div class="modal-footer"><button class="btn btn-primary" onclick="cadastrarCliente()">Salvar</button></div></div></div>
 
     <div id="modal-extrato" class="modal"><div class="modal-content" style="max-width:800px;"><div class="modal-header">Extrato<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="extrato-visualizacao"></div></div><div class="modal-footer"><button class="btn btn-info" onclick="window.print()">Imprimir</button><button class="btn btn-primary" onclick="baixarExtratoPDF()">Baixar PDF</button></div></div></div>
@@ -528,3 +536,8 @@
     <script src="js/financeiro.js"></script>
 </body>
 </html>
+
+
+
+
+
