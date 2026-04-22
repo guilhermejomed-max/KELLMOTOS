@@ -2,6 +2,14 @@
 let listaItensNF = [];
 let clienteExtratoAtual = null;
 
+function obterNomeProdutoFinanceiro(produto) {
+    if (!produto) return 'Produto';
+    const partes = [produto.marca, produto.nome_peca]
+        .map(valor => String(valor || '').trim())
+        .filter(Boolean);
+    return partes.join(' ') || produto.modelo || produto.nome || 'Produto';
+}
+
 // =========================
 // CLIENTES NO SELECT DO FIADO
 // =========================
@@ -36,19 +44,24 @@ function atualizarSelectClientes() {
 // =========================
 function atualizarKPIs() {
     const hj = new Date().toLocaleDateString('pt-BR');
-    let fat = 0, luc = 0, est = 0;
+    let fat = 0, luc = 0, est = 0, vendasHoje = 0;
 
-    const vendas = (typeof cacheVendas !== 'undefined' && Array.isArray(cacheVendas)) ? cacheVendas : [];
+    const vendas = (typeof cacheVendas !== 'undefined' && Array.isArray(cacheVendas)) ? cacheVendas.filter(v => v.tipo !== 'ORCAMENTO') : [];
     const estoque = (typeof cacheEstoque !== 'undefined' && Array.isArray(cacheEstoque)) ? cacheEstoque : [];
+    const clientes = (typeof cacheClientes !== 'undefined' && Array.isArray(cacheClientes)) ? cacheClientes : [];
 
     vendas.forEach(v => {
         if (v.data === hj) {
             fat += (parseFloat(v.venda) || 0);
             luc += (parseFloat(v.lucro) || 0);
+            vendasHoje += 1;
         }
     });
 
     estoque.forEach(p => est += ((parseFloat(p.compra) || 0) * (parseFloat(p.qtd) || 0)));
+    const ticketMedio = vendasHoje ? (fat / vendasHoje) : 0;
+    const baixoEstoque = estoque.filter(p => (parseInt(p.qtd) || 0) <= 2);
+    const clientesFiado = clientes.filter(c => (parseFloat(c.debito) || 0) > 0);
 
     if (document.getElementById('kpi-faturamento'))
         document.getElementById('kpi-faturamento').innerHTML =
@@ -62,10 +75,42 @@ function atualizarKPIs() {
         document.getElementById('kpi-estoque').innerHTML =
             `R$ <span class="blur-sensitive">${est.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
 
+    if (document.getElementById('kpi-ticket-medio'))
+        document.getElementById('kpi-ticket-medio').innerHTML =
+            `R$ <span class="blur-sensitive">${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>`;
+
+    if (document.getElementById('kpi-vendas-hoje'))
+        document.getElementById('kpi-vendas-hoje').innerText = vendasHoje;
+
+    if (document.getElementById('kpi-baixo-estoque'))
+        document.getElementById('kpi-baixo-estoque').innerText = `${baixoEstoque.length} itens`;
+
+    if (document.getElementById('kpi-baixo-estoque-side'))
+        document.getElementById('kpi-baixo-estoque-side').innerText = baixoEstoque.length;
+
+    if (document.getElementById('kpi-clientes-fiado'))
+        document.getElementById('kpi-clientes-fiado').innerText = clientesFiado.length;
+
+    if (document.getElementById('dash-resumo-data'))
+        document.getElementById('dash-resumo-data').innerText = hj;
+
+    const resumoOperacao = document.getElementById('dash-resumo-operacao');
+    if (resumoOperacao) {
+        resumoOperacao.innerText = `Hoje foram ${vendasHoje} venda(s), ticket médio de R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} e ${baixoEstoque.length} item(ns) pedindo reposição.`;
+    }
+
     const counts = {};
     vendas.forEach(v => {
+        if (Array.isArray(v.itens) && v.itens.length) {
+            v.itens.forEach(item => {
+                const nome = item.nome || item.peca || 'Item';
+                counts[nome] = (counts[nome] || 0) + (parseInt(item.qtd) || 0);
+            });
+            return;
+        }
+
         const n = v.peca || 'Item';
-        counts[n] = (counts[n] || 0) + (v.qtd || 0);
+        counts[n] = (counts[n] || 0) + (parseInt(v.qtd) || 0);
     });
 
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -73,11 +118,37 @@ function atualizarKPIs() {
     const elLista = document.getElementById('top-produtos-lista');
     if (elLista) {
         elLista.innerHTML = top.length ? top.map((t, i) => `
-            <div class="moto-item" style="justify-content:space-between; padding: 8px 0; border-bottom:1px solid #eee;">
+            <div class="dashboard-list-row">
                 <span><b style="color:var(--primary)">${i + 1}.</b> ${t[0]}</span>
                 <span class="status-badge bg-green">${t[1]} un</span>
             </div>
-        `).join('') : '<div style="text-align:center; padding:10px; color:#999;">Sem vendas hoje</div>';
+        `).join('') : '<div class="dashboard-empty-state">Sem vendas registradas.</div>';
+    }
+
+    const alertasEl = document.getElementById('dash-alertas-lista');
+    if (alertasEl) {
+        const alertas = [];
+        baixoEstoque.slice(0, 4).forEach(item => {
+            alertas.push({
+                titulo: obterNomeProdutoFinanceiro(item),
+                detalhe: `Estoque atual: ${parseInt(item.qtd) || 0} unidade(s)`,
+                tipo: 'warning'
+            });
+        });
+        clientesFiado.slice(0, 2).forEach(cliente => {
+            alertas.push({
+                titulo: cliente.nome || 'Cliente',
+                detalhe: `Fiado em aberto: R$ ${(parseFloat(cliente.debito) || 0).toFixed(2)}`,
+                tipo: 'finance'
+            });
+        });
+
+        alertasEl.innerHTML = alertas.length ? alertas.map(alerta => `
+            <div class="dashboard-alert-item ${alerta.tipo}">
+                <strong>${alerta.titulo}</strong>
+                <span>${alerta.detalhe}</span>
+            </div>
+        `).join('') : '<div class="dashboard-empty-state">Nenhum alerta importante no momento.</div>';
     }
 }
 
@@ -98,7 +169,7 @@ function renderizarGraficos() {
 
     const labels = [];
     const dataValues = [];
-    const vendas = (typeof cacheVendas !== 'undefined') ? cacheVendas : [];
+    const vendas = (typeof cacheVendas !== 'undefined' && Array.isArray(cacheVendas)) ? cacheVendas.filter(v => v.tipo !== 'ORCAMENTO') : [];
 
     for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -528,14 +599,14 @@ function buscarProdParaNF() {
     const q = document.getElementById('nf-busca-prod').value.toLowerCase();
     const div = document.getElementById('nf-sugestoes');
     if (q.length < 2) { div.style.display = 'none'; return; }
-    const f = (typeof cacheEstoque !== 'undefined' ? cacheEstoque : []).filter(p => p.modelo.toLowerCase().includes(q));
-    div.innerHTML = f.map(p => `<div style="padding:10px; cursor:pointer; border-bottom:1px solid #eee;" onclick='selecionarProdNF(${JSON.stringify(p)})'>${p.modelo}</div>`).join('');
+    const f = (typeof cacheEstoque !== 'undefined' ? cacheEstoque : []).filter(p => obterNomeProdutoFinanceiro(p).toLowerCase().includes(q));
+    div.innerHTML = f.map(p => `<div style="padding:10px; cursor:pointer; border-bottom:1px solid #eee;" onclick='selecionarProdNF(${JSON.stringify(p)})'>${obterNomeProdutoFinanceiro(p)}</div>`).join('');
     div.style.display = 'block';
 }
 
 function selecionarProdNF(p) {
     document.getElementById('nf-prod-id').value = p.id;
-    document.getElementById('nf-prod-nome').value = p.modelo;
+    document.getElementById('nf-prod-nome').value = obterNomeProdutoFinanceiro(p);
     document.getElementById('nf-prod-custo').value = p.compra;
     document.getElementById('nf-sugestoes').style.display = 'none';
 }
@@ -583,6 +654,8 @@ async function finalizarEntradaNF() {
         } else {
             const ref = db.collection("estoque_kell").doc();
             batch.set(ref, {
+                marca: '',
+                nome_peca: i.nome,
                 modelo: i.nome,
                 qtd: i.qtd,
                 compra: i.custo,

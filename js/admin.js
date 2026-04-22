@@ -1,5 +1,12 @@
 function renderizarListaMotos() { 
-    const list = cacheMotos.map(m=>`<div class="moto-item"><input type="checkbox" class="moto-check" value="${m.nome}"> ${m.nome}</div>`).join('');
+    const selecionadas = new Set(
+        Array.from(document.querySelectorAll('.moto-check:checked')).map(el => el.value)
+    );
+    const busca = (document.getElementById('busca-moto-cadastro')?.value || '').toLowerCase().trim();
+    const motosFiltradas = cacheMotos.filter(m => (m.nome || '').toLowerCase().includes(busca));
+    const list = motosFiltradas.length
+        ? motosFiltradas.map(m=>`<div class="moto-item"><label style="display:flex; align-items:center; gap:8px; width:100%; cursor:pointer;"><input type="checkbox" class="moto-check" value="${m.nome}" ${selecionadas.has(m.nome) ? 'checked' : ''}> <span>${m.nome}</span></label></div>`).join('')
+        : '<div style="padding:10px 4px; color:var(--text-muted); text-align:center;">Nenhuma moto encontrada.</div>';
     if(document.getElementById('moto-selector-list')) document.getElementById('moto-selector-list').innerHTML=list;
     if(document.getElementById('lista-motos-gerencia')) {
         document.getElementById('lista-motos-gerencia').innerHTML = cacheMotos.map(m=>`<div class="moto-item" style="justify-content:space-between"><span>${m.nome}</span><button class="btn btn-sm btn-danger" onclick="db.collection('motos_kell').doc('${m.id}').delete()">X</button></div>`).join('');

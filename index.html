@@ -12,6 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -242,6 +243,7 @@
             <div class="menu-item" id="m-dash" onclick="mudarTab('dash')"><i class="ri-dashboard-3-line"></i> <span>Dashboard</span></div>
             <div class="menu-item active" id="m-estoque" onclick="mudarTab('estoque')"><i class="ri-box-3-line"></i> <span>Estoque</span></div>
             <div class="menu-item" id="m-vendas" onclick="mudarTab('vendas')"><i class="ri-shopping-cart-2-line"></i> <span>PDV / Vendas</span></div>
+            <div class="menu-item" id="m-catalogo" onclick="mudarTab('catalogo')"><i class="ri-smartphone-line"></i> <span>Catálogo</span></div>
             <div class="menu-item" id="m-reposicao" onclick="mudarTab('reposicao')"><i class="ri-clipboard-line"></i> <span>Reposição</span></div>
             <div class="menu-category">Financeiro</div>
             <div class="menu-item" id="m-ecommerce" onclick="mudarTab('ecommerce')"><i class="ri-earth-line"></i> <span>E-Commerce</span></div>
@@ -269,19 +271,142 @@
         </header>
 
         <div id="sec-dash" class="hidden">
-            <div class="dashboard-grid">
-                <div class="card kpi-card"><div class="kpi-info"><h3>Hoje</h3><strong id="kpi-faturamento">R$ 0,00</strong></div></div>
-                <div class="card kpi-card"><div class="kpi-info"><h3>Lucro</h3><strong id="kpi-lucro">R$ 0,00</strong></div></div>
-                <div class="card kpi-card"><div class="kpi-info"><h3>Patrimônio</h3><strong id="kpi-estoque">R$ 0,00</strong></div></div>
-            </div>
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-                <div class="card">
-                    <h3>Performance de Vendas (7 Dias)</h3>
-                    <div class="chart-container">
-                        <canvas id="chart-fat"></canvas>
+            <div class="dashboard-hero card">
+                <div>
+                    <span class="dashboard-hero-chip">Central de operação</span>
+                    <h2>Painel inicial da loja</h2>
+                    <p id="dash-resumo-operacao">Acompanhe vendas, estoque e pontos de atenção do dia em um só lugar.</p>
+                </div>
+                <div class="dashboard-hero-meta">
+                    <div class="dashboard-hero-stat">
+                        <span>Hoje</span>
+                        <strong id="dash-resumo-data">--</strong>
+                    </div>
+                    <div class="dashboard-hero-actions">
+                        <button class="btn btn-primary" onclick="mudarTab('vendas')"><i class="ri-shopping-bag-3-line"></i> Ir para vendas</button>
+                        <button class="btn btn-secondary" onclick="mudarTab('estoque')"><i class="ri-box-3-line"></i> Ver estoque</button>
                     </div>
                 </div>
-                <div class="card"><h3>Top Produtos</h3><div id="top-produtos-lista"></div><button class="btn btn-secondary" style="width:100%; margin-top:20px;" onclick="gerarRelatorioGeral()">DRE PDF</button></div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card kpi-card">
+                    <div class="kpi-info">
+                        <h3>Faturamento hoje</h3>
+                        <strong id="kpi-faturamento">R$ 0,00</strong>
+                    </div>
+                    <div class="kpi-icon kpi-green"><i class="ri-line-chart-line"></i></div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-info">
+                        <h3>Lucro hoje</h3>
+                        <strong id="kpi-lucro">R$ 0,00</strong>
+                    </div>
+                    <div class="kpi-icon kpi-blue"><i class="ri-money-dollar-circle-line"></i></div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-info">
+                        <h3>Patrimônio em estoque</h3>
+                        <strong id="kpi-estoque">R$ 0,00</strong>
+                    </div>
+                    <div class="kpi-icon kpi-orange"><i class="ri-archive-stack-line"></i></div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-info">
+                        <h3>Ticket médio</h3>
+                        <strong id="kpi-ticket-medio">R$ 0,00</strong>
+                    </div>
+                    <div class="kpi-icon kpi-blue"><i class="ri-bar-chart-grouped-line"></i></div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-info">
+                        <h3>Vendas de hoje</h3>
+                        <strong id="kpi-vendas-hoje">0</strong>
+                    </div>
+                    <div class="kpi-icon kpi-green"><i class="ri-shopping-cart-2-line"></i></div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-info">
+                        <h3>Baixo estoque</h3>
+                        <strong id="kpi-baixo-estoque">0 itens</strong>
+                    </div>
+                    <div class="kpi-icon kpi-orange"><i class="ri-alarm-warning-line"></i></div>
+                </div>
+            </div>
+
+            <div class="dashboard-main-grid">
+                <div class="dashboard-main-column">
+                    <div class="card dashboard-chart-card">
+                        <div class="dashboard-card-header">
+                            <div>
+                                <h3>Performance de vendas</h3>
+                                <p>Últimos 7 dias de faturamento.</p>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chart-fat"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-split-grid">
+                        <div class="card dashboard-list-card">
+                            <div class="dashboard-card-header">
+                                <div>
+                                    <h3>Produtos mais vendidos</h3>
+                                    <p>Peças com melhor saída.</p>
+                                </div>
+                            </div>
+                            <div id="top-produtos-lista"></div>
+                        </div>
+
+                        <div class="card dashboard-list-card">
+                            <div class="dashboard-card-header">
+                                <div>
+                                    <h3>Alertas rápidos</h3>
+                                    <p>O que merece atenção agora.</p>
+                                </div>
+                            </div>
+                            <div id="dash-alertas-lista"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-side-column">
+                    <div class="card dashboard-side-card">
+                        <div class="dashboard-card-header">
+                            <div>
+                                <h3>Resumo operacional</h3>
+                                <p>Números do dia e pendências.</p>
+                            </div>
+                        </div>
+                        <div class="dashboard-mini-stats">
+                            <div class="dashboard-mini-stat">
+                                <span>Clientes no fiado</span>
+                                <strong id="kpi-clientes-fiado">0</strong>
+                            </div>
+                            <div class="dashboard-mini-stat">
+                                <span>Itens em baixo estoque</span>
+                                <strong id="kpi-baixo-estoque-side">0</strong>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" style="width:100%; margin-top:20px;" onclick="gerarRelatorioGeral()"><i class="ri-file-chart-line"></i> Baixar DRE PDF</button>
+                    </div>
+
+                    <div class="card dashboard-side-card">
+                        <div class="dashboard-card-header">
+                            <div>
+                                <h3>Ações rápidas</h3>
+                                <p>Atalhos do dia a dia.</p>
+                            </div>
+                        </div>
+                        <div class="dashboard-actions-grid">
+                            <button class="btn btn-secondary" onclick="mudarTab('estoque')"><i class="ri-add-circle-line"></i> Cadastrar produto</button>
+                            <button class="btn btn-secondary" onclick="mudarTab('vendas')"><i class="ri-cash-line"></i> Abrir vendas</button>
+                            <button class="btn btn-secondary" onclick="mudarTab('boleto')"><i class="ri-bill-line"></i> Ver fiado</button>
+                            <button class="btn btn-secondary" onclick="mudarTab('catalogo')"><i class="ri-smartphone-line"></i> Mostrar catálogo</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -322,12 +447,23 @@
                     <div>
                         <div class="product-form-grid">
                             <div>
-                                <label class="input-label">Modelo</label>
-                                <input id="modelo" class="input-style" placeholder="Modelo da peça">
+                                <label class="input-label">Marca</label>
+                                <input id="marca" class="input-style" placeholder="Ex: Honda" oninput="atualizarModeloProduto()">
+                            </div>
+                            <div>
+                                <label class="input-label">Nome da peça</label>
+                                <input id="nome-peca" class="input-style" placeholder="Ex: Pastilha de freio" oninput="atualizarModeloProduto()">
+                            </div>
+                            <div>
+                                <label class="input-label">Descrição do produto</label>
+                                <input id="modelo" class="input-style" placeholder="Nome final do produto" readonly>
                             </div>
                             <div>
                                 <label class="input-label">Código</label>
-                                <input id="codigo" class="input-style" placeholder="Código interno">
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <input id="codigo" class="input-style" placeholder="Código interno" style="margin:0;">
+                                    <button type="button" class="btn btn-secondary" style="white-space:nowrap;" onclick="abrirScannerCodigo('entrada')"><i class="ri-qr-scan-2-line"></i> Ler</button>
+                                </div>
                             </div>
                             <div>
                                 <label class="input-label">Quantidade</label>
@@ -346,6 +482,20 @@
                                 <input id="repasse" type="number" class="input-style" placeholder="Venda">
                             </div>
                         </div>
+                        <div class="product-form-grid" style="margin-top:14px;">
+                            <div>
+                                <label class="input-label">Corredor</label>
+                                <input id="loc-corredor" class="input-style" placeholder="Ex: A1">
+                            </div>
+                            <div>
+                                <label class="input-label">Caixa</label>
+                                <input id="loc-caixa" class="input-style" placeholder="Ex: CX-03">
+                            </div>
+                            <div>
+                                <label class="input-label">Prateleira</label>
+                                <input id="loc-prateleira" class="input-style" placeholder="Ex: P2">
+                            </div>
+                        </div>
                         <div class="product-highlight-row">
                             <div class="product-highlight-card">
                                 <span>Preço sugerido</span>
@@ -357,6 +507,7 @@
                             </div>
                         </div>
                         <label class="input-label">Compatibilidade com motos</label>
+                        <input id="busca-moto-cadastro" class="input-style" placeholder="Pesquisar modelo da moto" style="margin-bottom:10px;" oninput="renderizarListaMotos()">
                         <div id="moto-selector-list" class="moto-selector-list"></div>
                         <div class="form-actions-row">
                             <button class="btn btn-secondary" onclick="limparFormEstoque()">Limpar</button>
@@ -369,9 +520,53 @@
         </div>
 
         <div id="sec-vendas" class="hidden">
-            <div class="card">
-                <div class="table-container"><table><thead><tr><th>#</th><th>Cliente</th><th>Item</th><th>Valor</th><th style="text-align: right">Recibo</th></tr></thead><tbody id="corpo-vendas"></tbody></table></div>
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input id="venda-codigo-input" class="input-style" placeholder="Digite ou leia o código do produto" style="max-width:340px; margin:0;">
+                    <button class="btn btn-primary" onclick="venderPorCodigoManual()"><i class="ri-shopping-cart-line"></i> Adicionar por código</button>
+                    <button class="btn btn-secondary" onclick="adicionarProdutoPorCodigoRapido()"><i class="ri-flashlight-line"></i> Balcão rápido</button>
+                    <button class="btn btn-secondary" onclick="abrirScannerCodigo('venda')"><i class="ri-qr-scan-2-line"></i> Ler pela câmera</button>
+                </div>
+                <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">Use `Enter` no código para abrir quantidade ou `Balcão rápido` para adicionar 1 unidade direto ao carrinho.</div>
             </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                    <div>
+                        <h3 style="margin:0;">Carrinho / Atendimento</h3>
+                        <small style="color:var(--text-muted);">Adicione várias peças e finalize como venda ou orçamento.</small>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" onclick="limparCarrinhoVenda()">Limpar carrinho</button>
+                        <button class="btn btn-primary" onclick="abrirModalCliente()">Fechar atendimento</button>
+                    </div>
+                </div>
+                <div id="painel-carrinho-vazio" style="padding:18px; border:1px dashed var(--border-color); border-radius:16px; color:var(--text-muted); text-align:center;">Nenhum item no carrinho.</div>
+                <div class="table-container" id="painel-carrinho-tabela" style="margin-top:12px; display:none;"><table><thead><tr><th>Produto</th><th>Qtd</th><th>Unitário</th><th>Total</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-carrinho-venda"></tbody></table></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
+                    <div style="font-size:13px; color:var(--text-muted);">Itens: <b id="total-itens-carrinho">0</b></div>
+                    <div style="font-size:22px; font-weight:800; color:var(--primary);">Total: <span id="total-carrinho-venda">R$ 0,00</span></div>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <h3 style="margin:0;">Orçamentos</h3>
+                    <small style="color:var(--text-muted);">Crie um orçamento e converta em venda quando o cliente fechar.</small>
+                </div>
+                <div class="table-container" style="margin-top:12px;"><table><thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-orcamentos"></tbody></table></div>
+            </div>
+            <div class="card">
+                <div class="table-container"><table><thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Valor</th><th style="text-align: right">Recibo</th></tr></thead><tbody id="corpo-vendas"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="sec-catalogo" class="hidden">
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input id="catalogo-busca" class="input-style" placeholder="Buscar produto, código ou aplicação" style="max-width:420px; margin:0;" oninput="renderizarCatalogo()">
+                    <span style="font-size:12px; color:var(--text-muted);">Visual pensado para mostrar ao cliente no celular.</span>
+                </div>
+            </div>
+            <div id="catalogo-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px;"></div>
         </div>
 
         <div id="sec-ecommerce" class="hidden">
@@ -478,12 +673,14 @@
         <div class="nav-icon" onclick="mudarTab('dash')"><i class="ri-dashboard-3-line"></i></div>
         <div class="nav-icon" onclick="mudarTab('estoque')"><i class="ri-box-3-line"></i></div>
         <div class="nav-icon" onclick="mudarTab('vendas')"><i class="ri-shopping-cart-2-line"></i></div>
+        <div class="nav-icon" onclick="mudarTab('catalogo')"><i class="ri-smartphone-line"></i></div>
         <div class="nav-icon" onclick="mudarTab('boleto')"><i class="ri-bill-line"></i></div>
     </nav>
 
-    <div id="modal-qtd" class="modal"><div class="modal-content" style="max-width:300px;"><div class="modal-header"><span id="m-qtd-titulo">Qtd</span><button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="number" id="venda-qtd-input" class="input-style" value="1" style="font-size:24px; text-align:center;"><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="abrirModalCliente()">Próximo</button></div></div></div>
+
+    <div id="modal-scanner-codigo" class="modal"><div class="modal-content" style="max-width:540px;"><div class="modal-header">Leitor de código<button onclick="fecharScannerCodigo()">X</button></div><div class="modal-body"><div id="scanner-codigo-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Posicione o código de barras dentro da câmera.</div><div id="scanner-codigo-reader" style="width:100%; min-height:280px; border-radius:16px; overflow:hidden; background:#000;"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharScannerCodigo()">Fechar</button></div></div></div>    <div id="modal-qtd" class="modal"><div class="modal-content" style="max-width:300px;"><div class="modal-header"><span id="m-qtd-titulo">Qtd</span><button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="number" id="venda-qtd-input" class="input-style" value="1" style="font-size:24px; text-align:center;"><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="adicionarItemCarrinhoPendente()">Adicionar ao carrinho</button></div></div></div>
     
-    <div id="modal-cliente" class="modal"><div class="modal-content"><div class="modal-header">Venda<button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="text" id="cli-nome" class="input-style" placeholder="Cliente"><select id="cli-pgto" class="input-style" onchange="mostrarSelecaoCliente()"><option value="DINHEIRO">Dinheiro</option><option value="PIX">Pix</option><option value="CARTAO">Cartão</option><option value="BOLETO">Fiado</option></select><div id="selecao-cliente-boleto" style="display: none;"><select id="cli-boleto-select" class="input-style"></select></div></div><div class="modal-footer"><button class="btn btn-primary" onclick="confirmarVenda()">Concluir</button></div></div></div>
+    <div id="modal-cliente" class="modal"><div class="modal-content"><div class="modal-header">Venda / Orçamento<button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="text" id="cli-nome" class="input-style" placeholder="Cliente"><select id="cli-pgto" class="input-style" onchange="mostrarSelecaoCliente()"><option value="DINHEIRO">Dinheiro</option><option value="PIX">Pix</option><option value="CARTAO">Cartão</option><option value="BOLETO">Fiado</option></select><div id="selecao-cliente-boleto" style="display: none;"><select id="cli-boleto-select" class="input-style"></select></div><div style="display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px;"><div><label class="input-label">Validade do orçamento</label><input id="orc-validade" type="date" class="input-style"></div><div><label class="input-label">Observação</label><textarea id="orc-observacao" class="input-style" placeholder="Observação para o cliente ou detalhe interno" style="min-height:90px; resize:vertical;"></textarea></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="criarOrcamento()">Criar orçamento</button><button class="btn btn-primary" onclick="confirmarVenda()">Concluir venda</button></div></div></div>
 
     <div id="modal-produto-detalhes" class="modal"><div class="modal-content" style="max-width:980px;"><div class="modal-header">Produto<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="produto-detalhes-conteudo"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Fechar</button></div></div></div>
 
@@ -493,7 +690,7 @@
 
     <div id="modal-relatorio" class="modal"><div class="modal-content" style="max-width:850px;"><div class="modal-header">DRE<button onclick="fecharModais()">X</button></div><div class="modal-body" id="relatorio-preview-box"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Fechar</button><button class="btn btn-primary" onclick="baixarRelatorioPDF()">Baixar PDF</button></div></div></div>
 
-    <div id="modal-config" class="modal"><div class="modal-content"><div class="modal-header">Configurações<button onclick="toggleConfig()">X</button></div><div class="modal-body"><input id="cfg-nome" class="input-style" placeholder="Empresa"><input id="cfg-cnpj" class="input-style" placeholder="CNPJ"><input id="cfg-endereco" class="input-style" placeholder="Endereço"><input id="cfg-telefone" class="input-style" placeholder="Telefone"><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><input id="cfg-margem" class="input-style" placeholder="Margem %"><input id="cfg-margem-eco" class="input-style" placeholder="Margem e-commerce %"><input id="cfg-imposto" class="input-style" placeholder="Imposto médio %"><input id="cfg-taxa-cartao" class="input-style" placeholder="Taxa cartão %"><input id="cfg-custo-fixo" class="input-style" placeholder="Custo fixo médio"></div><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="salvarConfigGeral()">Salvar</button></div></div></div>
+    <div id="modal-config" class="modal"><div class="modal-content"><div class="modal-header">Configurações<button onclick="toggleConfig()">X</button></div><div class="modal-body"><div><label class="input-label">Nome da empresa</label><input id="cfg-nome" class="input-style" placeholder="Empresa"></div><div><label class="input-label">CNPJ</label><input id="cfg-cnpj" class="input-style" placeholder="CNPJ"></div><div><label class="input-label">Endereço</label><input id="cfg-endereco" class="input-style" placeholder="Endereço"></div><div><label class="input-label">Telefone</label><input id="cfg-telefone" class="input-style" placeholder="Telefone"></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><div><label class="input-label">Margem padrão (%)</label><input id="cfg-margem" class="input-style" placeholder="Margem %"></div><div><label class="input-label">Margem e-commerce (%)</label><input id="cfg-margem-eco" class="input-style" placeholder="Margem e-commerce %"></div><div><label class="input-label">Imposto médio (%)</label><input id="cfg-imposto" class="input-style" placeholder="Imposto médio %"></div><div><label class="input-label">Taxa de cartão (%)</label><input id="cfg-taxa-cartao" class="input-style" placeholder="Taxa cartão %"></div><div><label class="input-label">Custo fixo médio</label><input id="cfg-custo-fixo" class="input-style" placeholder="Custo fixo médio"></div></div><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="salvarConfigGeral()">Salvar</button></div></div></div>
 
     <div id="cupom-wrapper" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10002; overflow-y:auto; justify-content:center; padding:20px;">
         <div id="cupom-print">
@@ -536,6 +733,10 @@
     <script src="js/financeiro.js"></script>
 </body>
 </html>
+
+
+
+
 
 
 

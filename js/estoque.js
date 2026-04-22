@@ -23,6 +23,14 @@ function obterProdutoEstoque(id) {
         : null;
 }
 
+function obterNomeProdutoEstoque(produto) {
+    if (!produto) return 'Produto';
+    const partes = [produto.marca, produto.nome_peca]
+        .map(valor => String(valor || '').trim())
+        .filter(Boolean);
+    return partes.join(' ') || produto.modelo || 'Produto';
+}
+
 function abrirVendaProdutoEstoque(id) {
     const produto = obterProdutoEstoque(id);
     if (produto && typeof abrirVenda === 'function') abrirVenda(id, produto);
@@ -34,6 +42,11 @@ function carregarProdutoParaEdicaoPorId(id) {
 }
 
 
+
+function abrirModalProdutoDetalhesPorId(id) {
+    const produto = obterProdutoEstoque(id);
+    if (produto) abrirModalProdutoDetalhes(produto);
+}
 
 function imprimirEtiquetaProdutoPorId(id) {
     const produto = obterProdutoEstoque(id);
@@ -74,7 +87,7 @@ function imprimirEtiquetaProduto(produto) {
         return;
     }
 
-    const nome = produto?.modelo || 'Produto';
+    const nome = obterNomeProdutoEstoque(produto);
     const preco = `R$ ${(parseFloat(produto?.repasse) || 0).toFixed(2)}`;
     const janela = window.open('', '_blank', 'width=420,height=320');
     if (!janela) {
@@ -106,9 +119,10 @@ function renderizarEstoque() {
         : [];
 
     const filtered = lista.filter(p =>
-        (p.modelo || '').toLowerCase().includes(q) ||
-        (p.codigo || '').toLowerCase().includes(q) ||
-        ((p.compatibilidade || []).join(' ').toLowerCase().includes(q))
+        [p.modelo, p.marca, p.nome_peca, p.codigo, ...(p.compatibilidade || [])]
+            .join(' ')
+            .toLowerCase()
+            .includes(q)
     );
 
     filtered.sort((a, b) => ((b.compra || 0) * (b.qtd || 0)) - ((a.compra || 0) * (a.qtd || 0)));
@@ -127,13 +141,14 @@ function renderizarEstoque() {
             const precoVenda = parseFloat(p.repasse) || 0;
             const imagensProduto = normalizarImagensProduto(p);
             const imagemPrincipal = imagensProduto[0] || '';
+            const nomeProduto = obterNomeProdutoEstoque(p);
 
             const badge = qtdAtual <= 2
                 ? `<span class="status-badge bg-red"><i class="ri-alarm-warning-line"></i>BAIXO (${qtdAtual})</span>`
                 : `<span class="status-badge bg-green"><i class="ri-checkbox-circle-line"></i>${qtdAtual} UN</span>`;
 
             const imagem = imagemPrincipal
-                ? `<img src="${imagemPrincipal}" alt="${p.modelo || 'Produto'}" style="width:56px;height:56px;object-fit:cover;border-radius:14px;border:1px solid var(--border-color);background:#fff;box-shadow:var(--shadow-sm);flex-shrink:0;">`
+                ? `<img src="${imagemPrincipal}" alt="${nomeProduto}" style="width:56px;height:56px;object-fit:cover;border-radius:14px;border:1px solid var(--border-color);background:#fff;box-shadow:var(--shadow-sm);flex-shrink:0;">`
                 : `<div style="width:56px;height:56px;border-radius:14px;border:1px dashed var(--border-color);display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-body);flex-shrink:0;"><i class="ri-image-line" style="font-size:20px;"></i></div>`;
 
             const compatibilidadeLista = Array.isArray(p.compatibilidade) ? p.compatibilidade : [];
@@ -146,7 +161,8 @@ function renderizarEstoque() {
                         <div style="display:flex; align-items:center; gap:12px; min-width:240px;">
                             ${imagem}
                             <div style="min-width:0;">
-                                <div style="font-weight:800;color:var(--text-main);font-size:13px;line-height:1.2;margin-bottom:4px;">${p.modelo || '-'}</div>
+                                <div style="font-weight:800;color:var(--text-main);font-size:13px;line-height:1.2;margin-bottom:4px;">${nomeProduto}</div>
+                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Marca: ${p.marca || 'Não informada'}</div>
                                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                     <span style="font-size:10px;font-weight:800;color:var(--primary);background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${p.codigo || 'S/C'}</span>
                                     ${imagensProduto.length > 0 ? `<span style="font-size:10px;font-weight:800;color:#1d4ed8;background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${imagensProduto.length} foto(s)</span>` : ''}
@@ -174,7 +190,7 @@ function renderizarEstoque() {
 
     const faltas = lista
         .filter(i => (parseInt(i.qtd) || 0) <= 2)
-        .map(i => `• ${i.modelo} (Atual: ${parseInt(i.qtd) || 0})`)
+        .map(i => `• ${obterNomeProdutoEstoque(i)} (Atual: ${parseInt(i.qtd) || 0})`)
         .join('\n');
 
     const reposicao = document.getElementById('lista-reposicao-txt');
@@ -208,6 +224,8 @@ function toggleFormCadastro() {
 function limparFormEstoque() {
     const ids = [
         'edit-id',
+        'marca',
+        'nome-peca',
         'modelo',
         'codigo',
         'qtd',
@@ -215,7 +233,10 @@ function limparFormEstoque() {
         'taxa_envio',
         'repasse',
         'imagem',
-        'imagem-url'
+        'imagem-url',
+        'loc-corredor',
+        'loc-caixa',
+        'loc-prateleira'
     ];
 
     ids.forEach(id => {
@@ -249,6 +270,7 @@ function limparFormEstoque() {
     if (titulo) titulo.innerText = 'Novo produto';
     if (btn) btn.innerHTML = '<i class="ri-save-3-line"></i> Salvar produto';
 
+    atualizarModeloProduto();
     atualizarSugestaoPreco(0);
     atualizarModoProduto('Novo cadastro');
 }
@@ -278,6 +300,15 @@ function atualizarModoProduto(texto) {
     if (label) {
         label.innerText = texto;
     }
+}
+
+function atualizarModeloProduto() {
+    const marca = document.getElementById('marca')?.value?.trim() || '';
+    const nomePeca = document.getElementById('nome-peca')?.value?.trim() || '';
+    const modelo = [marca, nomePeca].filter(Boolean).join(' ').trim();
+    const campoModelo = document.getElementById('modelo');
+    if (campoModelo) campoModelo.value = modelo;
+    return modelo;
 }
 
 // =========================
@@ -435,7 +466,7 @@ function renderizarModalProdutoDetalhes() {
         <div style="display:grid; grid-template-columns:minmax(0,1.1fr) minmax(280px,0.9fr); gap:20px; align-items:start;">
             <div>
                 <div style="border:1px solid var(--border-color); border-radius:18px; overflow:hidden; background:var(--bg-body); min-height:320px; display:flex; align-items:center; justify-content:center;">
-                    ${imagemAtual ? `<img src="${imagemAtual}" alt="${produtoModalAtual.modelo || 'Produto'}" style="width:100%; max-height:420px; object-fit:contain; display:block;">` : `<div style="color:var(--text-muted); text-align:center; padding:32px;"><i class="ri-image-line" style="font-size:42px;"></i><div style="margin-top:10px; font-weight:700;">Produto sem imagens</div></div>`}
+                    ${imagemAtual ? `<img src="${imagemAtual}" alt="${obterNomeProdutoEstoque(produtoModalAtual)}" style="width:100%; max-height:420px; object-fit:contain; display:block;">` : `<div style="color:var(--text-muted); text-align:center; padding:32px;"><i class="ri-image-line" style="font-size:42px;"></i><div style="margin-top:10px; font-weight:700;">Produto sem imagens</div></div>`}
                 </div>
                 <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(74px,1fr)); gap:10px; margin-top:12px;">
                     ${imagens.map((img, index) => `<button type="button" onclick="selecionarImagemProdutoModal(${index})" style="padding:0; border:${index === indiceImagemProdutoModal ? '2px solid var(--primary)' : '1px solid var(--border-color)'}; border-radius:14px; overflow:hidden; background:#fff; cursor:pointer; height:74px;"><img src="${img}" alt="Miniatura ${index + 1}" style="width:100%; height:100%; object-fit:cover; display:block;"></button>`).join('')}
@@ -446,16 +477,17 @@ function renderizarModalProdutoDetalhes() {
                     <span style="font-size:11px; font-weight:800; color:var(--primary); background:rgba(16,185,129,0.10); border:1px solid rgba(16,185,129,0.15); padding:5px 10px; border-radius:999px;">${produtoModalAtual.codigo || 'Sem código'}</span>
                     <span style="font-size:11px; font-weight:800; color:#1d4ed8; background:rgba(59,130,246,0.10); border:1px solid rgba(59,130,246,0.15); padding:5px 10px; border-radius:999px;">${imagens.length} foto(s)</span>
                 </div>
-                <h2 style="margin:0 0 14px 0; font-size:24px; line-height:1.1; color:var(--text-main);">${produtoModalAtual.modelo || 'Produto'}</h2>
+                <h2 style="margin:0 0 8px 0; font-size:24px; line-height:1.1; color:var(--text-main);">${obterNomeProdutoEstoque(produtoModalAtual)}</h2>
+                <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Marca: ${produtoModalAtual.marca || 'Não informada'}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px;">
                     <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Quantidade</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">${parseInt(produtoModalAtual.qtd) || 0}</div></div>
                     <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Preço</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.repasse) || 0).toFixed(2)}</div></div>
                     <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Custo</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.compra) || 0).toFixed(2)}</div></div>
                     <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Envio</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.taxa_envio) || 0).toFixed(2)}</div></div>
                 </div>
-                <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;"><button type="button" class="btn btn-secondary" onclick="imprimirEtiquetaProduto(produtoModalAtual)"><i class="ri-barcode-line"></i> Imprimir etiqueta</button></div><div style="padding:16px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-body);">
+                <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;"><button type="button" class="btn btn-secondary" onclick="imprimirEtiquetaProduto(produtoModalAtual)"><i class="ri-barcode-line"></i> Imprimir etiqueta</button><button type="button" class="btn btn-secondary" onclick="transferirLocalizacaoProduto(produtoModalAtual.id)"><i class="ri-route-line"></i> Transferir localização</button></div><div style="padding:16px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-body);">
                     <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">Compatibilidade</div>
-                    <div style="font-size:14px; color:var(--text-main); line-height:1.5;">${compatibilidade}</div>
+                    <div style="font-size:14px; color:var(--text-main); line-height:1.5;">${compatibilidade}</div><div style="margin-top:14px; font-size:13px; color:var(--text-muted);"><b>Localização:</b> ${produtoModalAtual.localizacao?.corredor || '--'} ${produtoModalAtual.localizacao?.caixa || '--'} ${produtoModalAtual.localizacao?.prateleira || '--'}</div>
                 </div>
             </div>
         </div>
@@ -488,9 +520,14 @@ async function salvarProduto() {
     const imagemUrl = document.getElementById('imagem-url')?.value?.trim() || '';
     const imagensFinal = normalizarListaImagens(imagensProdutoTemp.length ? imagensProdutoTemp : [imagemBase64Temp, imagemManual, imagemUrl]);
     const imagemPrincipal = imagensFinal[0] || '';
+    const marca = document.getElementById('marca')?.value?.trim() || '';
+    const nomePeca = document.getElementById('nome-peca')?.value?.trim() || '';
+    const modelo = atualizarModeloProduto();
 
     const produto = {
-        modelo: document.getElementById('modelo')?.value?.trim() || '',
+        marca: marca,
+        nome_peca: nomePeca,
+        modelo: modelo,
         codigo: document.getElementById('codigo')?.value?.trim() || '',
         qtd: parseInt(document.getElementById('qtd')?.value) || 0,
         compra: parseFloat(document.getElementById('compra')?.value) || 0,
@@ -499,24 +536,29 @@ async function salvarProduto() {
         compatibilidade: motoArr,
         imagem: imagemPrincipal,
         imagens: imagensFinal,
+        localizacao: {
+            corredor: document.getElementById('loc-corredor')?.value?.trim() || '',
+            caixa: document.getElementById('loc-caixa')?.value?.trim() || '',
+            prateleira: document.getElementById('loc-prateleira')?.value?.trim() || ''
+        },
         timestamp: Date.now()
     };
 
-    if (!produto.modelo) {
-        return alert('Nome do produto é obrigatório.');
+    if (!produto.nome_peca) {
+        return alert('Nome da peça é obrigatório.');
     }
 
     try {
         if (id) {
             await db.collection('estoque_kell').doc(id).update(produto);
             if (typeof registrarAuditoria === 'function') {
-                registrarAuditoria('ESTOQUE', id, 'EDICAO', { modelo: produto.modelo });
+                registrarAuditoria('ESTOQUE', id, 'EDICAO', { modelo: produto.modelo, marca: produto.marca, nome_peca: produto.nome_peca });
             }
             Toastify({ text: 'Produto atualizado com sucesso!', style: { background: 'var(--primary)' } }).showToast();
         } else {
             const doc = await db.collection('estoque_kell').add(produto);
             if (typeof registrarAuditoria === 'function') {
-                registrarAuditoria('ESTOQUE', doc.id, 'CRIACAO', { modelo: produto.modelo });
+                registrarAuditoria('ESTOQUE', doc.id, 'CRIACAO', { modelo: produto.modelo, marca: produto.marca, nome_peca: produto.nome_peca });
             }
             Toastify({ text: 'Produto salvo com sucesso!', style: { background: 'var(--primary)' } }).showToast();
         }
@@ -539,12 +581,17 @@ function carregarParaEdicao(p) {
     }
 
     document.getElementById('edit-id').value = p.id || '';
-    document.getElementById('modelo').value = p.modelo || '';
+    document.getElementById('marca').value = p.marca || '';
+    document.getElementById('nome-peca').value = p.nome_peca || '';
+    document.getElementById('modelo').value = p.modelo || obterNomeProdutoEstoque(p);
     document.getElementById('codigo').value = p.codigo || '';
     document.getElementById('qtd').value = p.qtd || 0;
     document.getElementById('compra').value = p.compra || 0;
     document.getElementById('taxa_envio').value = p.taxa_envio || 0;
     document.getElementById('repasse').value = p.repasse || 0;
+    document.getElementById('loc-corredor').value = p.localizacao?.corredor || '';
+    document.getElementById('loc-caixa').value = p.localizacao?.caixa || '';
+    document.getElementById('loc-prateleira').value = p.localizacao?.prateleira || '';
 
     const imagemCampo = document.getElementById('imagem');
     const imagemUrl = document.getElementById('imagem-url');
@@ -564,6 +611,8 @@ function carregarParaEdicao(p) {
     document.querySelectorAll('.moto-check').forEach(c => {
         c.checked = (p.compatibilidade || []).includes(c.value);
     });
+
+    atualizarModeloProduto();
 
     const titulo = document.getElementById('form-cadastro-titulo');
     const btn = document.getElementById('btn-salvar-produto');
@@ -621,4 +670,51 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
+
+
+
+
+
+function renderizarCatalogo() {
+    const grid = document.getElementById('catalogo-grid');
+    if (!grid) return;
+    const busca = (document.getElementById('catalogo-busca')?.value || '').toLowerCase().trim();
+    const lista = Array.isArray(cacheEstoque) ? [...cacheEstoque] : [];
+    const filtrada = lista.filter(p => {
+        const texto = [p.modelo, p.marca, p.nome_peca, p.codigo, ...(p.compatibilidade || [])].join(' ').toLowerCase();
+        return texto.includes(busca);
+    });
+    grid.innerHTML = filtrada.map(p => {
+        const imagens = normalizarImagensProduto(p);
+        const imagem = imagens[0] || '';
+        const nomeProduto = obterNomeProdutoEstoque(p);
+        return `<div class="card" style="padding:16px; border-radius:18px; cursor:pointer;" onclick="abrirModalProdutoDetalhesPorId('${p.id}')"><div style="height:180px; border-radius:14px; overflow:hidden; background:var(--bg-body); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">${imagem ? `<img src="${imagem}" alt="${nomeProduto}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="ri-image-line" style="font-size:36px; color:var(--text-muted);"></i>`}</div><div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">Marca: ${p.marca || 'Não informada'}</div><div style="font-size:15px; font-weight:800; color:var(--text-main); margin-bottom:6px;">${nomeProduto}</div><div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Código: ${p.codigo || 'Sem código'}</div><div style="font-size:22px; font-weight:800; color:var(--primary); margin-bottom:10px;">R$ ${(parseFloat(p.repasse) || 0).toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); line-height:1.5;">${(p.compatibilidade || []).slice(0, 3).join(', ') || 'Sem aplicação informada'}</div><div style="margin-top:12px; font-size:12px; font-weight:700; color:var(--primary);">Toque para ver mais detalhes</div></div>`;
+    }).join('');
+    if (!filtrada.length) {
+        grid.innerHTML = '<div class="card" style="padding:24px; text-align:center; color:var(--text-muted);">Nenhum produto encontrado no catálogo.</div>';
+    }
+}
+
+async function transferirLocalizacaoProduto(id) {
+    const produto = (cacheEstoque || []).find(item => item.id === id);
+    if (!produto) return alert('Produto não encontrado.');
+
+    const corredor = prompt('Novo corredor:', produto.localizacao?.corredor || '');
+    if (corredor === null) return;
+    const caixa = prompt('Nova caixa:', produto.localizacao?.caixa || '');
+    if (caixa === null) return;
+    const prateleira = prompt('Nova prateleira:', produto.localizacao?.prateleira || '');
+    if (prateleira === null) return;
+
+    await db.collection('estoque_kell').doc(id).update({
+        localizacao: {
+            corredor: String(corredor || '').trim(),
+            caixa: String(caixa || '').trim(),
+            prateleira: String(prateleira || '').trim()
+        },
+        transferencia_em: Date.now()
+    });
+
+    Toastify({ text: 'Localização atualizada!', style: { background: 'var(--primary)' } }).showToast();
+}
 
