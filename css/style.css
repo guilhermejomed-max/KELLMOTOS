@@ -576,14 +576,18 @@ tbody tr:hover { background: rgba(16, 185, 129, 0.03); transform: scale(1.002); 
         background: white !important;
         color: black !important;
     }
-    #modal-relatorio, #modal-relatorio * { visibility: visible; }
-    #modal-relatorio {
+    #modal-relatorio, #modal-relatorio *,
+    #modal-extrato, #modal-extrato *,
+    #modal-orcamento, #modal-orcamento * { visibility: visible; }
+    #modal-relatorio,
+    #modal-extrato,
+    #modal-orcamento {
         position: fixed; left: 0; top: 0; width: 100%; height: 100%;
         margin: 0; padding: 0; background: white !important;
         z-index: 99999; display: block !important; backdrop-filter: none !important;
     }
     .modal-content { box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; position: absolute; top: 0; left: 0; padding: 0 !important; margin: 0 !important; overflow: visible !important; }
-    #relatorio-preview-box { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
+    #relatorio-preview-box, #extrato-visualizacao, #orcamento-visualizacao { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
     .modal-header, .modal-footer, .no-print { display: none !important; }
     ::-webkit-scrollbar { display: none; }
 }
@@ -614,6 +618,16 @@ tbody tr:hover { background: rgba(16, 185, 129, 0.03); transform: scale(1.002); 
     border: none !important;
 }
 #extrato-visualizacao th, #extrato-visualizacao td {
+    padding: 6px 4px !important;
+}
+
+#orcamento-visualizacao table {
+    min-width: 0 !important;
+    width: 100% !important;
+    table-layout: fixed;
+    border: none !important;
+}
+#orcamento-visualizacao th, #orcamento-visualizacao td {
     padding: 6px 4px !important;
 }
 

@@ -1,6 +1,7 @@
 ﻿let vendaPendente = null;
 let itemEcoPendente = null;
 let carrinhoVenda = [];
+let orcamentoAtualId = null;
 
 function obterNomeProdutoVenda(produto) {
     if (!produto) return 'Produto';
@@ -514,20 +515,143 @@ function imprimirOrcamento(id) {
     const orcamento = (cacheVendas || []).find(item => item.id === id && item.tipo === 'ORCAMENTO');
     if (!orcamento) return alert('Orçamento não encontrado.');
 
+    orcamentoAtualId = id;
     const itens = normalizarItensDocumento(orcamento);
     const htmlItens = itens.map(item => `
-        <tr>
-            <td style="padding:8px 0; border-bottom:1px solid #ddd;">${item.nome}</td>
-            <td style="padding:8px 0; border-bottom:1px solid #ddd; text-align:center;">${item.qtd}</td>
-            <td style="padding:8px 0; border-bottom:1px solid #ddd; text-align:right;">R$ ${parseFloat(item.total || 0).toFixed(2)}</td>
+        <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:6px; font-size:11px; color:#334155;">${item.nome}</td>
+            <td style="padding:6px; text-align:center; font-size:11px;">${item.qtd}</td>
+            <td style="padding:6px; text-align:right; font-size:11px;">R$ <span class="blur-sensitive">${parseFloat(item.unitario || 0).toFixed(2)}</span></td>
+            <td style="padding:6px; text-align:right; font-size:11px; font-weight:bold;">R$ <span class="blur-sensitive">${parseFloat(item.total || 0).toFixed(2)}</span></td>
         </tr>
     `).join('');
+    const status = orcamento.status || 'ABERTO';
+    const statusBadge = status === 'VENDIDO'
+        ? `<span style="color:#059669; font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; font-size:10px;">VENDIDO</span>`
+        : `<span style="color:#dc2626; font-weight:bold; background:#fee2e2; padding:2px 6px; border-radius:4px; font-size:10px;">ABERTO</span>`;
 
-    const janela = window.open('', '_blank', 'width=900,height=700');
-    if (!janela) return alert('Não foi possível abrir a janela de impressão.');
+    document.getElementById('orcamento-visualizacao').innerHTML = `
+        <div style="padding:20px; font-family:'Plus Jakarta Sans', sans-serif; width:100%; box-sizing:border-box;">
+            <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #0f172a; padding-bottom:15px;">
+                <h2 style="margin:0; color:#0f172a; font-size:22px; text-transform:uppercase; letter-spacing:-0.5px;">${configEmpresa.nome}</h2>
+                <div style="font-size:11px; color:#64748b; margin-top:5px; line-height:1.4;">
+                    ${configEmpresa.endereco ? configEmpresa.endereco + ' • ' : ''}
+                    CNPJ: ${configEmpresa.cnpj || 'Não Informado'}<br>
+                    Tel: ${configEmpresa.telefone || 'Não Informado'}
+                </div>
+                <div style="margin-top:10px; font-weight:800; font-size:12px; color:#0f172a; border:1px solid #0f172a; display:inline-block; padding:4px 12px; border-radius:20px; text-transform:uppercase;">
+                    Orçamento de Venda
+                </div>
+            </div>
 
-    janela.document.write(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Orçamento ${orcamento.numero || ''}</title><style>body{font-family:Arial,sans-serif;background:#fff;color:#111;margin:0;padding:32px}h1,h2,p{margin:0}table{width:100%;border-collapse:collapse;margin-top:18px}.box{border:1px solid #ddd;border-radius:12px;padding:18px;margin-bottom:18px}.muted{color:#666;font-size:13px}.total{font-size:24px;font-weight:800;text-align:right;margin-top:18px}.footer{margin-top:22px;font-size:13px;color:#444;white-space:pre-wrap}</style></head><body><div class="box"><h1>${configEmpresa.nome || 'KELL MOTOS'}</h1><p class="muted">${configEmpresa.endereco || ''}</p><p class="muted">Telefone: ${configEmpresa.telefone || ''}</p></div><div class="box"><h2>Orçamento ${orcamento.numero || ''}</h2><p class="muted">Cliente: ${orcamento.cliente || 'Consumidor'}</p><p class="muted">Data: ${orcamento.data || ''} ${orcamento.hora || ''}</p><p class="muted">Validade: ${orcamento.validade || 'Não informada'}</p></div><table><thead><tr><th style="text-align:left;">Produto</th><th>Qtd</th><th style="text-align:right;">Total</th></tr></thead><tbody>${htmlItens}</tbody></table><div class="total">Total: R$ ${parseFloat(orcamento.venda || 0).toFixed(2)}</div><div class="footer">${orcamento.observacao ? `Observação: ${orcamento.observacao}` : ''}</div><script>window.onload=function(){setTimeout(function(){window.print();},150);};<\/script></body></html>`);
-    janela.document.close();
+            <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:20px;">
+                <table style="width:100%; font-size:11px; border-collapse:collapse;">
+                    <tr>
+                        <td style="color:#64748b; font-weight:bold; width:100px; padding-bottom:4px;">ORÇAMENTO:</td>
+                        <td style="font-weight:bold; color:#0f172a; font-size:13px; padding-bottom:4px;">${orcamento.numero || '---'}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#64748b; font-weight:bold; padding-bottom:4px;">CLIENTE:</td>
+                        <td style="color:#334155; padding-bottom:4px;">${orcamento.cliente || 'Consumidor'}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#64748b; font-weight:bold; padding-bottom:4px;">EMISSÃO:</td>
+                        <td style="color:#334155; padding-bottom:4px;">${orcamento.data || '--'} ${orcamento.hora || ''}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#64748b; font-weight:bold; padding-bottom:4px;">PAGAMENTO:</td>
+                        <td style="color:#334155; padding-bottom:4px;">${orcamento.pagamento || 'Não informado'}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#64748b; font-weight:bold;">VALIDADE:</td>
+                        <td style="color:#334155;">${orcamento.validade ? orcamento.validade.split('-').reverse().join('/') : 'Não informada'}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
+                <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Total de itens</small>
+                    <div style="font-size:12px; font-weight:800; color:#334155;">${itens.reduce((acc, item) => acc + (parseInt(item.qtd) || 0), 0)}</div>
+                </div>
+                <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Valor do orçamento</small>
+                    <div style="font-size:12px; font-weight:800; color:#334155;">R$ <span class="blur-sensitive">${parseFloat(orcamento.venda || 0).toFixed(2)}</span></div>
+                </div>
+                <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Status</small>
+                    <div style="font-size:12px; font-weight:800; color:#334155;">${statusBadge}</div>
+                </div>
+            </div>
+
+            <table style="width:100%; border-collapse: collapse; font-size:11px;">
+                <thead>
+                    <tr style="background:#f1f5f9; color:#475569; border-top:1px solid #cbd5e1; border-bottom:1px solid #cbd5e1;">
+                        <th style="padding:8px; text-align:left;">Descrição / Serviço</th>
+                        <th style="padding:8px; text-align:center; width:15%;">Qtd</th>
+                        <th style="padding:8px; text-align:right; width:20%;">Unitário</th>
+                        <th style="padding:8px; text-align:right; width:20%;">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${htmlItens || '<tr><td colspan="4" style="text-align:center; padding:15px; font-style:italic; color:#94a3b8;">Nenhum item no orçamento.</td></tr>'}
+                </tbody>
+            </table>
+
+            <div style="margin-top:18px; display:flex; justify-content:flex-end;">
+                <div style="min-width:260px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:14px;">
+                    <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b; margin-bottom:8px;">
+                        <span>Total</span>
+                        <strong style="color:#0f172a;">R$ <span class="blur-sensitive">${parseFloat(orcamento.venda || 0).toFixed(2)}</span></strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b;">
+                        <span>Pagamento</span>
+                        <strong style="color:#0f172a;">${orcamento.pagamento || 'Não informado'}</strong>
+                    </div>
+                </div>
+            </div>
+
+            ${orcamento.observacao ? `
+                <div style="margin-top:20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #cbd5e1;">
+                    <div style="color:#64748b; font-weight:bold; font-size:11px; margin-bottom:8px;">OBSERVAÇÃO:</div>
+                    <div style="font-size:11px; color:#334155; line-height:1.6;">${orcamento.observacao}</div>
+                </div>
+            ` : ''}
+
+            <div style="margin-top:30px; page-break-inside: avoid;">
+                <p style="font-size:9px; text-align:justify; color:#64748b; line-height:1.4; margin-bottom:30px; border-top:1px solid #e2e8f0; padding-top:10px;">
+                    Este orçamento é uma proposta comercial e pode sofrer alteração de preço, prazo ou disponibilidade até a confirmação da venda.
+                </p>
+
+                <div style="display:flex; justify-content:center; margin-top:10px;">
+                    <div style="text-align:center; width:70%;">
+                        <div style="border-top:1px dashed #0f172a; margin-bottom:5px;"></div>
+                        <span style="font-size:11px; font-weight:bold; color:#0f172a; text-transform:uppercase;">${orcamento.cliente || 'Consumidor'}</span><br>
+                        <span style="font-size:9px; color:#64748b;">Assinatura do Cliente / Responsável</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:5px; text-align:center; font-size:8px; color:#94a3b8;">
+                Documento emitido em ${new Date().toLocaleString('pt-BR')} pelo Sistema KELL MOTOS PRO
+            </div>
+        </div>
+    `;
+
+    document.getElementById('modal-orcamento').style.display = 'flex';
+}
+
+function baixarOrcamentoPDF() {
+    if (!orcamentoAtualId) return;
+    const el = document.getElementById('orcamento-visualizacao');
+    const opt = {
+        margin: 5,
+        filename: `Orcamento_${orcamentoAtualId}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().from(el).set(opt).save();
 }
 
 async function excluirOrcamento(id) {
@@ -572,24 +696,28 @@ function renderizarVendas() {
 
 function renderizarOrcamentos() {
     const tbody = document.getElementById('corpo-orcamentos');
-    if (!tbody) return;
+    const historico = document.getElementById('corpo-historico-orcamentos');
+    if (!tbody || !historico) return;
 
     const lista = (typeof cacheVendas !== 'undefined' ? cacheVendas : []).filter(v => v.tipo === 'ORCAMENTO').slice(0, 50);
+    const emAberto = lista.filter(v => (v.status || 'ABERTO') !== 'VENDIDO');
+    const historicoLista = lista.filter(v => (v.status || 'ABERTO') === 'VENDIDO');
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum orçamento cadastrado.</td></tr>';
+        historico.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:18px; color:var(--text-muted);">Sem histórico de orçamentos.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = lista.map(o => {
+    tbody.innerHTML = emAberto.length ? emAberto.map(o => {
         const valor = parseFloat(o.venda || 0).toFixed(2);
         const status = o.status || 'ABERTO';
-        const badgeColor = status === 'VENDIDO' ? 'bg-green' : 'bg-yellow';
+        const badgeColor = 'bg-red';
         const resumo = o.peca || resumoItensVenda(normalizarItensDocumento(o));
         const validade = o.validade ? `Validade: ${o.validade.split('-').reverse().join('/')}` : 'Sem validade';
         return `<tr>
-            <td><b style="color:var(--primary)">${o.numero || '---'}</b></td>
-            <td>${o.cliente || 'Consumidor'}</td>
-            <td><div>${resumo}</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${validade}</div></td>
+            <td onclick="imprimirOrcamento('${o.id}')" style="cursor:pointer;"><b style="color:var(--primary)">${o.numero || '---'}</b></td>
+            <td onclick="imprimirOrcamento('${o.id}')" style="cursor:pointer;">${o.cliente || 'Consumidor'}</td>
+            <td onclick="imprimirOrcamento('${o.id}')" style="cursor:pointer;"><div>${resumo}</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${validade}</div></td>
             <td>R$ ${valor}</td>
             <td><span class="status-badge ${badgeColor}">${status}</span></td>
             <td style="text-align:right; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
@@ -600,7 +728,15 @@ function renderizarOrcamentos() {
                 ${typeof userNivel !== 'undefined' && userNivel === 'SENIOR' ? `<button class="btn btn-sm btn-danger" onclick="excluirOrcamento('${o.id}')"><i class="ri-delete-bin-line"></i></button>` : ''}
             </td>
         </tr>`;
-    }).join('');
+    }).join('') : '<tr><td colspan="6" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum orçamento em aberto.</td></tr>';
+
+    historico.innerHTML = historicoLista.length ? historicoLista.map(o => `
+        <tr>
+            <td onclick="imprimirOrcamento('${o.id}')" style="cursor:pointer;"><b>${o.numero || '---'}</b> - ${o.cliente || 'Consumidor'}</td>
+            <td>${o.validade ? o.validade.split('-').reverse().join('/') : 'Sem validade'}</td>
+            <td align="right"><button class="btn btn-sm btn-secondary" onclick="imprimirOrcamento('${o.id}')">Ver Histórico</button></td>
+        </tr>
+    `).join('') : '<tr><td colspan="3" style="text-align:center; padding:18px; color:var(--text-muted);">Sem histórico de orçamentos.</td></tr>';
 }
 
 function gerarCupom(v) {
