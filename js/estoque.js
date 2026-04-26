@@ -31,6 +31,54 @@ function obterNomeProdutoEstoque(produto) {
     return partes.join(' ') || produto.modelo || 'Produto';
 }
 
+function obterLocalCadastradoPorId(id) {
+    return Array.isArray(cacheLocais) ? cacheLocais.find(local => local.id === id) : null;
+}
+
+function obterLocalizacaoProduto(produto) {
+    const localCadastrado = obterLocalCadastradoPorId(produto?.localizacao?.localId);
+    if (localCadastrado) return localCadastrado;
+    const localizacao = produto?.localizacao || {};
+    return {
+        id: localizacao.localId || '',
+        rua: localizacao.rua || localizacao.corredor || '',
+        local: localizacao.local || localizacao.posicao || localizacao.caixa || '',
+        posicao: localizacao.local || localizacao.posicao || localizacao.caixa || ''
+    };
+}
+
+function textoLocalizacaoProduto(produto) {
+    const local = obterLocalizacaoProduto(produto);
+    if (typeof obterTextoLocal === 'function') return obterTextoLocal(local);
+    return [local.rua, local.local || local.posicao].filter(Boolean).join(' • ') || 'Sem local';
+}
+
+function atualizarSelectLocaisProduto() {
+    const selects = [
+        document.getElementById('loc-cadastrado'),
+        document.getElementById('filtro-local-inventario')
+    ].filter(Boolean);
+    const locais = Array.isArray(cacheLocais) ? [...cacheLocais] : [];
+    locais.sort((a, b) => textoLocalizacaoProduto({ localizacao: { localId: a.id } }).localeCompare(textoLocalizacaoProduto({ localizacao: { localId: b.id } }), 'pt-BR'));
+
+    selects.forEach(select => {
+        const valorAtual = select.value;
+        const primeiraOpcao = select.id === 'filtro-local-inventario' ? 'Todos os locais' : 'Selecionar local cadastrado';
+        select.innerHTML = `<option value="">${primeiraOpcao}</option>` + locais.map(local => `<option value="${local.id}">${obterTextoLocal(local)}</option>`).join('');
+        select.value = valorAtual;
+    });
+}
+
+function aplicarLocalSelecionadoProduto() {
+    const select = document.getElementById('loc-cadastrado');
+    const local = obterLocalCadastradoPorId(select?.value || '');
+    if (!local) return;
+    const rua = document.getElementById('loc-corredor');
+    const localCampo = document.getElementById('loc-caixa');
+    if (rua) rua.value = local.rua || '';
+    if (localCampo) localCampo.value = local.local || local.posicao || '';
+}
+
 function abrirVendaProdutoEstoque(id) {
     const produto = obterProdutoEstoque(id);
     if (produto && typeof abrirVenda === 'function') abrirVenda(id, produto);
@@ -119,7 +167,7 @@ function renderizarEstoque() {
         : [];
 
     const filtered = lista.filter(p =>
-        [p.modelo, p.marca, p.nome_peca, p.codigo, ...(p.compatibilidade || [])]
+        [p.modelo, p.marca, p.nome_peca, p.codigo, textoLocalizacaoProduto(p), ...(p.compatibilidade || [])]
             .join(' ')
             .toLowerCase()
             .includes(q)
@@ -163,6 +211,7 @@ function renderizarEstoque() {
                             <div style="min-width:0;">
                                 <div style="font-weight:800;color:var(--text-main);font-size:13px;line-height:1.2;margin-bottom:4px;">${nomeProduto}</div>
                                 <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Marca: ${p.marca || 'Não informada'}</div>
+                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;"><i class="ri-map-pin-2-line"></i> ${textoLocalizacaoProduto(p)}</div>
                                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                     <span style="font-size:10px;font-weight:800;color:var(--primary);background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${p.codigo || 'S/C'}</span>
                                     ${imagensProduto.length > 0 ? `<span style="font-size:10px;font-weight:800;color:#1d4ed8;background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${imagensProduto.length} foto(s)</span>` : ''}
@@ -197,6 +246,151 @@ function renderizarEstoque() {
     if (reposicao) {
         reposicao.innerText = faltas || 'Estoque OK.';
     }
+
+    if (document.getElementById('painel-inventario') && !document.getElementById('painel-inventario').classList.contains('hidden')) {
+        renderizarInventario();
+    }
+}
+
+function obterInventarioSalvo() {
+    try {
+        return JSON.parse(localStorage.getItem('inventario_kell') || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function salvarInventarioLocal(dados) {
+    localStorage.setItem('inventario_kell', JSON.stringify(dados || {}));
+}
+
+function toggleInventario() {
+    const painel = document.getElementById('painel-inventario');
+    if (!painel) return;
+    painel.classList.toggle('hidden');
+    if (!painel.classList.contains('hidden')) {
+        atualizarSelectLocaisProduto();
+        renderizarInventario();
+        painel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function atualizarContagemInventario(id, valor) {
+    const dados = obterInventarioSalvo();
+    if (valor === '') {
+        delete dados[id];
+    } else {
+        dados[id] = parseInt(valor) || 0;
+    }
+    salvarInventarioLocal(dados);
+    renderizarInventarioResumo();
+    const diffEl = document.getElementById(`inv-diff-${id}`);
+    const produto = obterProdutoEstoque(id);
+    if (diffEl && produto) {
+        const diff = (dados[id] ?? 0) - (parseInt(produto.qtd) || 0);
+        diffEl.innerText = diff > 0 ? `+${diff}` : String(diff);
+        diffEl.className = diff === 0 ? 'inventory-diff ok' : 'inventory-diff alert';
+    }
+}
+
+function renderizarInventarioResumo() {
+    const dados = obterInventarioSalvo();
+    const lista = Array.isArray(cacheEstoque) ? cacheEstoque : [];
+    const idsContados = Object.keys(dados).filter(id => lista.some(p => p.id === id));
+    const diferenca = idsContados.reduce((acc, id) => {
+        const produto = lista.find(p => p.id === id);
+        return acc + ((parseInt(dados[id]) || 0) - (parseInt(produto?.qtd) || 0));
+    }, 0);
+
+    if (document.getElementById('inv-total-itens')) document.getElementById('inv-total-itens').innerText = lista.length;
+    if (document.getElementById('inv-total-contados')) document.getElementById('inv-total-contados').innerText = idsContados.length;
+    if (document.getElementById('inv-diferenca-total')) document.getElementById('inv-diferenca-total').innerText = diferenca > 0 ? `+${diferenca}` : String(diferenca);
+}
+
+function renderizarInventario() {
+    const corpo = document.getElementById('corpo-inventario');
+    if (!corpo) return;
+    const busca = (document.getElementById('busca-inventario')?.value || '').toLowerCase().trim();
+    const filtroLocal = document.getElementById('filtro-local-inventario')?.value || '';
+    const dados = obterInventarioSalvo();
+    const lista = (Array.isArray(cacheEstoque) ? [...cacheEstoque] : []).filter(p => {
+        const texto = [obterNomeProdutoEstoque(p), p.codigo, textoLocalizacaoProduto(p)].join(' ').toLowerCase();
+        const bateBusca = texto.includes(busca);
+        const bateLocal = !filtroLocal || p.localizacao?.localId === filtroLocal;
+        return bateBusca && bateLocal;
+    });
+
+    lista.sort((a, b) => textoLocalizacaoProduto(a).localeCompare(textoLocalizacaoProduto(b), 'pt-BR') || obterNomeProdutoEstoque(a).localeCompare(obterNomeProdutoEstoque(b), 'pt-BR'));
+
+    corpo.innerHTML = lista.length ? lista.map(p => {
+        const sistema = parseInt(p.qtd) || 0;
+        const contado = Object.prototype.hasOwnProperty.call(dados, p.id) ? dados[p.id] : '';
+        const diff = contado === '' ? '' : ((parseInt(contado) || 0) - sistema);
+        return `
+            <tr>
+                <td><strong>${obterNomeProdutoEstoque(p)}</strong><br><small style="color:var(--text-muted);">${p.codigo || 'Sem código'}</small></td>
+                <td>${textoLocalizacaoProduto(p)}</td>
+                <td><span class="stock-pill ok">${sistema}</span></td>
+                <td><input type="number" class="input-style inventory-count-input" value="${contado}" placeholder="0" oninput="atualizarContagemInventario('${p.id}', this.value)"></td>
+                <td><span id="inv-diff-${p.id}" class="${diff === '' || diff === 0 ? 'inventory-diff ok' : 'inventory-diff alert'}">${diff === '' ? '--' : (diff > 0 ? `+${diff}` : diff)}</span></td>
+                <td><button class="btn btn-sm btn-secondary" onclick="limparContagemItemInventario('${p.id}')">Limpar</button></td>
+            </tr>
+        `;
+    }).join('') : '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">Nenhum item encontrado para a contagem.</td></tr>';
+
+    renderizarInventarioResumo();
+}
+
+function limparContagemItemInventario(id) {
+    const dados = obterInventarioSalvo();
+    delete dados[id];
+    salvarInventarioLocal(dados);
+    renderizarInventario();
+}
+
+async function aplicarInventarioContado() {
+    const dados = obterInventarioSalvo();
+    const ids = Object.keys(dados).filter(id => obterProdutoEstoque(id));
+    if (!ids.length) return alert('Nenhum item contado para aplicar.');
+
+    const confirmado = confirm(`Aplicar a contagem em ${ids.length} item(ns)? Isso vai substituir a quantidade atual no estoque.`);
+    if (!confirmado) return;
+
+    const operador = auth.currentUser ? auth.currentUser.email : 'SISTEMA';
+    const momento = Date.now();
+    for (let i = 0; i < ids.length; i += 450) {
+        const batch = db.batch();
+        ids.slice(i, i + 450).forEach(id => {
+            batch.update(db.collection('estoque_kell').doc(id), {
+                qtd: parseInt(dados[id]) || 0,
+                inventario_em: momento,
+                inventario_operador: operador
+            });
+        });
+        await batch.commit();
+    }
+    salvarInventarioLocal({});
+    renderizarInventario();
+    Toastify({ text: 'Inventário aplicado ao estoque!', style: { background: 'var(--primary)' } }).showToast();
+}
+
+function exportarInventarioCSV() {
+    const dados = obterInventarioSalvo();
+    const linhas = ['Produto;Codigo;Local;Sistema;Contado;Diferenca'];
+    (cacheEstoque || []).forEach(p => {
+        const sistema = parseInt(p.qtd) || 0;
+        const contado = Object.prototype.hasOwnProperty.call(dados, p.id) ? parseInt(dados[p.id]) || 0 : '';
+        const diff = contado === '' ? '' : contado - sistema;
+        linhas.push([obterNomeProdutoEstoque(p), p.codigo || '', textoLocalizacaoProduto(p), sistema, contado, diff].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'));
+    });
+
+    const blob = new Blob([linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventario-kell-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 // =========================
 // FORMULÃRIO
@@ -234,9 +428,9 @@ function limparFormEstoque() {
         'repasse',
         'imagem',
         'imagem-url',
+        'loc-cadastrado',
         'loc-corredor',
         'loc-caixa',
-        'loc-prateleira'
     ];
 
     ids.forEach(id => {
@@ -487,7 +681,7 @@ function renderizarModalProdutoDetalhes() {
                 </div>
                 <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;"><button type="button" class="btn btn-secondary" onclick="imprimirEtiquetaProduto(produtoModalAtual)"><i class="ri-barcode-line"></i> Imprimir etiqueta</button><button type="button" class="btn btn-secondary" onclick="transferirLocalizacaoProduto(produtoModalAtual.id)"><i class="ri-route-line"></i> Transferir localização</button></div><div style="padding:16px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-body);">
                     <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">Compatibilidade</div>
-                    <div style="font-size:14px; color:var(--text-main); line-height:1.5;">${compatibilidade}</div><div style="margin-top:14px; font-size:13px; color:var(--text-muted);"><b>Localização:</b> ${produtoModalAtual.localizacao?.corredor || '--'} ${produtoModalAtual.localizacao?.caixa || '--'} ${produtoModalAtual.localizacao?.prateleira || '--'}</div>
+                    <div style="font-size:14px; color:var(--text-main); line-height:1.5;">${compatibilidade}</div><div style="margin-top:14px; font-size:13px; color:var(--text-muted);"><b>Localização:</b> ${textoLocalizacaoProduto(produtoModalAtual)}</div>
                 </div>
             </div>
         </div>
@@ -523,6 +717,9 @@ async function salvarProduto() {
     const marca = document.getElementById('marca')?.value?.trim() || '';
     const nomePeca = document.getElementById('nome-peca')?.value?.trim() || '';
     const modelo = atualizarModeloProduto();
+    const localSelecionado = obterLocalCadastradoPorId(document.getElementById('loc-cadastrado')?.value || '');
+    const rua = document.getElementById('loc-corredor')?.value?.trim() || '';
+    const localFisico = document.getElementById('loc-caixa')?.value?.trim() || '';
 
     const produto = {
         marca: marca,
@@ -537,9 +734,13 @@ async function salvarProduto() {
         imagem: imagemPrincipal,
         imagens: imagensFinal,
         localizacao: {
-            corredor: document.getElementById('loc-corredor')?.value?.trim() || '',
-            caixa: document.getElementById('loc-caixa')?.value?.trim() || '',
-            prateleira: document.getElementById('loc-prateleira')?.value?.trim() || ''
+            localId: localSelecionado?.id || '',
+            rua,
+            local: localFisico,
+            posicao: localFisico,
+            corredor: rua,
+            caixa: localFisico,
+            prateleira: ''
         },
         timestamp: Date.now()
     };
@@ -589,9 +790,10 @@ function carregarParaEdicao(p) {
     document.getElementById('compra').value = p.compra || 0;
     document.getElementById('taxa_envio').value = p.taxa_envio || 0;
     document.getElementById('repasse').value = p.repasse || 0;
-    document.getElementById('loc-corredor').value = p.localizacao?.corredor || '';
-    document.getElementById('loc-caixa').value = p.localizacao?.caixa || '';
-    document.getElementById('loc-prateleira').value = p.localizacao?.prateleira || '';
+    const localizacaoProduto = obterLocalizacaoProduto(p);
+    document.getElementById('loc-cadastrado').value = p.localizacao?.localId || '';
+    document.getElementById('loc-corredor').value = localizacaoProduto.rua || '';
+    document.getElementById('loc-caixa').value = localizacaoProduto.local || localizacaoProduto.posicao || '';
 
     const imagemCampo = document.getElementById('imagem');
     const imagemUrl = document.getElementById('imagem-url');
@@ -639,6 +841,7 @@ function enviarWhatsapp() {
 document.addEventListener('DOMContentLoaded', function () {
     configurarUploadImagemProduto();
     renderizarPreviewImagensProduto();
+    atualizarSelectLocaisProduto();
 
     const compra = document.getElementById('compra');
     if (compra && !compra.dataset.bindedSugestao) {
@@ -699,18 +902,21 @@ async function transferirLocalizacaoProduto(id) {
     const produto = (cacheEstoque || []).find(item => item.id === id);
     if (!produto) return alert('Produto não encontrado.');
 
-    const corredor = prompt('Novo corredor:', produto.localizacao?.corredor || '');
-    if (corredor === null) return;
-    const caixa = prompt('Nova caixa:', produto.localizacao?.caixa || '');
-    if (caixa === null) return;
-    const prateleira = prompt('Nova prateleira:', produto.localizacao?.prateleira || '');
-    if (prateleira === null) return;
+    const localAtual = obterLocalizacaoProduto(produto);
+    const rua = prompt('Nova rua:', localAtual.rua || '');
+    if (rua === null) return;
+    const localFisico = prompt('Novo local:', localAtual.local || localAtual.posicao || '');
+    if (localFisico === null) return;
 
     await db.collection('estoque_kell').doc(id).update({
         localizacao: {
-            corredor: String(corredor || '').trim(),
-            caixa: String(caixa || '').trim(),
-            prateleira: String(prateleira || '').trim()
+            localId: '',
+            rua: String(rua || '').trim(),
+            local: String(localFisico || '').trim(),
+            posicao: String(localFisico || '').trim(),
+            corredor: String(rua || '').trim(),
+            caixa: String(localFisico || '').trim(),
+            prateleira: ''
         },
         transferencia_em: Date.now()
     });

@@ -19,6 +19,57 @@ async function salvarMoto() {
     document.getElementById('nova-moto').value=''; 
 }
 
+function obterTextoLocal(local) {
+    if (!local) return 'Sem local';
+    const partes = [local.rua, local.local || local.posicao]
+        .map(v => String(v || '').trim())
+        .filter(Boolean);
+    return partes.join(' • ') || 'Sem local';
+}
+
+function renderizarListaLocais() {
+    const tbody = document.getElementById('lista-locais-gerencia');
+    if (!tbody) return;
+
+    const locais = Array.isArray(cacheLocais) ? [...cacheLocais] : [];
+    locais.sort((a, b) => obterTextoLocal(a).localeCompare(obterTextoLocal(b), 'pt-BR'));
+
+    tbody.innerHTML = locais.length ? locais.map(local => `
+        <tr>
+            <td>${local.rua || '--'}</td>
+            <td>${local.local || local.posicao || '--'}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-sm btn-danger" onclick="removerLocalEstoque('${local.id}')"><i class="ri-delete-bin-line"></i></button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="3" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum local cadastrado.</td></tr>';
+}
+
+async function salvarLocalEstoque() {
+    const rua = document.getElementById('local-rua')?.value?.trim() || '';
+    const local = document.getElementById('local-posicao')?.value?.trim() || '';
+
+    if (!rua || !local) return alert('Informe a rua e o local.');
+
+    await db.collection('locais_kell').add({
+        rua,
+        local,
+        posicao: local,
+        criado_em: Date.now()
+    });
+
+    document.getElementById('local-rua').value = '';
+    document.getElementById('local-posicao').value = '';
+    Toastify({ text: 'Local cadastrado!', style: { background: 'var(--primary)' } }).showToast();
+}
+
+async function removerLocalEstoque(id) {
+    const local = (cacheLocais || []).find(item => item.id === id);
+    if (!confirm(`Remover o local ${obterTextoLocal(local)}? Os produtos já vinculados manterão o texto do local.`)) return;
+    await db.collection('locais_kell').doc(id).delete();
+    Toastify({ text: 'Local removido.', style: { background: 'var(--primary)' } }).showToast();
+}
+
 function renderizarListaFuncionarios() { 
     if(document.getElementById('lista-funcionarios')) {
         document.getElementById('lista-funcionarios').innerHTML = cacheFuncionarios.map(f=>`<div class="moto-item" style="justify-content:space-between"><span>${f.nome} <small style="color:var(--primary)">(${f.nivel})</small><br><small style="font-size:9px; color:#999">${f.email}</small></span><button class="btn btn-sm btn-danger" onclick="db.collection('funcionarios_kell').doc('${f.id}').delete()">Remover</button></div>`).join(''); 

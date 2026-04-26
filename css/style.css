@@ -830,6 +830,75 @@ tbody tr:hover { background: rgba(16, 185, 129, 0.03); transform: scale(1.002); 
     background:rgba(16,185,129,0.12);
     color:#047857;
 }
+.inventory-card h3 {
+    margin: 10px 0 0;
+    font-size: 24px;
+    letter-spacing: -0.6px;
+}
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.inventory-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.inventory-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+.inventory-summary > div {
+    background: var(--bg-body);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 14px;
+}
+.inventory-summary span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+.inventory-summary strong {
+    color: var(--text-main);
+    font-size: 24px;
+}
+.inventory-table table {
+    min-width: 920px;
+}
+.inventory-count-input {
+    width: 110px;
+    margin: 0;
+    text-align: center;
+    font-weight: 800;
+}
+.inventory-diff {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 46px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 12px;
+}
+.inventory-diff.ok {
+    background: rgba(16,185,129,0.12);
+    color: #047857;
+}
+.inventory-diff.alert {
+    background: rgba(239,68,68,0.12);
+    color: #b91c1c;
+}
 .price-stack {
     display:flex;
     flex-direction:column;
@@ -860,6 +929,9 @@ body.dark-mode .product-app-tag {
     .form-actions-row { flex-direction:column; }
     .product-form-grid,
     .product-highlight-row { grid-template-columns:1fr; }
+    .inventory-header,
+    .inventory-actions { flex-direction:column; align-items:stretch; }
+    .inventory-summary { grid-template-columns:1fr; }
     .product-cell { align-items:flex-start; }
     .product-thumb { width:50px; height:50px; }
 }

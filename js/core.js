@@ -23,7 +23,7 @@ const EMAILS_MESTRES = [
 ];
 
 // --- ESTADO GLOBAL ---
-let cacheEstoque=[], cacheVendas=[], cacheMotos=[], cacheFuncionarios=[], cacheClientes=[], cacheDespesas=[];
+let cacheEstoque=[], cacheVendas=[], cacheMotos=[], cacheFuncionarios=[], cacheClientes=[], cacheDespesas=[], cacheLocais=[];
 let userNivel = 'SENIOR'; 
 let configEmpresa = {
     nome: "KELL MOTOS", 
@@ -235,11 +235,18 @@ function iniciarApp() {
     });
 
     db.collection("motos_kell").onSnapshot(s => { cacheMotos = s.docs.map(d=>({id:d.id,...d.data()})); if(window.renderizarListaMotos) renderizarListaMotos(); });
+    db.collection("locais_kell").onSnapshot(s => {
+        cacheLocais = s.docs.map(d=>({id:d.id,...d.data()}));
+        if(window.renderizarListaLocais) renderizarListaLocais();
+        if(window.atualizarSelectLocaisProduto) atualizarSelectLocaisProduto();
+        if(window.renderizarEstoque) renderizarEstoque();
+        if(window.renderizarInventario) renderizarInventario();
+    });
     db.collection("funcionarios_kell").onSnapshot(s => { cacheFuncionarios = s.docs.map(d=>({id:d.id,...d.data()})); if(window.renderizarListaFuncionarios) renderizarListaFuncionarios(); });
 }
 
 function mudarTab(t) {
-    const tabs = ['estoque','vendas','catalogo','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos'];
+    const tabs = ['estoque','vendas','catalogo','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos','locais'];
     tabs.forEach(id => {
         const el = document.getElementById('sec-' + id);
         if(el) el.classList.add('hidden');
@@ -271,7 +278,7 @@ function mudarTab(t) {
 }
 
 function aplicarPermissoes() {
-    const todosMenus = ['m-dash','m-estoque','m-vendas','m-catalogo','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos'];
+    const todosMenus = ['m-dash','m-estoque','m-vendas','m-catalogo','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos','m-locais'];
     const btnConfig = document.getElementById('btn-config-geral');
 
     // 1. Esconde tudo
@@ -288,11 +295,11 @@ function aplicarPermissoes() {
         if(btnConfig) btnConfig.style.display = 'block';
     } 
     else if (userNivel === 'PLENO') {
-        permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-catalogo', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos'];
+        permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-catalogo', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos', 'm-locais'];
     } 
     else { 
         // JUNIOR
-        permitidos = ['m-estoque', 'm-vendas', 'm-catalogo', 'm-motos'];
+        permitidos = ['m-estoque', 'm-vendas', 'm-catalogo', 'm-motos', 'm-locais'];
     }
 
     // 3. Exibe os permitidos

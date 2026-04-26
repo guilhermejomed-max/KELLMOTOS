@@ -252,6 +252,7 @@
             <div class="menu-category">Gestão</div>
             <div class="menu-item" id="m-funcionarios" onclick="mudarTab('funcionarios')"><i class="ri-team-line"></i> <span>Equipe</span></div>
             <div class="menu-item" id="m-motos" onclick="mudarTab('motos')"><i class="ri-motorbike-line"></i> <span>Motos</span></div>
+            <div class="menu-item" id="m-locais" onclick="mudarTab('locais')"><i class="ri-map-pin-2-line"></i> <span>Locais</span></div>
         </nav>
         <div class="sidebar-footer"><button class="btn btn-secondary" style="width:100%; color:var(--danger)" onclick="fazerLogout()">Sair</button></div>
     </aside>
@@ -411,9 +412,35 @@
         </div>
 
         <div id="sec-estoque" class="hidden">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; gap:12px; flex-wrap:wrap; margin-bottom: 20px;">
                 <input type="text" id="busca" class="input-style" style="max-width:400px;" placeholder="Buscar..." onkeyup="renderizarEstoque()">
-                <button class="btn btn-primary" onclick="toggleFormCadastro()">+ Novo</button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="toggleInventario()"><i class="ri-clipboard-line"></i> Modo inventário</button>
+                    <button class="btn btn-primary" onclick="toggleFormCadastro()">+ Novo</button>
+                </div>
+            </div>
+            <div class="card hidden inventory-card" id="painel-inventario">
+                <div class="inventory-header">
+                    <div>
+                        <span class="section-chip">Modo inventário</span>
+                        <h3>Contagem física do estoque</h3>
+                        <p class="section-subtitle">Conte os itens, veja a diferença contra o sistema e aplique os ajustes quando terminar.</p>
+                    </div>
+                    <div class="inventory-actions">
+                        <button class="btn btn-secondary" onclick="exportarInventarioCSV()"><i class="ri-file-download-line"></i> Exportar</button>
+                        <button class="btn btn-primary" onclick="aplicarInventarioContado()"><i class="ri-check-double-line"></i> Aplicar contagem</button>
+                    </div>
+                </div>
+                <div class="inventory-summary">
+                    <div><span>Itens</span><strong id="inv-total-itens">0</strong></div>
+                    <div><span>Contados</span><strong id="inv-total-contados">0</strong></div>
+                    <div><span>Diferença</span><strong id="inv-diferenca-total">0</strong></div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin:16px 0;">
+                    <input id="busca-inventario" class="input-style" placeholder="Buscar no inventário..." style="max-width:360px; margin:0;" oninput="renderizarInventario()">
+                    <select id="filtro-local-inventario" class="input-style" style="max-width:280px; margin:0;" onchange="renderizarInventario()"></select>
+                </div>
+                <div class="table-container inventory-table"><table><thead><tr><th>Produto</th><th>Local</th><th>Sistema</th><th>Contagem</th><th>Diferença</th><th>Ações</th></tr></thead><tbody id="corpo-inventario"></tbody></table></div>
             </div>
             <div class="card hidden product-form-card" id="form-cadastro">
                 <div class="form-card-header">
@@ -483,17 +510,17 @@
                             </div>
                         </div>
                         <div class="product-form-grid" style="margin-top:14px;">
-                            <div>
-                                <label class="input-label">Corredor</label>
-                                <input id="loc-corredor" class="input-style" placeholder="Ex: A1">
+                            <div style="grid-column:1 / -1;">
+                                <label class="input-label">Local cadastrado</label>
+                                <select id="loc-cadastrado" class="input-style" onchange="aplicarLocalSelecionadoProduto()"></select>
                             </div>
                             <div>
-                                <label class="input-label">Caixa</label>
-                                <input id="loc-caixa" class="input-style" placeholder="Ex: CX-03">
+                                <label class="input-label">Rua</label>
+                                <input id="loc-corredor" class="input-style" placeholder="Ex: Rua 1">
                             </div>
                             <div>
-                                <label class="input-label">Prateleira</label>
-                                <input id="loc-prateleira" class="input-style" placeholder="Ex: P2">
+                                <label class="input-label">Local</label>
+                                <input id="loc-caixa" class="input-style" placeholder="Ex: A-1">
                             </div>
                         </div>
                         <div class="product-highlight-row">
@@ -667,6 +694,30 @@
             <div class="card">
                 <div style="display:flex; gap:10px;"><input id="nova-moto" class="input-style" placeholder="Modelo"><button class="btn btn-primary" onclick="salvarMoto()">Adicionar</button></div>
                 <div id="lista-motos-gerencia" style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
+            </div>
+        </div>
+
+        <div id="sec-locais" class="hidden">
+            <div class="card">
+                <div class="form-card-header">
+                    <div>
+                        <span class="section-chip">Cadastro de local</span>
+                        <h3 style="margin:10px 0 0;">Ruas e locais</h3>
+                        <p class="section-subtitle">Cadastre os endereços físicos onde as peças ficam no estoque.</p>
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div class="field-group">
+                        <label class="field-label">Rua</label>
+                        <input id="local-rua" class="input-style" placeholder="Ex: Rua 1">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Local</label>
+                        <input id="local-posicao" class="input-style" placeholder="Ex: A-1">
+                    </div>
+                </div>
+                <button class="btn btn-primary" style="margin-top:12px;" onclick="salvarLocalEstoque()"><i class="ri-save-3-line"></i> Salvar local</button>
+                <div class="table-container" style="margin-top:20px;"><table><thead><tr><th>Rua</th><th>Local</th><th style="text-align:right">Ações</th></tr></thead><tbody id="lista-locais-gerencia"></tbody></table></div>
             </div>
         </div>
     </main>
