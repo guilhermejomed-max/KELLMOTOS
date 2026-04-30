@@ -243,6 +243,7 @@
             <div class="menu-item" id="m-dash" onclick="mudarTab('dash')"><i class="ri-dashboard-3-line"></i> <span>Dashboard</span></div>
             <div class="menu-item active" id="m-estoque" onclick="mudarTab('estoque')"><i class="ri-box-3-line"></i> <span>Estoque</span></div>
             <div class="menu-item" id="m-vendas" onclick="mudarTab('vendas')"><i class="ri-shopping-cart-2-line"></i> <span>PDV / Vendas</span></div>
+            <div class="menu-item" id="m-servicos" onclick="mudarTab('servicos')"><i class="ri-tools-line"></i> <span>Serviços / O.S.</span></div>
             <div class="menu-item" id="m-catalogo" onclick="mudarTab('catalogo')"><i class="ri-smartphone-line"></i> <span>Catálogo</span></div>
             <div class="menu-item" id="m-reposicao" onclick="mudarTab('reposicao')"><i class="ri-clipboard-line"></i> <span>Reposição</span></div>
             <div class="menu-category">Financeiro</div>
@@ -251,8 +252,8 @@
             <div class="menu-item" id="m-despesas" onclick="mudarTab('despesas')"><i class="ri-money-dollar-circle-line"></i> <span>Despesas</span></div>
             <div class="menu-category">Gestão</div>
             <div class="menu-item" id="m-funcionarios" onclick="mudarTab('funcionarios')"><i class="ri-team-line"></i> <span>Equipe</span></div>
+            <div class="menu-item" id="m-auditoria" onclick="mudarTab('auditoria')"><i class="ri-shield-check-line"></i> <span>Auditoria</span></div>
             <div class="menu-item" id="m-motos" onclick="mudarTab('motos')"><i class="ri-motorbike-line"></i> <span>Motos</span></div>
-            <div class="menu-item" id="m-locais" onclick="mudarTab('locais')"><i class="ri-map-pin-2-line"></i> <span>Locais</span></div>
         </nav>
         <div class="sidebar-footer"><button class="btn btn-secondary" style="width:100%; color:var(--danger)" onclick="fazerLogout()">Sair</button></div>
     </aside>
@@ -370,6 +371,16 @@
                             <div id="dash-alertas-lista"></div>
                         </div>
                     </div>
+
+                    <div class="card dashboard-list-card">
+                        <div class="dashboard-card-header">
+                            <div>
+                                <h3>Curva ABC e oportunidades</h3>
+                                <p>Peças que sustentam o lucro e itens que pedem ação.</p>
+                            </div>
+                        </div>
+                        <div id="dash-abc-lista"></div>
+                    </div>
                 </div>
 
                 <div class="dashboard-side-column">
@@ -388,6 +399,14 @@
                             <div class="dashboard-mini-stat">
                                 <span>Itens em baixo estoque</span>
                                 <strong id="kpi-baixo-estoque-side">0</strong>
+                            </div>
+                            <div class="dashboard-mini-stat">
+                                <span>Revisões próximas</span>
+                                <strong id="kpi-revisoes-proximas">0</strong>
+                            </div>
+                            <div class="dashboard-mini-stat">
+                                <span>Base pendente</span>
+                                <strong id="kpi-base-pendente">0</strong>
                             </div>
                         </div>
                         <button class="btn btn-secondary" style="width:100%; margin-top:20px;" onclick="gerarRelatorioGeral()"><i class="ri-file-chart-line"></i> Baixar DRE PDF</button>
@@ -412,35 +431,49 @@
         </div>
 
         <div id="sec-estoque" class="hidden">
-            <div style="display: flex; justify-content: space-between; gap:12px; flex-wrap:wrap; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
                 <input type="text" id="busca" class="input-style" style="max-width:400px;" placeholder="Buscar..." onkeyup="renderizarEstoque()">
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button class="btn btn-secondary" onclick="toggleInventario()"><i class="ri-clipboard-line"></i> Modo inventário</button>
+                    <button class="btn btn-secondary" onclick="exportarEstoqueCSV()">Exportar estoque</button>
                     <button class="btn btn-primary" onclick="toggleFormCadastro()">+ Novo</button>
                 </div>
             </div>
-            <div class="card hidden inventory-card" id="painel-inventario">
-                <div class="inventory-header">
+            <div class="card" style="margin-bottom:20px;">
+                <div class="dashboard-card-header">
                     <div>
-                        <span class="section-chip">Modo inventário</span>
-                        <h3>Contagem física do estoque</h3>
-                        <p class="section-subtitle">Conte os itens, veja a diferença contra o sistema e aplique os ajustes quando terminar.</p>
-                    </div>
-                    <div class="inventory-actions">
-                        <button class="btn btn-secondary" onclick="exportarInventarioCSV()"><i class="ri-file-download-line"></i> Exportar</button>
-                        <button class="btn btn-primary" onclick="aplicarInventarioContado()"><i class="ri-check-double-line"></i> Aplicar contagem</button>
+                        <h3>Inventário e movimentação</h3>
+                        <p>Conte o físico, ajuste com motivo e acompanhe o histórico do item.</p>
                     </div>
                 </div>
-                <div class="inventory-summary">
-                    <div><span>Itens</span><strong id="inv-total-itens">0</strong></div>
-                    <div><span>Contados</span><strong id="inv-total-contados">0</strong></div>
-                    <div><span>Diferença</span><strong id="inv-diferenca-total">0</strong></div>
+                <div class="form-grid-4">
+                    <div>
+                        <label class="input-label">Produto</label>
+                        <input id="inventario-busca-produto" class="input-style" placeholder="Código, nome ou moto" oninput="buscarProdutoInventario()">
+                        <div id="inventario-sugestoes" class="modal-subtle-box" style="display:none; margin-top:8px; max-height:180px; overflow:auto;"></div>
+                    </div>
+                    <div>
+                        <label class="input-label">Qtd no sistema</label>
+                        <input id="inventario-qtd-sistema" class="input-style" readonly placeholder="0">
+                    </div>
+                    <div>
+                        <label class="input-label">Qtd contada</label>
+                        <input id="inventario-qtd-fisica" type="number" class="input-style" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="input-label">Motivo do ajuste</label>
+                        <input id="inventario-motivo" class="input-style" placeholder="Ex: contagem física, perda, correção">
+                    </div>
                 </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin:16px 0;">
-                    <input id="busca-inventario" class="input-style" placeholder="Buscar no inventário..." style="max-width:360px; margin:0;" oninput="renderizarInventario()">
-                    <select id="filtro-local-inventario" class="input-style" style="max-width:280px; margin:0;" onchange="renderizarInventario()"></select>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px;">
+                    <div id="inventario-resumo" style="font-size:13px; color:var(--text-muted);">Selecione um produto para começar a contagem.</div>
+                    <button class="btn btn-primary" onclick="aplicarContagemInventario()">Aplicar contagem</button>
                 </div>
-                <div class="table-container inventory-table"><table><thead><tr><th>Produto</th><th>Local</th><th>Sistema</th><th>Contagem</th><th>Diferença</th><th>Ações</th></tr></thead><tbody id="corpo-inventario"></tbody></table></div>
+                <div class="table-container" style="margin-top:16px;">
+                    <table>
+                        <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Motivo</th><th>Impacto</th></tr></thead>
+                        <tbody id="corpo-historico-movimentacoes"></tbody>
+                    </table>
+                </div>
             </div>
             <div class="card hidden product-form-card" id="form-cadastro">
                 <div class="form-card-header">
@@ -510,18 +543,48 @@
                             </div>
                         </div>
                         <div class="product-form-grid" style="margin-top:14px;">
-                            <div style="grid-column:1 / -1;">
-                                <label class="input-label">Local cadastrado</label>
-                                <select id="loc-cadastrado" class="input-style" onchange="aplicarLocalSelecionadoProduto()"></select>
+                            <div>
+                                <label class="input-label">Corredor</label>
+                                <input id="loc-corredor" class="input-style" placeholder="Ex: A1">
                             </div>
                             <div>
-                                <label class="input-label">Rua</label>
-                                <input id="loc-corredor" class="input-style" placeholder="Ex: Rua 1">
+                                <label class="input-label">Caixa</label>
+                                <input id="loc-caixa" class="input-style" placeholder="Ex: CX-03">
                             </div>
                             <div>
-                                <label class="input-label">Local</label>
-                                <input id="loc-caixa" class="input-style" placeholder="Ex: A-1">
+                                <label class="input-label">Prateleira</label>
+                                <input id="loc-prateleira" class="input-style" placeholder="Ex: P2">
                             </div>
+                        </div>
+                        <div class="product-form-grid" style="margin-top:14px;">
+                            <div>
+                                <label class="input-label">Fornecedor</label>
+                                <input id="fornecedor" class="input-style" placeholder="Ex: Mahle / Distribuidor">
+                            </div>
+                            <div>
+                                <label class="input-label">Intervalo de revisão (dias)</label>
+                                <input id="intervalo-revisao-dias" type="number" class="input-style" placeholder="Ex: 180">
+                            </div>
+                            <div>
+                                <label class="input-label">Status da base de troca</label>
+                                <select id="status-base-troca" class="input-style">
+                                    <option value="NORMAL">Normal</option>
+                                    <option value="BASE_PENDENTE">Base de troca pendente</option>
+                                    <option value="AGUARDANDO_RETIFICA">Aguardando retífica</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px; padding-top:24px;">
+                                <input id="exige-base-troca" type="checkbox" style="width:18px; height:18px;">
+                                <label for="exige-base-troca" style="font-size:13px; color:var(--text-main); font-weight:700;">Exige devolução da peça velha</label>
+                            </div>
+                        </div>
+                        <div style="margin-top:14px;">
+                            <label class="input-label">Produtos relacionados</label>
+                            <input id="sugestoes-produto" class="input-style" placeholder="Informe códigos separados por vírgula para sugerir no balcão e catálogo">
+                        </div>
+                        <div>
+                            <label class="input-label">Observação de revisão</label>
+                            <textarea id="observacao-revisao" class="input-style" placeholder="Ex: troca de óleo, junta, retentores ou revisão preventiva" style="min-height:78px; resize:vertical;"></textarea>
                         </div>
                         <div class="product-highlight-row">
                             <div class="product-highlight-card">
@@ -557,18 +620,34 @@
                 <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">Use `Enter` no código para abrir quantidade ou `Balcão rápido` para adicionar 1 unidade direto ao carrinho.</div>
             </div>
             <div class="card" style="margin-bottom:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Consulta balcão</h3>
+                        <p>Consulte preço, estoque, localização e aplicação sem abrir uma venda.</p>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input id="consulta-balcao-input" class="input-style" placeholder="Digite código, nome ou moto" style="max-width:420px; margin:0;">
+                    <button class="btn btn-secondary" onclick="consultarProdutoBalcao()">Consultar</button>
+                    <button class="btn btn-secondary" onclick="abrirScannerCodigo('consulta')"><i class="ri-qr-scan-2-line"></i> Ler pela câmera</button>
+                </div>
+                <div id="consulta-balcao-resultado" class="modal-subtle-box" style="margin-top:14px; color:var(--text-muted);">Nenhuma consulta realizada ainda.</div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
                     <div>
                         <h3 style="margin:0;">Carrinho / Atendimento</h3>
                         <small style="color:var(--text-muted);">Adicione várias peças e finalize como venda ou orçamento.</small>
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" onclick="exportarVendasCSV()">Exportar vendas</button>
                         <button class="btn btn-secondary" onclick="limparCarrinhoVenda()">Limpar carrinho</button>
                         <button class="btn btn-primary" onclick="abrirModalCliente()">Fechar atendimento</button>
                     </div>
                 </div>
                 <div id="painel-carrinho-vazio" style="padding:18px; border:1px dashed var(--border-color); border-radius:16px; color:var(--text-muted); text-align:center;">Nenhum item no carrinho.</div>
                 <div class="table-container" id="painel-carrinho-tabela" style="margin-top:12px; display:none;"><table><thead><tr><th>Produto</th><th>Qtd</th><th>Unitário</th><th>Total</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-carrinho-venda"></tbody></table></div>
+                <div id="painel-sugestoes-carrinho" style="display:none; margin-top:16px;"></div>
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
                     <div style="font-size:13px; color:var(--text-muted);">Itens: <b id="total-itens-carrinho">0</b></div>
                     <div style="font-size:22px; font-weight:800; color:var(--primary);">Total: <span id="total-carrinho-venda">R$ 0,00</span></div>
@@ -588,6 +667,45 @@
             </div>
         </div>
 
+        <div id="sec-servicos" class="hidden">
+            <div class="card" style="margin-bottom:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Nova ordem de serviço</h3>
+                        <p>Registre entrada, diagnóstico, peças usadas e andamento da oficina.</p>
+                    </div>
+                </div>
+                <div class="form-grid-3">
+                    <input id="os-cliente" class="input-style" placeholder="Cliente">
+                    <input id="os-veiculo" class="input-style" placeholder="Moto / motor / veículo">
+                    <input id="os-placa" class="input-style" placeholder="Placa ou identificação">
+                    <input id="os-km" type="number" class="input-style" placeholder="KM atual">
+                    <input id="os-previsao" type="date" class="input-style">
+                    <select id="os-status" class="input-style">
+                        <option value="ABERTA">Aberta</option>
+                        <option value="EM_ANDAMENTO">Em andamento</option>
+                        <option value="AGUARDANDO_PECA">Aguardando peça</option>
+                        <option value="FINALIZADA">Finalizada</option>
+                    </select>
+                </div>
+                <textarea id="os-diagnostico" class="input-style" placeholder="Diagnóstico / problema relatado" style="min-height:90px; margin-top:12px;"></textarea>
+                <textarea id="os-servico" class="input-style" placeholder="Serviço executado / plano de ação" style="min-height:90px; margin-top:12px;"></textarea>
+                <input id="os-pecas" class="input-style" placeholder="Peças usadas ou sugeridas (separe por vírgula)" style="margin-top:12px;">
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
+                    <button class="btn btn-secondary" onclick="limparFormularioOS()">Limpar</button>
+                    <button class="btn btn-primary" onclick="salvarOrdemServico()">Salvar O.S.</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Nº</th><th>Cliente</th><th>Veículo</th><th>Status</th><th>Previsão</th><th style="text-align:right;">Ações</th></tr></thead>
+                        <tbody id="corpo-os"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <div id="sec-catalogo" class="hidden">
             <div class="card" style="margin-bottom:20px;">
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -599,6 +717,18 @@
         </div>
 
         <div id="sec-ecommerce" class="hidden">
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+                    <div>
+                        <h3 style="margin:0 0 6px 0;">Anúncios semi-automáticos</h3>
+                        <p style="margin:0; color:var(--text-muted); max-width:680px;">Gere um rascunho de anúncio com título, descrição, preço, estoque e fotos do produto. Você revisa tudo antes de publicar no marketplace.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <span class="status-badge bg-green">Modo seguro</span>
+                        <span class="status-badge" style="background:rgba(59,130,246,0.12); color:#1d4ed8;">Sem envio automático</span>
+                    </div>
+                </div>
+            </div>
             <div class="card" id="card-calc-eco" style="display:none;">
                 <h3 id="label-peca-eco"></h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
@@ -660,13 +790,41 @@
         <div id="sec-boleto" class="hidden">
             <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
                 <h3>Fiado / Boletos</h3>
-                <button class="btn btn-primary" onclick="toggleModalCadastroCliente()">+ Cliente</button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="exportarClientesCSV()">Exportar clientes</button>
+                    <button class="btn btn-primary" onclick="toggleModalCadastroCliente()">+ Cliente</button>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Lançamento manual no fiado</h3>
+                        <p>Escolha o cliente e informe item, quantidade e valor sem passar pela tela de vendas.</p>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:2fr 2fr 1fr 1fr; gap:10px; margin-top:14px;">
+                    <select id="boleto-manual-cliente" class="input-style"></select>
+                    <input id="boleto-manual-item" class="input-style" placeholder="Item / serviço">
+                    <input id="boleto-manual-qtd" type="number" min="1" step="1" class="input-style" placeholder="Qtd">
+                    <input id="boleto-manual-valor" type="number" min="0" step="0.01" class="input-style" placeholder="Valor unitário">
+                </div>
+                <button class="btn btn-primary" style="margin-top:12px;" onclick="registrarFiadoManual()">Lançar no fiado</button>
             </div>
             <div class="card">
                 <div class="table-container"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Dívida</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-boletos"></tbody></table></div>
             </div>
             <h3 style="margin-top:30px;">Histórico</h3>
             <div class="table-container"><table><tbody id="corpo-historico-pagamentos"></tbody></table></div>
+            <div class="card" style="margin-top:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Painel do cliente</h3>
+                        <p>Histórico completo de compras, revisões e próximos retornos.</p>
+                    </div>
+                </div>
+                <div id="painel-cliente-vazio" class="dashboard-empty-state">Selecione um cliente no fiado para abrir o painel detalhado.</div>
+                <div id="painel-cliente-detalhes" style="display:none;"></div>
+            </div>
         </div>
 
         <div id="sec-reposicao" class="hidden">
@@ -685,8 +843,41 @@
                     <input id="func-sobrenome" class="input-style" placeholder="Sobrenome">
                 </div>
                 <select id="func-nivel" class="input-style"><option value="JUNIOR">JUNIOR</option><option value="PLENO">PLENO</option><option value="SENIOR">SENIOR</option></select>
+                <div class="modal-section-title">Permissões por ação</div>
+                <div id="acoes-permissao-equipe" class="form-grid-3 modal-subtle-box" style="margin-top:10px;">
+                    <label><input type="checkbox" class="acao-permissao-check" value="ver_custo"> Ver custo</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="editar_preco"> Editar preço</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="excluir_orcamento"> Excluir orçamento</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="ajustar_estoque"> Ajustar estoque</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="publicar_anuncio"> Publicar anúncio</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="gerenciar_equipe"> Gerenciar equipe</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="ver_auditoria"> Ver auditoria</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="gerenciar_os"> Gerenciar O.S.</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="exportar_relatorios"> Exportar relatórios</label>
+                </div>
                 <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="salvarFuncionario()">Autorizar</button>
                 <div id="lista-funcionarios" style="margin-top:20px;"></div>
+            </div>
+        </div>
+
+        <div id="sec-auditoria" class="hidden">
+            <div class="card">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Auditoria do sistema</h3>
+                        <p>Quem alterou preço, estoque, cliente, orçamento e configurações.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <input id="auditoria-busca" class="input-style" placeholder="Buscar ação, usuário ou coleção" style="max-width:260px; margin:0;" oninput="renderizarAuditoria()">
+                        <button class="btn btn-secondary" onclick="exportarAuditoriaCSV()">Exportar CSV</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Data</th><th>Usuário</th><th>Coleção</th><th>Ação</th><th>Detalhes</th></tr></thead>
+                        <tbody id="corpo-auditoria"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -694,30 +885,6 @@
             <div class="card">
                 <div style="display:flex; gap:10px;"><input id="nova-moto" class="input-style" placeholder="Modelo"><button class="btn btn-primary" onclick="salvarMoto()">Adicionar</button></div>
                 <div id="lista-motos-gerencia" style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
-            </div>
-        </div>
-
-        <div id="sec-locais" class="hidden">
-            <div class="card">
-                <div class="form-card-header">
-                    <div>
-                        <span class="section-chip">Cadastro de local</span>
-                        <h3 style="margin:10px 0 0;">Ruas e locais</h3>
-                        <p class="section-subtitle">Cadastre os endereços físicos onde as peças ficam no estoque.</p>
-                    </div>
-                </div>
-                <div class="form-grid-2">
-                    <div class="field-group">
-                        <label class="field-label">Rua</label>
-                        <input id="local-rua" class="input-style" placeholder="Ex: Rua 1">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Local</label>
-                        <input id="local-posicao" class="input-style" placeholder="Ex: A-1">
-                    </div>
-                </div>
-                <button class="btn btn-primary" style="margin-top:12px;" onclick="salvarLocalEstoque()"><i class="ri-save-3-line"></i> Salvar local</button>
-                <div class="table-container" style="margin-top:20px;"><table><thead><tr><th>Rua</th><th>Local</th><th style="text-align:right">Ações</th></tr></thead><tbody id="lista-locais-gerencia"></tbody></table></div>
             </div>
         </div>
     </main>
@@ -733,15 +900,21 @@
 
     <div id="modal-scanner-codigo" class="modal"><div class="modal-content" style="max-width:540px;"><div class="modal-header">Leitor de código<button onclick="fecharScannerCodigo()">X</button></div><div class="modal-body"><div id="scanner-codigo-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Posicione o código de barras dentro da câmera.</div><div id="scanner-codigo-reader" style="width:100%; min-height:280px; border-radius:16px; overflow:hidden; background:#000;"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharScannerCodigo()">Fechar</button></div></div></div>    <div id="modal-qtd" class="modal"><div class="modal-content" style="max-width:300px;"><div class="modal-header"><span id="m-qtd-titulo">Qtd</span><button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="number" id="venda-qtd-input" class="input-style" value="1" style="font-size:24px; text-align:center;"><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="adicionarItemCarrinhoPendente()">Adicionar ao carrinho</button></div></div></div>
     
-    <div id="modal-cliente" class="modal"><div class="modal-content"><div class="modal-header">Venda / Orçamento<button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="text" id="cli-nome" class="input-style" placeholder="Cliente"><select id="cli-pgto" class="input-style" onchange="mostrarSelecaoCliente()"><option value="DINHEIRO">Dinheiro</option><option value="PIX">Pix</option><option value="CARTAO">Cartão</option><option value="BOLETO">Fiado</option></select><div id="selecao-cliente-boleto" style="display: none;"><select id="cli-boleto-select" class="input-style"></select></div><div style="display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px;"><div><label class="input-label">Validade do orçamento</label><input id="orc-validade" type="date" class="input-style"></div><div><label class="input-label">Observação</label><textarea id="orc-observacao" class="input-style" placeholder="Observação para o cliente ou detalhe interno" style="min-height:90px; resize:vertical;"></textarea></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="criarOrcamento()">Criar orçamento</button><button class="btn btn-primary" onclick="confirmarVenda()">Concluir venda</button></div></div></div>
+        <div id="modal-cliente" class="modal"><div class="modal-content"><div class="modal-header">Venda / Orçamento<button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="text" id="cli-nome" class="input-style" placeholder="Cliente"><select id="cli-pgto" class="input-style" onchange="mostrarSelecaoCliente()"><option value="DINHEIRO">Dinheiro</option><option value="PIX">Pix</option><option value="CARTAO">Cartão</option><option value="BOLETO">Fiado</option></select><div id="selecao-cliente-boleto" style="display: none;"><select id="cli-boleto-select" class="input-style" onchange="sincronizarClienteFiadoSelecionado()"></select></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;"><div><label class="input-label">KM atual</label><input id="motor-km-atual" type="number" class="input-style" placeholder="Opcional"></div><div><label class="input-label">Horas de uso</label><input id="motor-horas-atual" type="number" class="input-style" placeholder="Opcional"></div></div><div style="display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px;"><div><label class="input-label">Validade do orçamento</label><input id="orc-validade" type="date" class="input-style"></div><div><label class="input-label">Observação</label><textarea id="orc-observacao" class="input-style" placeholder="Observação para o cliente ou detalhe interno" style="min-height:90px; resize:vertical;"></textarea></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="criarOrcamento()">Criar orçamento</button><button class="btn btn-primary" onclick="confirmarVenda()">Concluir venda</button></div></div></div>
 
     <div id="modal-produto-detalhes" class="modal"><div class="modal-content" style="max-width:980px;"><div class="modal-header">Produto<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="produto-detalhes-conteudo"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Fechar</button></div></div></div>
 
     <div id="modal-cadastro-cliente" class="modal"><div class="modal-content"><div class="modal-header">Novo Cliente<button onclick="toggleModalCadastroCliente()">X</button></div><div class="modal-body"><input id="boleto-cliente-nome" class="input-style" placeholder="Nome"><input id="boleto-cliente-cpf" class="input-style" placeholder="CPF"><input id="boleto-cliente-tel" class="input-style" placeholder="Tel"><input id="boleto-cliente-end" class="input-style" placeholder="Endereço"></div><div class="modal-footer"><button class="btn btn-primary" onclick="cadastrarCliente()">Salvar</button></div></div></div>
 
+    <div id="modal-os" class="modal"><div class="modal-content" style="max-width:900px;"><div class="modal-header">Ordem de Serviço<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="os-visualizacao"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Fechar</button></div></div></div>
+
+    <div id="modal-perfil-funcionario" class="modal"><div class="modal-content" style="max-width:760px;"><div class="modal-header">Perfil do colaborador<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="perfil-funcionario-conteudo"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Fechar</button></div></div></div>
+
     <div id="modal-extrato" class="modal"><div class="modal-content" style="max-width:800px;"><div class="modal-header">Extrato<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="extrato-visualizacao"></div></div><div class="modal-footer"><button class="btn btn-info" onclick="window.print()">Imprimir</button><button class="btn btn-primary" onclick="baixarExtratoPDF()">Baixar PDF</button></div></div></div>
 
     <div id="modal-orcamento" class="modal"><div class="modal-content" style="max-width:800px;"><div class="modal-header">Orçamento<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="orcamento-visualizacao"></div></div><div class="modal-footer"><button class="btn btn-info" onclick="window.print()">Imprimir</button><button class="btn btn-primary" onclick="baixarOrcamentoPDF()">Baixar PDF</button></div></div></div>
+
+    <div id="modal-anuncio-produto" class="modal"><div class="modal-content" style="max-width:1100px;"><div class="modal-header">Gerar anúncio<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="anuncio-produto-conteudo"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="copiarResumoAnuncio()">Copiar resumo</button><button class="btn btn-primary" onclick="salvarRascunhoAnuncio()">Salvar rascunho</button></div></div></div>
 
     <div id="modal-relatorio" class="modal"><div class="modal-content" style="max-width:850px;"><div class="modal-header">DRE<button onclick="fecharModais()">X</button></div><div class="modal-body" id="relatorio-preview-box"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Fechar</button><button class="btn btn-primary" onclick="baixarRelatorioPDF()">Baixar PDF</button></div></div></div>
 

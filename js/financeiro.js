@@ -14,9 +14,6 @@ function obterNomeProdutoFinanceiro(produto) {
 // CLIENTES NO SELECT DO FIADO
 // =========================
 function atualizarSelectClientes() {
-    const select = document.getElementById('cli-boleto-select');
-    if (!select) return;
-
     const clientes = (typeof cacheClientes !== 'undefined' && Array.isArray(cacheClientes))
         ? [...cacheClientes]
         : [];
@@ -36,7 +33,15 @@ function atualizarSelectClientes() {
         html += `<option value="${c.id}">${nome}${cpf}${telefone}</option>`;
     });
 
-    select.innerHTML = html;
+    ['cli-boleto-select', 'boleto-manual-cliente'].forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const valorAtual = select.value || '';
+        select.innerHTML = html;
+        if (valorAtual && clientes.some(c => c.id === valorAtual)) {
+            select.value = valorAtual;
+        }
+    });
 }
 
 // =========================
@@ -46,7 +51,7 @@ function atualizarKPIs() {
     const hj = new Date().toLocaleDateString('pt-BR');
     let fat = 0, luc = 0, est = 0, vendasHoje = 0;
 
-    const vendas = (typeof cacheVendas !== 'undefined' && Array.isArray(cacheVendas)) ? cacheVendas.filter(v => v.tipo !== 'ORCAMENTO') : [];
+    const vendas = (typeof cacheVendas !== 'undefined' && Array.isArray(cacheVendas)) ? cacheVendas.filter(v => v.tipo !== 'ORCAMENTO' && v.tipo !== 'ORDEM_SERVICO') : [];
     const estoque = (typeof cacheEstoque !== 'undefined' && Array.isArray(cacheEstoque)) ? cacheEstoque : [];
     const clientes = (typeof cacheClientes !== 'undefined' && Array.isArray(cacheClientes)) ? cacheClientes : [];
 
@@ -58,10 +63,20 @@ function atualizarKPIs() {
         }
     });
 
-    estoque.forEach(p => est += ((parseFloat(p.compra) || 0) * (parseFloat(p.qtd) || 0)));
+    estoque.forEach(p => est += ((parseFloat(p.custo_medio ?? p.compra) || 0) * (parseFloat(p.qtd) || 0)));
     const ticketMedio = vendasHoje ? (fat / vendasHoje) : 0;
     const baixoEstoque = estoque.filter(p => (parseInt(p.qtd) || 0) <= 2);
     const clientesFiado = clientes.filter(c => (parseFloat(c.debito) || 0) > 0);
+    const basePendente = estoque.filter(p => {
+        const status = String(p.status_base_troca || 'NORMAL').toUpperCase();
+        return status === 'BASE_PENDENTE' || status === 'AGUARDANDO_RETIFICA';
+    });
+    const agora = Date.now();
+    const prazoRevisao = agora + (30 * 24 * 60 * 60 * 1000);
+    const revisoesProximas = vendas
+        .flatMap(v => Array.isArray(v.agenda_revisao) ? v.agenda_revisao.map(item => ({ ...item, cliente: v.cliente || 'Consumidor' })) : [])
+        .filter(item => item.proxima_revisao_ts && item.proxima_revisao_ts <= prazoRevisao)
+        .sort((a, b) => (a.proxima_revisao_ts || 0) - (b.proxima_revisao_ts || 0));
 
     if (document.getElementById('kpi-faturamento'))
         document.getElementById('kpi-faturamento').innerHTML =
@@ -90,6 +105,12 @@ function atualizarKPIs() {
 
     if (document.getElementById('kpi-clientes-fiado'))
         document.getElementById('kpi-clientes-fiado').innerText = clientesFiado.length;
+
+    if (document.getElementById('kpi-revisoes-proximas'))
+        document.getElementById('kpi-revisoes-proximas').innerText = revisoesProximas.length;
+
+    if (document.getElementById('kpi-base-pendente'))
+        document.getElementById('kpi-base-pendente').innerText = basePendente.length;
 
     if (document.getElementById('dash-resumo-data'))
         document.getElementById('dash-resumo-data').innerText = hj;
@@ -142,6 +163,20 @@ function atualizarKPIs() {
                 tipo: 'finance'
             });
         });
+        revisoesProximas.slice(0, 2).forEach(item => {
+            alertas.push({
+                titulo: item.cliente || 'Cliente',
+                detalhe: `Retorno previsto para ${item.proxima_revisao} • ${item.nome}`,
+                tipo: 'warning'
+            });
+        });
+        basePendente.slice(0, 2).forEach(item => {
+            alertas.push({
+                titulo: obterNomeProdutoFinanceiro(item),
+                detalhe: `Situação: ${item.status_base_troca === 'AGUARDANDO_RETIFICA' ? 'Aguardando retífica' : 'Base pendente'}`,
+                tipo: 'finance'
+            });
+        });
 
         alertasEl.innerHTML = alertas.length ? alertas.map(alerta => `
             <div class="dashboard-alert-item ${alerta.tipo}">
@@ -149,6 +184,67 @@ function atualizarKPIs() {
                 <span>${alerta.detalhe}</span>
             </div>
         `).join('') : '<div class="dashboard-empty-state">Nenhum alerta importante no momento.</div>';
+    }
+
+    const lucroPorProduto = {};
+    vendas.forEach(v => {
+        const itensVenda = Array.isArray(v.itens) && v.itens.length ? v.itens : [{
+            nome: v.peca || 'Item',
+            qtd: parseInt(v.qtd) || 1,
+            total: parseFloat(v.venda) || 0,
+            custo_unitario: ((parseFloat(v.venda) || 0) - (parseFloat(v.lucro) || 0)) / Math.max(parseInt(v.qtd) || 1, 1)
+        }];
+
+        itensVenda.forEach(item => {
+            const nome = item.nome || 'Item';
+            const qtd = parseInt(item.qtd) || 0;
+            const total = parseFloat(item.total) || 0;
+            const custoUnitario = parseFloat(item.custo_unitario) || 0;
+            const lucroItem = total - (qtd * custoUnitario);
+            if (!lucroPorProduto[nome]) lucroPorProduto[nome] = { lucro: 0, qtd: 0 };
+            lucroPorProduto[nome].lucro += lucroItem;
+            lucroPorProduto[nome].qtd += qtd;
+        });
+    });
+
+    const rankingLucro = Object.entries(lucroPorProduto).sort((a, b) => b[1].lucro - a[1].lucro);
+    const vendasRecentesPorProduto = {};
+    const limiteParado = agora - (180 * 24 * 60 * 60 * 1000);
+    vendas.forEach(v => {
+        const partesData = String(v.data || '').split('/');
+        const dataVendaTs = partesData.length === 3 ? new Date(partesData[2], partesData[1] - 1, partesData[0]).getTime() : 0;
+        const itensVenda = Array.isArray(v.itens) && v.itens.length ? v.itens : [{ nome: v.peca || 'Item', qtd: parseInt(v.qtd) || 1 }];
+        itensVenda.forEach(item => {
+            const chave = item.produtoId || item.id || item.codigo || item.nome;
+            if (dataVendaTs >= limiteParado) {
+                vendasRecentesPorProduto[chave] = (vendasRecentesPorProduto[chave] || 0) + (parseInt(item.qtd) || 0);
+            }
+        });
+    });
+    const itensParados = estoque.filter(item => {
+        const chave = item.id || item.codigo || item.modelo;
+        const temSaida = (vendasRecentesPorProduto[chave] || 0) > 0;
+        return !temSaida && (parseInt(item.qtd) || 0) > 0 && (parseInt(item.timestamp) || 0) < limiteParado;
+    });
+
+    const abcEl = document.getElementById('dash-abc-lista');
+    if (abcEl) {
+        const classeA = rankingLucro.slice(0, 3);
+        abcEl.innerHTML = `
+            ${classeA.length ? classeA.map((item, index) => `
+                <div class="dashboard-list-row">
+                    <span><b style="color:var(--primary)">A${index + 1}.</b> ${item[0]}</span>
+                    <span class="status-badge bg-green">R$ ${item[1].lucro.toFixed(2)}</span>
+                </div>
+            `).join('') : '<div class="dashboard-empty-state">Sem vendas suficientes para curva ABC.</div>'}
+            <div style="margin:14px 0 8px; font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Peças paradas há mais de 6 meses</div>
+            ${itensParados.slice(0, 3).map(item => `
+                <div class="dashboard-list-row">
+                    <span>${obterNomeProdutoFinanceiro(item)}</span>
+                    <span class="status-badge bg-red">Promover</span>
+                </div>
+            `).join('') || '<div class="dashboard-empty-state">Nenhum item parado crítico no momento.</div>'}
+        `;
     }
 }
 
@@ -169,7 +265,7 @@ function renderizarGraficos() {
 
     const labels = [];
     const dataValues = [];
-    const vendas = (typeof cacheVendas !== 'undefined' && Array.isArray(cacheVendas)) ? cacheVendas.filter(v => v.tipo !== 'ORCAMENTO') : [];
+    const vendas = (typeof cacheVendas !== 'undefined' && Array.isArray(cacheVendas)) ? cacheVendas.filter(v => v.tipo !== 'ORCAMENTO' && v.tipo !== 'ORDEM_SERVICO') : [];
 
     for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -219,6 +315,26 @@ function renderizarGraficos() {
     });
 }
 
+function normalizarTextoComparacao(valor) {
+    return String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+}
+
+function obterVendasDoCliente(id, nomeCliente = '') {
+    const nomeNormalizado = normalizarTextoComparacao(nomeCliente);
+    return (cacheVendas || []).filter(venda => {
+        if (venda.clienteId === id) return true;
+        if (venda.pagamento !== 'BOLETO') return false;
+        if (!venda.clienteId && nomeNormalizado) {
+            return normalizarTextoComparacao(venda.cliente) === nomeNormalizado;
+        }
+        return false;
+    });
+}
+
 // =========================
 // EXTRATO COMPLETO
 // =========================
@@ -227,7 +343,7 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
     const cl = cacheClientes.find(c => c.id === id);
     if (!cl) return;
 
-    let vendas = cacheVendas.filter(v => v.clienteId === id);
+    let vendas = obterVendasDoCliente(id, cl.nome);
 
     if (dataInicio || dataFim) {
         vendas = vendas.filter(v => {
@@ -435,7 +551,7 @@ function gerarRelatorioGeral() {
     let receitaBruta = 0, custosProdutos = 0, impostosTotal = 0, taxasPgtoTotal = 0, lucroLiquido = 0;
 
     if (typeof cacheVendas !== 'undefined') {
-        cacheVendas.forEach(v => {
+        cacheVendas.filter(v => v.tipo !== 'ORDEM_SERVICO').forEach(v => {
             const vendaVal = parseFloat(v.venda) || 0;
             const lucroVal = parseFloat(v.lucro) || 0;
 
@@ -499,7 +615,7 @@ function baixarRelatorioPDF() {
 // =========================
 function renderizarBoletos() {
     if (typeof cacheClientes === 'undefined') return;
-    const dev = cacheClientes.filter(c => c.debito > 0.01);
+    const dev = cacheClientes.filter(c => (parseFloat(c.debito) || 0) > 0.01);
 
     document.getElementById('corpo-boletos').innerHTML = dev.map(c => `
         <tr style="cursor:pointer; transition:0.2s;" onmouseover="this.style.background='var(--bg-body)'" onmouseout="this.style.background='transparent'">
@@ -508,22 +624,79 @@ function renderizarBoletos() {
                 <small style="color:var(--text-muted)">${c.telefone || ''}</small>
             </td>
             <td>${c.cpf || '--'}</td>
-            <td><span class="status-badge bg-red" style="font-size:12px;">R$ <span class="blur-sensitive">${c.debito.toFixed(2)}</span></span></td>
+            <td><span class="status-badge bg-red" style="font-size:12px;">R$ <span class="blur-sensitive">${(parseFloat(c.debito) || 0).toFixed(2)}</span></span></td>
             <td align="right">
+                <button class="btn btn-sm btn-secondary" onclick="abrirPainelCliente('${c.id}')">Painel</button>
                 <button class="btn btn-sm btn-secondary" onclick="abrirExtratoCompleto('${c.id}')"><i class="ri-file-list-3-line"></i></button>
                 <button class="btn btn-sm btn-primary" onclick="liquidarDebito('${c.id}')"><i class="ri-check-double-line"></i></button>
             </td>
         </tr>
     `).join('');
 
-    const hist = cacheClientes.filter(c => !c.debito || c.debito <= 0.01);
+    const hist = cacheClientes.filter(c => (parseFloat(c.debito) || 0) <= 0.01);
     document.getElementById('corpo-historico-pagamentos').innerHTML = hist.map(c => `
         <tr>
             <td onclick="abrirExtratoCompleto('${c.id}')"><b>${c.nome}</b></td>
             <td>${c.cpf || '--'}</td>
-            <td align="right"><button class="btn btn-sm btn-secondary" onclick="abrirExtratoCompleto('${c.id}')">Ver Histórico</button></td>
+            <td align="right"><button class="btn btn-sm btn-secondary" onclick="abrirPainelCliente('${c.id}')">Painel</button></td>
         </tr>
     `).join('');
+}
+
+function abrirPainelCliente(id) {
+    const cliente = (cacheClientes || []).find(item => item.id === id);
+    const box = document.getElementById('painel-cliente-detalhes');
+    const vazio = document.getElementById('painel-cliente-vazio');
+    if (!cliente || !box || !vazio) return;
+
+    const compras = obterVendasDoCliente(id, cliente.nome).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const totalComprado = compras.reduce((acc, item) => acc + (parseFloat(item.venda) || 0), 0);
+    const revisoes = compras.flatMap(v => Array.isArray(v.agenda_revisao) ? v.agenda_revisao : []).sort((a, b) => (a.proxima_revisao_ts || 0) - (b.proxima_revisao_ts || 0));
+    const ultimasPecas = compras.slice(0, 5).map(v => v.peca || 'Item');
+
+    vazio.style.display = 'none';
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div class="form-grid-3">
+            <div class="modal-subtle-box"><div class="modal-section-title">Cliente</div><div style="font-weight:800; color:var(--text-main);">${cliente.nome || '--'}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${cliente.telefone || 'Sem telefone'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Total comprado</div><div style="font-weight:800; color:var(--text-main);">R$ ${totalComprado.toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${compras.length} compra(s)</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Fiado atual</div><div style="font-weight:800; color:${(parseFloat(cliente.debito) || 0) > 0 ? '#b91c1c' : 'var(--text-main)'};">R$ ${(parseFloat(cliente.debito) || 0).toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">CPF: ${cliente.cpf || '--'}</div></div>
+        </div>
+        <div class="form-grid-2" style="margin-top:16px;">
+            <div class="modal-subtle-box">
+                <div class="modal-section-title">Próximas revisões</div>
+                ${revisoes.slice(0, 5).map(item => `<div class="dashboard-list-row"><span>${item.nome}</span><span class="status-badge bg-green">${item.proxima_revisao || '--'}</span></div>`).join('') || '<div class="dashboard-empty-state">Nenhuma revisão programada.</div>'}
+            </div>
+            <div class="modal-subtle-box">
+                <div class="modal-section-title">Últimas peças / serviços</div>
+                ${ultimasPecas.map(item => `<div class="dashboard-list-row"><span>${item}</span><span class="status-badge bg-green">Compra</span></div>`).join('') || '<div class="dashboard-empty-state">Sem compras registradas.</div>'}
+            </div>
+        </div>
+        <div class="table-container" style="margin-top:16px;">
+            <table>
+                <thead><tr><th>Data</th><th>Resumo</th><th>Valor</th><th>Retorno</th></tr></thead>
+                <tbody>
+                    ${compras.slice(0, 12).map(item => `
+                        <tr>
+                            <td>${item.data || '--'}</td>
+                            <td>${item.peca || '--'}</td>
+                            <td>R$ ${(parseFloat(item.venda) || 0).toFixed(2)}</td>
+                            <td>${item.proxima_revisao || '--'}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="4" style="text-align:center; padding:18px; color:var(--text-muted);">Sem histórico para este cliente.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function exportarClientesCSV() {
+    if (!podeExecutarAcao('exportar_relatorios')) return alert('Você não tem permissão para exportar relatórios.');
+    const linhas = [['Nome','CPF','Telefone','Endereço','Débito']];
+    (cacheClientes || []).forEach(cliente => {
+        linhas.push([cliente.nome || '', cliente.cpf || '', cliente.telefone || '', cliente.endereco || '', (parseFloat(cliente.debito) || 0).toFixed(2)]);
+    });
+    baixarCSV('clientes_kell.csv', linhas);
 }
 
 function renderizarDespesas() {
@@ -642,6 +815,7 @@ function renderizarListaItensNF() {
 
 async function finalizarEntradaNF() {
     if (listaItensNF.length === 0) return alert("Adicione itens à lista primeiro.");
+    if (!podeExecutarAcao('ajustar_estoque')) return alert('Você não tem permissão para registrar entrada de NF.');
 
     const batch = db.batch();
     listaItensNF.forEach(i => {
@@ -679,6 +853,21 @@ async function finalizarEntradaNF() {
     }
 
     await batch.commit();
+    if (typeof registrarMovimentacaoProduto === 'function') {
+        for (const item of listaItensNF) {
+            const produtoId = item.id_existente || (cacheEstoque || []).find(prod => obterNomeProdutoFinanceiro(prod) === item.nome)?.id;
+            if (produtoId) {
+                await registrarMovimentacaoProduto(produtoId, {
+                    tipo: 'ENTRADA_NF',
+                    motivo: `NF ${document.getElementById('nf-numero').value || 'S/N'}`,
+                    impacto: `+${parseFloat(item.qtd) || 0} unidade(s)`,
+                    data: new Date().toLocaleString('pt-BR'),
+                    usuario: auth.currentUser?.email || 'SISTEMA'
+                });
+            }
+        }
+    }
+    if (typeof registrarAuditoria === 'function') registrarAuditoria('ESTOQUE', 'nf', 'ENTRADA_NF', { numero: document.getElementById('nf-numero').value || 'S/N', itens: listaItensNF.length });
     listaItensNF = []; renderizarListaItensNF();
     Toastify({ text: "Entrada de Nota Fiscal concluída!", style: { background: "var(--primary)" } }).showToast();
 
@@ -712,6 +901,80 @@ async function cadastrarCliente() {
             atualizarSelectClientes();
         }
     }, 300);
+}
+
+async function registrarFiadoManual() {
+    const clienteId = document.getElementById('boleto-manual-cliente')?.value || '';
+    const item = String(document.getElementById('boleto-manual-item')?.value || '').trim();
+    const qtd = parseInt(document.getElementById('boleto-manual-qtd')?.value) || 0;
+    const valorUnitario = parseFloat(document.getElementById('boleto-manual-valor')?.value) || 0;
+
+    if (!clienteId) return alert('Selecione um cliente.');
+    if (!item) return alert('Informe o item ou serviço.');
+    if (qtd <= 0) return alert('Informe uma quantidade válida.');
+    if (valorUnitario <= 0) return alert('Informe um valor válido.');
+
+    const total = qtd * valorUnitario;
+    const clienteRef = db.collection('clientes_kell').doc(clienteId);
+    const vendaRef = db.collection('vendas_kell').doc();
+
+    await db.runTransaction(async t => {
+        const clienteDoc = await t.get(clienteRef);
+        if (!clienteDoc.exists) throw new Error('Cliente não encontrado.');
+        const cliente = clienteDoc.data() || {};
+        const agora = new Date();
+
+        t.update(clienteRef, {
+            debito: firebase.firestore.FieldValue.increment(total)
+        });
+
+        t.set(vendaRef, {
+            numero: `FIADO-${Date.now()}`,
+            itens: [{
+                id: `manual-${Date.now()}`,
+                produtoId: '',
+                nome: item,
+                marca: '',
+                nome_peca: item,
+                codigo: '',
+                qtd,
+                unitario: valorUnitario,
+                total,
+                origem: 'FIADO_MANUAL'
+            }],
+            peca: item,
+            produtoId: '',
+            qtd,
+            venda: total,
+            unitario: valorUnitario,
+            cliente: cliente.nome || 'Cliente',
+            clienteId,
+            pagamento: 'BOLETO',
+            pagamento_efetivado: false,
+            observacao: 'Lançamento manual no fiado',
+            data: agora.toLocaleDateString('pt-BR'),
+            hora: agora.toLocaleTimeString('pt-BR'),
+            timestamp: Date.now(),
+            origem: 'FIADO_MANUAL',
+            operador: auth.currentUser?.email || 'SISTEMA',
+            tipo: 'VENDA'
+        });
+    });
+
+    if (typeof registrarAuditoria === 'function') {
+        registrarAuditoria('CLIENTES', clienteId, 'FIADO_MANUAL_LANCADO', {
+            item,
+            qtd,
+            valor_unitario: valorUnitario,
+            total
+        });
+    }
+
+    document.getElementById('boleto-manual-item').value = '';
+    document.getElementById('boleto-manual-qtd').value = '';
+    document.getElementById('boleto-manual-valor').value = '';
+
+    Toastify({ text: 'Lançamento manual adicionado ao fiado!', style: { background: 'var(--primary)' } }).showToast();
 }
 
 

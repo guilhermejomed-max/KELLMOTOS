@@ -23,8 +23,9 @@ const EMAILS_MESTRES = [
 ];
 
 // --- ESTADO GLOBAL ---
-let cacheEstoque=[], cacheVendas=[], cacheMotos=[], cacheFuncionarios=[], cacheClientes=[], cacheDespesas=[], cacheLocais=[];
+let cacheEstoque=[], cacheVendas=[], cacheMotos=[], cacheFuncionarios=[], cacheClientes=[], cacheDespesas=[], cacheAuditoria=[];
 let userNivel = 'SENIOR'; 
+let currentFuncionario = null;
 let configEmpresa = {
     nome: "KELL MOTOS", 
     cnpj: "", 
@@ -181,6 +182,7 @@ function iniciarApp() {
         // Isso ignora qualquer coisa que esteja escrita no banco de dados.
         if (EMAILS_MESTRES.includes(email)) {
             userNivel = 'SENIOR';
+            currentFuncionario = d.exists ? { id: d.id, ...d.data() } : { id: email, email, nome: 'Master Admin', nivel: 'SENIOR' };
             
             // Opcional: Corrige o banco silenciosamente para ficar bonito no cadastro
             if (d.exists && d.data().nivel !== 'SENIOR') {
@@ -190,10 +192,12 @@ function iniciarApp() {
         // 2. Se nÃ£o for mestre, obedece o banco
         else if (d.exists) {
             userNivel = d.data().nivel;
+            currentFuncionario = { id: d.id, ...d.data() };
         } 
         // 3. Se nÃ£o achar nada, vira JUNIOR por seguranÃ§a
         else {
             userNivel = 'JUNIOR';
+            currentFuncionario = null;
         }
         
         // Atualiza a interface
@@ -235,18 +239,15 @@ function iniciarApp() {
     });
 
     db.collection("motos_kell").onSnapshot(s => { cacheMotos = s.docs.map(d=>({id:d.id,...d.data()})); if(window.renderizarListaMotos) renderizarListaMotos(); });
-    db.collection("locais_kell").onSnapshot(s => {
-        cacheLocais = s.docs.map(d=>({id:d.id,...d.data()}));
-        if(window.renderizarListaLocais) renderizarListaLocais();
-        if(window.atualizarSelectLocaisProduto) atualizarSelectLocaisProduto();
-        if(window.renderizarEstoque) renderizarEstoque();
-        if(window.renderizarInventario) renderizarInventario();
-    });
     db.collection("funcionarios_kell").onSnapshot(s => { cacheFuncionarios = s.docs.map(d=>({id:d.id,...d.data()})); if(window.renderizarListaFuncionarios) renderizarListaFuncionarios(); });
+    db.collection("logs_auditoria").orderBy('timestamp','desc').limit(300).onSnapshot(s => {
+        cacheAuditoria = s.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (window.renderizarAuditoria) renderizarAuditoria();
+    });
 }
 
 function mudarTab(t) {
-    const tabs = ['estoque','vendas','catalogo','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos','locais'];
+    const tabs = ['estoque','vendas','servicos','catalogo','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos','auditoria'];
     tabs.forEach(id => {
         const el = document.getElementById('sec-' + id);
         if(el) el.classList.add('hidden');
@@ -275,10 +276,38 @@ function mudarTab(t) {
             if(window.focarCampoCodigoVenda) focarCampoCodigoVenda();
         });
     }
+
+    if(t === 'servicos') {
+        requestAnimationFrame(() => {
+            if(window.renderizarOrdensServico) renderizarOrdensServico();
+        });
+    }
+
+    if(t === 'auditoria') {
+        requestAnimationFrame(() => {
+            if(window.renderizarAuditoria) renderizarAuditoria();
+        });
+    }
+}
+
+function obterAcoesPermitidasUsuario() {
+    const acoesSenior = ['ver_custo','editar_preco','excluir_orcamento','ajustar_estoque','publicar_anuncio','gerenciar_equipe','ver_auditoria','gerenciar_os','exportar_relatorios'];
+    const acoesPleno = ['ver_custo','editar_preco','ajustar_estoque','publicar_anuncio','gerenciar_os','exportar_relatorios'];
+    const acoesJunior = ['gerenciar_os'];
+
+    if (currentFuncionario?.acoes_permitidas?.length) return currentFuncionario.acoes_permitidas;
+    if (userNivel === 'SENIOR') return acoesSenior;
+    if (userNivel === 'PLENO') return acoesPleno;
+    return acoesJunior;
+}
+
+function podeExecutarAcao(acao) {
+    if (userNivel === 'SENIOR') return true;
+    return obterAcoesPermitidasUsuario().includes(acao);
 }
 
 function aplicarPermissoes() {
-    const todosMenus = ['m-dash','m-estoque','m-vendas','m-catalogo','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos','m-locais'];
+    const todosMenus = ['m-dash','m-estoque','m-vendas','m-servicos','m-catalogo','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos','m-auditoria'];
     const btnConfig = document.getElementById('btn-config-geral');
 
     // 1. Esconde tudo
@@ -295,11 +324,13 @@ function aplicarPermissoes() {
         if(btnConfig) btnConfig.style.display = 'block';
     } 
     else if (userNivel === 'PLENO') {
-        permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-catalogo', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos', 'm-locais'];
+        permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-servicos', 'm-catalogo', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos'];
+        if (podeExecutarAcao('ver_auditoria')) permitidos.push('m-auditoria');
     } 
     else { 
         // JUNIOR
-        permitidos = ['m-estoque', 'm-vendas', 'm-catalogo', 'm-motos', 'm-locais'];
+        permitidos = ['m-estoque', 'm-vendas', 'm-catalogo', 'm-motos'];
+        if (podeExecutarAcao('gerenciar_os')) permitidos.push('m-servicos');
     }
 
     // 3. Exibe os permitidos
@@ -316,6 +347,19 @@ function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.sty
 function toggleConfig() { 
     const m = document.getElementById('modal-config');
     m.style.display = m.style.display === 'flex' ? 'none' : 'flex'; 
+}
+
+function baixarCSV(nomeArquivo, linhas) {
+    const csv = linhas.map(linha => linha.map(valor => `"${String(valor ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nomeArquivo;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 let scannerCodigoInstancia = null;
@@ -423,6 +467,14 @@ function processarCodigoLido(codigo) {
         const inputVenda = document.getElementById('venda-codigo-input');
         if (inputVenda) inputVenda.value = codigoLido;
         venderPorCodigo(codigoLido);
+        fecharScannerCodigo(true);
+        return;
+    }
+
+    if (scannerCodigoContexto === 'consulta') {
+        const inputConsulta = document.getElementById('consulta-balcao-input');
+        if (inputConsulta) inputConsulta.value = codigoLido;
+        if (window.consultarProdutoBalcao) consultarProdutoBalcao(codigoLido);
         fecharScannerCodigo(true);
     }
 }

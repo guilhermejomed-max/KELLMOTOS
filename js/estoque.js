@@ -17,6 +17,48 @@ function normalizarImagensProduto(produto) {
     return normalizarListaImagens(imagens);
 }
 
+function normalizarSugestoesProduto(valor) {
+    if (Array.isArray(valor)) {
+        return valor.map(item => String(item || '').trim()).filter(Boolean).filter((item, index, arr) => arr.indexOf(item) === index);
+    }
+    return String(valor || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean)
+        .filter((item, index, arr) => arr.indexOf(item) === index);
+}
+
+function obterStatusBaseTroca(produto) {
+    const status = String(produto?.status_base_troca || 'NORMAL').trim().toUpperCase();
+    if (status === 'AGUARDANDO_RETIFICA') {
+        return { label: 'Aguardando retífica', cor: '#92400e', fundo: 'rgba(245,158,11,0.16)' };
+    }
+    if (status === 'BASE_PENDENTE') {
+        return { label: 'Base pendente', cor: '#991b1b', fundo: 'rgba(239,68,68,0.14)' };
+    }
+    if (produto?.exige_base_troca) {
+        return { label: 'Exige base de troca', cor: '#1d4ed8', fundo: 'rgba(59,130,246,0.14)' };
+    }
+    return { label: 'Sem pendência de troca', cor: '#166534', fundo: 'rgba(34,197,94,0.14)' };
+}
+
+function obterProdutosRelacionados(produto) {
+    const sugestoes = normalizarSugestoesProduto(produto?.sugestoes_produtos || []);
+    if (!sugestoes.length || typeof cacheEstoque === 'undefined' || !Array.isArray(cacheEstoque)) return [];
+
+    return sugestoes
+        .map(chave => {
+            const chaveNormalizada = String(chave || '').trim().toLowerCase();
+            return cacheEstoque.find(item =>
+                item.id === chave ||
+                String(item.codigo || '').trim().toLowerCase() === chaveNormalizada ||
+                obterNomeProdutoEstoque(item).toLowerCase() === chaveNormalizada
+            );
+        })
+        .filter(Boolean)
+        .filter((item, index, arr) => arr.findIndex(outro => outro.id === item.id) === index);
+}
+
 function obterProdutoEstoque(id) {
     return (typeof cacheEstoque !== 'undefined' && Array.isArray(cacheEstoque))
         ? cacheEstoque.find(item => item.id === id)
@@ -29,54 +71,6 @@ function obterNomeProdutoEstoque(produto) {
         .map(valor => String(valor || '').trim())
         .filter(Boolean);
     return partes.join(' ') || produto.modelo || 'Produto';
-}
-
-function obterLocalCadastradoPorId(id) {
-    return Array.isArray(cacheLocais) ? cacheLocais.find(local => local.id === id) : null;
-}
-
-function obterLocalizacaoProduto(produto) {
-    const localCadastrado = obterLocalCadastradoPorId(produto?.localizacao?.localId);
-    if (localCadastrado) return localCadastrado;
-    const localizacao = produto?.localizacao || {};
-    return {
-        id: localizacao.localId || '',
-        rua: localizacao.rua || localizacao.corredor || '',
-        local: localizacao.local || localizacao.posicao || localizacao.caixa || '',
-        posicao: localizacao.local || localizacao.posicao || localizacao.caixa || ''
-    };
-}
-
-function textoLocalizacaoProduto(produto) {
-    const local = obterLocalizacaoProduto(produto);
-    if (typeof obterTextoLocal === 'function') return obterTextoLocal(local);
-    return [local.rua, local.local || local.posicao].filter(Boolean).join(' • ') || 'Sem local';
-}
-
-function atualizarSelectLocaisProduto() {
-    const selects = [
-        document.getElementById('loc-cadastrado'),
-        document.getElementById('filtro-local-inventario')
-    ].filter(Boolean);
-    const locais = Array.isArray(cacheLocais) ? [...cacheLocais] : [];
-    locais.sort((a, b) => textoLocalizacaoProduto({ localizacao: { localId: a.id } }).localeCompare(textoLocalizacaoProduto({ localizacao: { localId: b.id } }), 'pt-BR'));
-
-    selects.forEach(select => {
-        const valorAtual = select.value;
-        const primeiraOpcao = select.id === 'filtro-local-inventario' ? 'Todos os locais' : 'Selecionar local cadastrado';
-        select.innerHTML = `<option value="">${primeiraOpcao}</option>` + locais.map(local => `<option value="${local.id}">${obterTextoLocal(local)}</option>`).join('');
-        select.value = valorAtual;
-    });
-}
-
-function aplicarLocalSelecionadoProduto() {
-    const select = document.getElementById('loc-cadastrado');
-    const local = obterLocalCadastradoPorId(select?.value || '');
-    if (!local) return;
-    const rua = document.getElementById('loc-corredor');
-    const localCampo = document.getElementById('loc-caixa');
-    if (rua) rua.value = local.rua || '';
-    if (localCampo) localCampo.value = local.local || local.posicao || '';
 }
 
 function abrirVendaProdutoEstoque(id) {
@@ -151,6 +145,102 @@ function imprimirEtiquetaProduto(produto) {
 let imagensProdutoTemp = [];
 let produtoModalAtual = null;
 let indiceImagemProdutoModal = 0;
+let produtoInventarioAtual = null;
+
+function obterHistoricoMovimentacoesProduto(produto) {
+    return Array.isArray(produto?.historico_movimentacoes) ? [...produto.historico_movimentacoes].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)) : [];
+}
+
+async function registrarMovimentacaoProduto(produtoId, movimento) {
+    const produto = obterProdutoEstoque(produtoId);
+    if (!produto) return;
+    const historicoAtual = obterHistoricoMovimentacoesProduto(produto).slice(0, 29);
+    const novoHistorico = [{ ...movimento, timestamp: movimento.timestamp || Date.now() }, ...historicoAtual];
+    await db.collection('estoque_kell').doc(produtoId).update({ historico_movimentacoes: novoHistorico });
+}
+
+function renderizarHistoricoMovimentacoes() {
+    const corpo = document.getElementById('corpo-historico-movimentacoes');
+    if (!corpo) return;
+
+    const linhas = (cacheEstoque || []).flatMap(produto =>
+        obterHistoricoMovimentacoesProduto(produto).map(item => ({
+            ...item,
+            produtoNome: obterNomeProdutoEstoque(produto)
+        }))
+    ).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 30);
+
+    corpo.innerHTML = linhas.length ? linhas.map(item => `
+        <tr>
+            <td>${item.data || (item.timestamp ? new Date(item.timestamp).toLocaleString('pt-BR') : '--')}</td>
+            <td>${item.produtoNome}</td>
+            <td>${item.tipo || '--'}</td>
+            <td>${item.motivo || '--'}</td>
+            <td>${item.impacto || '--'}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="5" style="text-align:center; padding:18px; color:var(--text-muted);">Sem movimentações recentes.</td></tr>';
+}
+
+function buscarProdutoInventario() {
+    const busca = (document.getElementById('inventario-busca-produto')?.value || '').toLowerCase().trim();
+    const box = document.getElementById('inventario-sugestoes');
+    if (!box) return;
+    if (busca.length < 2) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+    const encontrados = (cacheEstoque || []).filter(p => [p.codigo, p.modelo, p.marca, p.nome_peca, ...(p.compatibilidade || [])].join(' ').toLowerCase().includes(busca)).slice(0, 8);
+    box.style.display = encontrados.length ? 'block' : 'none';
+    box.innerHTML = encontrados.map(p => `
+        <div style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border-color);" onclick="selecionarProdutoInventario('${p.id}')">
+            <div style="font-weight:800; color:var(--text-main);">${obterNomeProdutoEstoque(p)}</div>
+            <div style="font-size:12px; color:var(--text-muted);">${p.codigo || 'Sem código'} • Estoque: ${parseInt(p.qtd) || 0}</div>
+        </div>
+    `).join('');
+}
+
+function selecionarProdutoInventario(id) {
+    produtoInventarioAtual = obterProdutoEstoque(id);
+    const input = document.getElementById('inventario-busca-produto');
+    const qtdSistema = document.getElementById('inventario-qtd-sistema');
+    const resumo = document.getElementById('inventario-resumo');
+    const box = document.getElementById('inventario-sugestoes');
+    if (!produtoInventarioAtual) return;
+    if (input) input.value = `${produtoInventarioAtual.codigo || ''} - ${obterNomeProdutoEstoque(produtoInventarioAtual)}`;
+    if (qtdSistema) qtdSistema.value = parseInt(produtoInventarioAtual.qtd) || 0;
+    if (resumo) resumo.innerText = `Produto selecionado: ${obterNomeProdutoEstoque(produtoInventarioAtual)}. Informe a quantidade física para comparar com o sistema.`;
+    if (box) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+    }
+}
+
+async function aplicarContagemInventario() {
+    if (!podeExecutarAcao('ajustar_estoque')) return alert('Você não tem permissão para ajustar estoque.');
+    if (!produtoInventarioAtual) return alert('Selecione um produto no inventário.');
+    const qtdFisica = parseInt(document.getElementById('inventario-qtd-fisica')?.value);
+    const motivo = (document.getElementById('inventario-motivo')?.value || '').trim();
+    if (Number.isNaN(qtdFisica)) return alert('Informe a quantidade contada no físico.');
+    if (!motivo) return alert('Informe o motivo do ajuste.');
+
+    const qtdSistema = parseInt(produtoInventarioAtual.qtd) || 0;
+    const diferenca = qtdFisica - qtdSistema;
+    await db.collection('estoque_kell').doc(produtoInventarioAtual.id).update({ qtd: qtdFisica, inventario_em: Date.now() });
+    await registrarMovimentacaoProduto(produtoInventarioAtual.id, {
+        tipo: 'INVENTARIO',
+        motivo,
+        impacto: `${qtdSistema} -> ${qtdFisica} (${diferenca >= 0 ? '+' : ''}${diferenca})`,
+        data: new Date().toLocaleString('pt-BR'),
+        usuario: auth.currentUser?.email || 'SISTEMA'
+    });
+    if (typeof registrarAuditoria === 'function') {
+        registrarAuditoria('ESTOQUE', produtoInventarioAtual.id, 'INVENTARIO_AJUSTE', { motivo, antes: qtdSistema, depois: qtdFisica });
+    }
+    Toastify({ text: 'Contagem aplicada com sucesso!', style: { background: 'var(--primary)' } }).showToast();
+    document.getElementById('inventario-qtd-fisica').value = '';
+    document.getElementById('inventario-motivo').value = '';
+}
 // =========================
 // RENDERIZAÃ‡ÃƒO DO ESTOQUE
 // =========================
@@ -167,7 +257,7 @@ function renderizarEstoque() {
         : [];
 
     const filtered = lista.filter(p =>
-        [p.modelo, p.marca, p.nome_peca, p.codigo, textoLocalizacaoProduto(p), ...(p.compatibilidade || [])]
+        [p.modelo, p.marca, p.nome_peca, p.codigo, p.fornecedor, ...(p.compatibilidade || [])]
             .join(' ')
             .toLowerCase()
             .includes(q)
@@ -202,6 +292,7 @@ function renderizarEstoque() {
             const compatibilidadeLista = Array.isArray(p.compatibilidade) ? p.compatibilidade : [];
             const compatibilidadeTexto = compatibilidadeLista.length ? compatibilidadeLista.slice(0, 3).join(', ') : 'Sem compatibilidade informada';
             const compatibilidadeExtra = compatibilidadeLista.length > 3 ? ` +${compatibilidadeLista.length - 3}` : '';
+            const statusBase = obterStatusBaseTroca(p);
 
             html += `
                 <tr>
@@ -211,11 +302,11 @@ function renderizarEstoque() {
                             <div style="min-width:0;">
                                 <div style="font-weight:800;color:var(--text-main);font-size:13px;line-height:1.2;margin-bottom:4px;">${nomeProduto}</div>
                                 <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Marca: ${p.marca || 'Não informada'}</div>
-                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;"><i class="ri-map-pin-2-line"></i> ${textoLocalizacaoProduto(p)}</div>
                                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                                     <span style="font-size:10px;font-weight:800;color:var(--primary);background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${p.codigo || 'S/C'}</span>
                                     ${imagensProduto.length > 0 ? `<span style="font-size:10px;font-weight:800;color:#1d4ed8;background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${imagensProduto.length} foto(s)</span>` : ''}
                                     ${qtdAtual <= 2 ? `<span style="font-size:10px;font-weight:800;color:#b91c1c;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.18);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">Reposição</span>` : ''}
+                                    ${(p.exige_base_troca || p.status_base_troca === 'BASE_PENDENTE' || p.status_base_troca === 'AGUARDANDO_RETIFICA') ? `<span style="font-size:10px;font-weight:800;color:${statusBase.cor};background:${statusBase.fundo};border:1px solid transparent;padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${statusBase.label}</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -227,7 +318,7 @@ function renderizarEstoque() {
                         <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;">
                             <button class="btn btn-primary btn-sm" style="min-width:42px;height:38px;padding:0 12px;border-radius:10px;box-shadow:0 4px 12px rgba(16,185,129,0.20);" title="Vender produto" onclick="abrirVendaProdutoEstoque('${p.id}')"><i class="ri-shopping-cart-line"></i></button>
                             <button class="btn btn-secondary btn-sm" style="min-width:42px;height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-main);font-weight:700;" title="Imprimir etiqueta" onclick="imprimirEtiquetaProdutoPorId('${p.id}')"><i class="ri-barcode-line"></i></button>
-                            ${userNivel !== 'JUNIOR' ? `<button class="btn btn-secondary btn-sm" style="min-width:42px;height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-main);font-weight:700;" title="Editar produto" onclick="carregarProdutoParaEdicaoPorId('${p.id}')"><i class="ri-pencil-line"></i></button>` : ''}
+                            ${podeExecutarAcao('ajustar_estoque') ? `<button class="btn btn-secondary btn-sm" style="min-width:42px;height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-main);font-weight:700;" title="Editar produto" onclick="carregarProdutoParaEdicaoPorId('${p.id}')"><i class="ri-pencil-line"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>
@@ -236,6 +327,7 @@ function renderizarEstoque() {
     }
 
     corpo.innerHTML = html;
+    renderizarHistoricoMovimentacoes();
 
     const faltas = lista
         .filter(i => (parseInt(i.qtd) || 0) <= 2)
@@ -246,151 +338,6 @@ function renderizarEstoque() {
     if (reposicao) {
         reposicao.innerText = faltas || 'Estoque OK.';
     }
-
-    if (document.getElementById('painel-inventario') && !document.getElementById('painel-inventario').classList.contains('hidden')) {
-        renderizarInventario();
-    }
-}
-
-function obterInventarioSalvo() {
-    try {
-        return JSON.parse(localStorage.getItem('inventario_kell') || '{}');
-    } catch (e) {
-        return {};
-    }
-}
-
-function salvarInventarioLocal(dados) {
-    localStorage.setItem('inventario_kell', JSON.stringify(dados || {}));
-}
-
-function toggleInventario() {
-    const painel = document.getElementById('painel-inventario');
-    if (!painel) return;
-    painel.classList.toggle('hidden');
-    if (!painel.classList.contains('hidden')) {
-        atualizarSelectLocaisProduto();
-        renderizarInventario();
-        painel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-}
-
-function atualizarContagemInventario(id, valor) {
-    const dados = obterInventarioSalvo();
-    if (valor === '') {
-        delete dados[id];
-    } else {
-        dados[id] = parseInt(valor) || 0;
-    }
-    salvarInventarioLocal(dados);
-    renderizarInventarioResumo();
-    const diffEl = document.getElementById(`inv-diff-${id}`);
-    const produto = obterProdutoEstoque(id);
-    if (diffEl && produto) {
-        const diff = (dados[id] ?? 0) - (parseInt(produto.qtd) || 0);
-        diffEl.innerText = diff > 0 ? `+${diff}` : String(diff);
-        diffEl.className = diff === 0 ? 'inventory-diff ok' : 'inventory-diff alert';
-    }
-}
-
-function renderizarInventarioResumo() {
-    const dados = obterInventarioSalvo();
-    const lista = Array.isArray(cacheEstoque) ? cacheEstoque : [];
-    const idsContados = Object.keys(dados).filter(id => lista.some(p => p.id === id));
-    const diferenca = idsContados.reduce((acc, id) => {
-        const produto = lista.find(p => p.id === id);
-        return acc + ((parseInt(dados[id]) || 0) - (parseInt(produto?.qtd) || 0));
-    }, 0);
-
-    if (document.getElementById('inv-total-itens')) document.getElementById('inv-total-itens').innerText = lista.length;
-    if (document.getElementById('inv-total-contados')) document.getElementById('inv-total-contados').innerText = idsContados.length;
-    if (document.getElementById('inv-diferenca-total')) document.getElementById('inv-diferenca-total').innerText = diferenca > 0 ? `+${diferenca}` : String(diferenca);
-}
-
-function renderizarInventario() {
-    const corpo = document.getElementById('corpo-inventario');
-    if (!corpo) return;
-    const busca = (document.getElementById('busca-inventario')?.value || '').toLowerCase().trim();
-    const filtroLocal = document.getElementById('filtro-local-inventario')?.value || '';
-    const dados = obterInventarioSalvo();
-    const lista = (Array.isArray(cacheEstoque) ? [...cacheEstoque] : []).filter(p => {
-        const texto = [obterNomeProdutoEstoque(p), p.codigo, textoLocalizacaoProduto(p)].join(' ').toLowerCase();
-        const bateBusca = texto.includes(busca);
-        const bateLocal = !filtroLocal || p.localizacao?.localId === filtroLocal;
-        return bateBusca && bateLocal;
-    });
-
-    lista.sort((a, b) => textoLocalizacaoProduto(a).localeCompare(textoLocalizacaoProduto(b), 'pt-BR') || obterNomeProdutoEstoque(a).localeCompare(obterNomeProdutoEstoque(b), 'pt-BR'));
-
-    corpo.innerHTML = lista.length ? lista.map(p => {
-        const sistema = parseInt(p.qtd) || 0;
-        const contado = Object.prototype.hasOwnProperty.call(dados, p.id) ? dados[p.id] : '';
-        const diff = contado === '' ? '' : ((parseInt(contado) || 0) - sistema);
-        return `
-            <tr>
-                <td><strong>${obterNomeProdutoEstoque(p)}</strong><br><small style="color:var(--text-muted);">${p.codigo || 'Sem código'}</small></td>
-                <td>${textoLocalizacaoProduto(p)}</td>
-                <td><span class="stock-pill ok">${sistema}</span></td>
-                <td><input type="number" class="input-style inventory-count-input" value="${contado}" placeholder="0" oninput="atualizarContagemInventario('${p.id}', this.value)"></td>
-                <td><span id="inv-diff-${p.id}" class="${diff === '' || diff === 0 ? 'inventory-diff ok' : 'inventory-diff alert'}">${diff === '' ? '--' : (diff > 0 ? `+${diff}` : diff)}</span></td>
-                <td><button class="btn btn-sm btn-secondary" onclick="limparContagemItemInventario('${p.id}')">Limpar</button></td>
-            </tr>
-        `;
-    }).join('') : '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">Nenhum item encontrado para a contagem.</td></tr>';
-
-    renderizarInventarioResumo();
-}
-
-function limparContagemItemInventario(id) {
-    const dados = obterInventarioSalvo();
-    delete dados[id];
-    salvarInventarioLocal(dados);
-    renderizarInventario();
-}
-
-async function aplicarInventarioContado() {
-    const dados = obterInventarioSalvo();
-    const ids = Object.keys(dados).filter(id => obterProdutoEstoque(id));
-    if (!ids.length) return alert('Nenhum item contado para aplicar.');
-
-    const confirmado = confirm(`Aplicar a contagem em ${ids.length} item(ns)? Isso vai substituir a quantidade atual no estoque.`);
-    if (!confirmado) return;
-
-    const operador = auth.currentUser ? auth.currentUser.email : 'SISTEMA';
-    const momento = Date.now();
-    for (let i = 0; i < ids.length; i += 450) {
-        const batch = db.batch();
-        ids.slice(i, i + 450).forEach(id => {
-            batch.update(db.collection('estoque_kell').doc(id), {
-                qtd: parseInt(dados[id]) || 0,
-                inventario_em: momento,
-                inventario_operador: operador
-            });
-        });
-        await batch.commit();
-    }
-    salvarInventarioLocal({});
-    renderizarInventario();
-    Toastify({ text: 'Inventário aplicado ao estoque!', style: { background: 'var(--primary)' } }).showToast();
-}
-
-function exportarInventarioCSV() {
-    const dados = obterInventarioSalvo();
-    const linhas = ['Produto;Codigo;Local;Sistema;Contado;Diferenca'];
-    (cacheEstoque || []).forEach(p => {
-        const sistema = parseInt(p.qtd) || 0;
-        const contado = Object.prototype.hasOwnProperty.call(dados, p.id) ? parseInt(dados[p.id]) || 0 : '';
-        const diff = contado === '' ? '' : contado - sistema;
-        linhas.push([obterNomeProdutoEstoque(p), p.codigo || '', textoLocalizacaoProduto(p), sistema, contado, diff].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'));
-    });
-
-    const blob = new Blob([linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inventario-kell-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
 }
 // =========================
 // FORMULÃRIO
@@ -426,11 +373,16 @@ function limparFormEstoque() {
         'compra',
         'taxa_envio',
         'repasse',
+        'fornecedor',
+        'intervalo-revisao-dias',
+        'status-base-troca',
+        'sugestoes-produto',
+        'observacao-revisao',
         'imagem',
         'imagem-url',
-        'loc-cadastrado',
         'loc-corredor',
         'loc-caixa',
+        'loc-prateleira'
     ];
 
     ids.forEach(id => {
@@ -451,6 +403,9 @@ function limparFormEstoque() {
 
     const placeholder = document.getElementById('imagem-placeholder');
     if (placeholder) placeholder.style.display = 'flex';
+
+    const exigeBaseTroca = document.getElementById('exige-base-troca');
+    if (exigeBaseTroca) exigeBaseTroca.checked = false;
 
     document.querySelectorAll('.moto-check').forEach(c => c.checked = false);
 
@@ -655,6 +610,13 @@ function renderizarModalProdutoDetalhes() {
     const compatibilidade = Array.isArray(produtoModalAtual.compatibilidade) && produtoModalAtual.compatibilidade.length
         ? produtoModalAtual.compatibilidade.join(', ')
         : 'Sem compatibilidade informada';
+    const relacionados = obterProdutosRelacionados(produtoModalAtual);
+    const statusBase = obterStatusBaseTroca(produtoModalAtual);
+    const tituloMarketplace = typeof montarTituloAnuncio === 'function'
+        ? montarTituloAnuncio(produtoModalAtual)
+        : obterNomeProdutoEstoque(produtoModalAtual);
+    const custoMedio = parseFloat(produtoModalAtual.custo_medio ?? produtoModalAtual.compra) || 0;
+    const custoHtml = podeExecutarAcao('ver_custo') ? `R$ ${custoMedio.toFixed(2)}` : '--';
 
     container.innerHTML = `
         <div style="display:grid; grid-template-columns:minmax(0,1.1fr) minmax(280px,0.9fr); gap:20px; align-items:start;">
@@ -670,18 +632,37 @@ function renderizarModalProdutoDetalhes() {
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
                     <span style="font-size:11px; font-weight:800; color:var(--primary); background:rgba(16,185,129,0.10); border:1px solid rgba(16,185,129,0.15); padding:5px 10px; border-radius:999px;">${produtoModalAtual.codigo || 'Sem código'}</span>
                     <span style="font-size:11px; font-weight:800; color:#1d4ed8; background:rgba(59,130,246,0.10); border:1px solid rgba(59,130,246,0.15); padding:5px 10px; border-radius:999px;">${imagens.length} foto(s)</span>
+                    <span style="font-size:11px; font-weight:800; color:${statusBase.cor}; background:${statusBase.fundo}; border:1px solid transparent; padding:5px 10px; border-radius:999px;">${statusBase.label}</span>
                 </div>
                 <h2 style="margin:0 0 8px 0; font-size:24px; line-height:1.1; color:var(--text-main);">${obterNomeProdutoEstoque(produtoModalAtual)}</h2>
-                <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Marca: ${produtoModalAtual.marca || 'Não informada'}</div>
+                <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Marca: ${produtoModalAtual.marca || 'Não informada'} • Fornecedor: ${produtoModalAtual.fornecedor || 'Não informado'}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px;">
                     <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Quantidade</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">${parseInt(produtoModalAtual.qtd) || 0}</div></div>
                     <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Preço</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.repasse) || 0).toFixed(2)}</div></div>
-                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Custo</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.compra) || 0).toFixed(2)}</div></div>
+                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Custo médio</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">${custoHtml}</div></div>
                     <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Envio</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.taxa_envio) || 0).toFixed(2)}</div></div>
                 </div>
                 <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;"><button type="button" class="btn btn-secondary" onclick="imprimirEtiquetaProduto(produtoModalAtual)"><i class="ri-barcode-line"></i> Imprimir etiqueta</button><button type="button" class="btn btn-secondary" onclick="transferirLocalizacaoProduto(produtoModalAtual.id)"><i class="ri-route-line"></i> Transferir localização</button></div><div style="padding:16px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-body);">
                     <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">Compatibilidade</div>
-                    <div style="font-size:14px; color:var(--text-main); line-height:1.5;">${compatibilidade}</div><div style="margin-top:14px; font-size:13px; color:var(--text-muted);"><b>Localização:</b> ${textoLocalizacaoProduto(produtoModalAtual)}</div>
+                    <div style="font-size:14px; color:var(--text-main); line-height:1.5;">${compatibilidade}</div>
+                    <div style="margin-top:14px; font-size:13px; color:var(--text-muted);"><b>Localização:</b> ${produtoModalAtual.localizacao?.corredor || '--'} ${produtoModalAtual.localizacao?.caixa || '--'} ${produtoModalAtual.localizacao?.prateleira || '--'}</div>
+                    <div style="margin-top:10px; font-size:13px; color:var(--text-muted);"><b>Revisão sugerida:</b> ${parseInt(produtoModalAtual.intervalo_revisao_dias) ? `${parseInt(produtoModalAtual.intervalo_revisao_dias)} dias` : 'Não configurada'}</div>
+                    <div style="margin-top:10px; font-size:13px; color:var(--text-muted);"><b>Título sugerido:</b> ${tituloMarketplace}</div>
+                    ${produtoModalAtual.observacao_revisao ? `<div style="margin-top:10px; font-size:13px; color:var(--text-muted);"><b>Observação técnica:</b> ${produtoModalAtual.observacao_revisao}</div>` : ''}
+                </div>
+                <div style="padding:16px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-body); margin-top:14px;">
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:10px;">Produtos relacionados</div>
+                    ${relacionados.length ? `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;">${relacionados.map(item => `
+                        <div style="border:1px solid var(--border-color); border-radius:14px; padding:12px; background:var(--bg-card);">
+                            <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${item.codigo || 'Sem código'}</div>
+                            <div style="font-size:14px; font-weight:800; color:var(--text-main); line-height:1.35; margin-bottom:8px;">${obterNomeProdutoEstoque(item)}</div>
+                            <div style="font-size:13px; color:var(--primary); font-weight:800; margin-bottom:10px;">R$ ${(parseFloat(item.repasse) || 0).toFixed(2)}</div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalProdutoDetalhesPorId('${item.id}')">Ver</button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="abrirVendaProdutoEstoque('${item.id}')">Adicionar</button>
+                            </div>
+                        </div>
+                    `).join('')}</div>` : `<div style="font-size:13px; color:var(--text-muted);">Nenhum produto relacionado configurado para essa peça.</div>`}
                 </div>
             </div>
         </div>
@@ -705,6 +686,7 @@ function selecionarImagemProdutoModal(index) {
 // SALVAR PRODUTO
 // =========================
 async function salvarProduto() {
+    if (!podeExecutarAcao('ajustar_estoque')) return alert('Você não tem permissão para alterar o estoque.');
     const id = document.getElementById('edit-id')?.value || '';
     const motoArr = [];
 
@@ -717,30 +699,44 @@ async function salvarProduto() {
     const marca = document.getElementById('marca')?.value?.trim() || '';
     const nomePeca = document.getElementById('nome-peca')?.value?.trim() || '';
     const modelo = atualizarModeloProduto();
-    const localSelecionado = obterLocalCadastradoPorId(document.getElementById('loc-cadastrado')?.value || '');
-    const rua = document.getElementById('loc-corredor')?.value?.trim() || '';
-    const localFisico = document.getElementById('loc-caixa')?.value?.trim() || '';
+    const quantidadeAtual = parseInt(document.getElementById('qtd')?.value) || 0;
+    const custoEntrada = parseFloat(document.getElementById('compra')?.value) || 0;
+    const produtoAtual = id ? obterProdutoEstoque(id) : null;
+    const qtdAnterior = parseInt(produtoAtual?.qtd) || 0;
+    const custoAnterior = parseFloat(produtoAtual?.custo_medio ?? produtoAtual?.compra) || 0;
+    const custoMedio = id
+        ? (() => {
+            const entradaNova = Math.max(quantidadeAtual - qtdAnterior, 0);
+            if (!entradaNova) return custoAnterior || custoEntrada;
+            const totalAnterior = qtdAnterior * custoAnterior;
+            const totalNovo = entradaNova * custoEntrada;
+            return quantidadeAtual > 0 ? ((totalAnterior + totalNovo) / quantidadeAtual) : custoEntrada;
+        })()
+        : custoEntrada;
 
     const produto = {
         marca: marca,
         nome_peca: nomePeca,
         modelo: modelo,
         codigo: document.getElementById('codigo')?.value?.trim() || '',
-        qtd: parseInt(document.getElementById('qtd')?.value) || 0,
-        compra: parseFloat(document.getElementById('compra')?.value) || 0,
+        qtd: quantidadeAtual,
+        compra: custoEntrada,
+        custo_medio: custoMedio,
         taxa_envio: parseFloat(document.getElementById('taxa_envio')?.value) || 0,
         repasse: parseFloat(document.getElementById('repasse')?.value) || 0,
         compatibilidade: motoArr,
         imagem: imagemPrincipal,
         imagens: imagensFinal,
+        fornecedor: document.getElementById('fornecedor')?.value?.trim() || '',
+        intervalo_revisao_dias: parseInt(document.getElementById('intervalo-revisao-dias')?.value) || 0,
+        observacao_revisao: document.getElementById('observacao-revisao')?.value?.trim() || '',
+        sugestoes_produtos: normalizarSugestoesProduto(document.getElementById('sugestoes-produto')?.value || ''),
+        exige_base_troca: !!document.getElementById('exige-base-troca')?.checked,
+        status_base_troca: document.getElementById('status-base-troca')?.value || 'NORMAL',
         localizacao: {
-            localId: localSelecionado?.id || '',
-            rua,
-            local: localFisico,
-            posicao: localFisico,
-            corredor: rua,
-            caixa: localFisico,
-            prateleira: ''
+            corredor: document.getElementById('loc-corredor')?.value?.trim() || '',
+            caixa: document.getElementById('loc-caixa')?.value?.trim() || '',
+            prateleira: document.getElementById('loc-prateleira')?.value?.trim() || ''
         },
         timestamp: Date.now()
     };
@@ -790,10 +786,15 @@ function carregarParaEdicao(p) {
     document.getElementById('compra').value = p.compra || 0;
     document.getElementById('taxa_envio').value = p.taxa_envio || 0;
     document.getElementById('repasse').value = p.repasse || 0;
-    const localizacaoProduto = obterLocalizacaoProduto(p);
-    document.getElementById('loc-cadastrado').value = p.localizacao?.localId || '';
-    document.getElementById('loc-corredor').value = localizacaoProduto.rua || '';
-    document.getElementById('loc-caixa').value = localizacaoProduto.local || localizacaoProduto.posicao || '';
+    document.getElementById('fornecedor').value = p.fornecedor || '';
+    document.getElementById('intervalo-revisao-dias').value = p.intervalo_revisao_dias || '';
+    document.getElementById('status-base-troca').value = p.status_base_troca || 'NORMAL';
+    document.getElementById('sugestoes-produto').value = normalizarSugestoesProduto(p.sugestoes_produtos || []).join(', ');
+    document.getElementById('observacao-revisao').value = p.observacao_revisao || '';
+    document.getElementById('exige-base-troca').checked = !!p.exige_base_troca;
+    document.getElementById('loc-corredor').value = p.localizacao?.corredor || '';
+    document.getElementById('loc-caixa').value = p.localizacao?.caixa || '';
+    document.getElementById('loc-prateleira').value = p.localizacao?.prateleira || '';
 
     const imagemCampo = document.getElementById('imagem');
     const imagemUrl = document.getElementById('imagem-url');
@@ -835,13 +836,32 @@ function enviarWhatsapp() {
     window.open("https://wa.me/?text=" + encodeURIComponent("*REPOSIÇÃO KELL MOTOS*\n" + texto));
 }
 
+function exportarEstoqueCSV() {
+    if (!podeExecutarAcao('exportar_relatorios')) return alert('Você não tem permissão para exportar relatórios.');
+    const linhas = [['Código','Marca','Nome da peça','Fornecedor','Quantidade','Custo','Preço','Corredor','Caixa','Prateleira']];
+    (cacheEstoque || []).forEach(item => {
+        linhas.push([
+            item.codigo || '',
+            item.marca || '',
+            item.nome_peca || item.modelo || '',
+            item.fornecedor || '',
+            parseInt(item.qtd) || 0,
+            (parseFloat(item.custo_medio ?? item.compra) || 0).toFixed(2),
+            (parseFloat(item.repasse) || 0).toFixed(2),
+            item.localizacao?.corredor || '',
+            item.localizacao?.caixa || '',
+            item.localizacao?.prateleira || ''
+        ]);
+    });
+    baixarCSV('estoque_kell.csv', linhas);
+}
+
 // =========================
 // INIT
 // =========================
 document.addEventListener('DOMContentLoaded', function () {
     configurarUploadImagemProduto();
     renderizarPreviewImagensProduto();
-    atualizarSelectLocaisProduto();
 
     const compra = document.getElementById('compra');
     if (compra && !compra.dataset.bindedSugestao) {
@@ -884,7 +904,7 @@ function renderizarCatalogo() {
     const busca = (document.getElementById('catalogo-busca')?.value || '').toLowerCase().trim();
     const lista = Array.isArray(cacheEstoque) ? [...cacheEstoque] : [];
     const filtrada = lista.filter(p => {
-        const texto = [p.modelo, p.marca, p.nome_peca, p.codigo, ...(p.compatibilidade || [])].join(' ').toLowerCase();
+        const texto = [p.modelo, p.marca, p.nome_peca, p.codigo, p.fornecedor, ...(p.compatibilidade || [])].join(' ').toLowerCase();
         return texto.includes(busca);
     });
     grid.innerHTML = filtrada.map(p => {
@@ -899,27 +919,35 @@ function renderizarCatalogo() {
 }
 
 async function transferirLocalizacaoProduto(id) {
+    if (!podeExecutarAcao('ajustar_estoque')) return alert('Você não tem permissão para transferir localização.');
     const produto = (cacheEstoque || []).find(item => item.id === id);
     if (!produto) return alert('Produto não encontrado.');
 
-    const localAtual = obterLocalizacaoProduto(produto);
-    const rua = prompt('Nova rua:', localAtual.rua || '');
-    if (rua === null) return;
-    const localFisico = prompt('Novo local:', localAtual.local || localAtual.posicao || '');
-    if (localFisico === null) return;
+    const corredor = prompt('Novo corredor:', produto.localizacao?.corredor || '');
+    if (corredor === null) return;
+    const caixa = prompt('Nova caixa:', produto.localizacao?.caixa || '');
+    if (caixa === null) return;
+    const prateleira = prompt('Nova prateleira:', produto.localizacao?.prateleira || '');
+    if (prateleira === null) return;
 
     await db.collection('estoque_kell').doc(id).update({
         localizacao: {
-            localId: '',
-            rua: String(rua || '').trim(),
-            local: String(localFisico || '').trim(),
-            posicao: String(localFisico || '').trim(),
-            corredor: String(rua || '').trim(),
-            caixa: String(localFisico || '').trim(),
-            prateleira: ''
+            corredor: String(corredor || '').trim(),
+            caixa: String(caixa || '').trim(),
+            prateleira: String(prateleira || '').trim()
         },
         transferencia_em: Date.now()
     });
+    await registrarMovimentacaoProduto(id, {
+        tipo: 'TRANSFERENCIA',
+        motivo: 'Mudança de localização',
+        impacto: `${produto.localizacao?.corredor || '--'} ${produto.localizacao?.caixa || '--'} ${produto.localizacao?.prateleira || '--'} -> ${String(corredor || '').trim()} ${String(caixa || '').trim()} ${String(prateleira || '').trim()}`,
+        data: new Date().toLocaleString('pt-BR'),
+        usuario: auth.currentUser?.email || 'SISTEMA'
+    });
+    if (typeof registrarAuditoria === 'function') {
+        registrarAuditoria('ESTOQUE', id, 'TRANSFERENCIA_LOCALIZACAO', { corredor, caixa, prateleira });
+    }
 
     Toastify({ text: 'Localização atualizada!', style: { background: 'var(--primary)' } }).showToast();
 }

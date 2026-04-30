@@ -13,73 +13,133 @@ function renderizarListaMotos() {
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    const nivel = document.getElementById('func-nivel');
+    if (nivel && !nivel.dataset.bindedPermissoes) {
+        nivel.addEventListener('change', aplicarPresetPermissoesEquipe);
+        nivel.dataset.bindedPermissoes = 'true';
+    }
+    aplicarPresetPermissoesEquipe();
+});
+
 async function salvarMoto() { 
     const n = document.getElementById('nova-moto').value; 
     if(n) await db.collection("motos_kell").add({nome:n}); 
     document.getElementById('nova-moto').value=''; 
 }
 
-function obterTextoLocal(local) {
-    if (!local) return 'Sem local';
-    const partes = [local.rua, local.local || local.posicao]
-        .map(v => String(v || '').trim())
-        .filter(Boolean);
-    return partes.join(' • ') || 'Sem local';
+function aplicarPresetPermissoesEquipe() {
+    const nivel = document.getElementById('func-nivel')?.value || 'JUNIOR';
+    const checks = document.querySelectorAll('.acao-permissao-check');
+    const presets = {
+        JUNIOR: ['gerenciar_os'],
+        PLENO: ['ver_custo','editar_preco','ajustar_estoque','publicar_anuncio','gerenciar_os','exportar_relatorios'],
+        SENIOR: ['ver_custo','editar_preco','excluir_orcamento','ajustar_estoque','publicar_anuncio','gerenciar_equipe','ver_auditoria','gerenciar_os','exportar_relatorios']
+    };
+    const ativos = presets[nivel] || [];
+    checks.forEach(check => {
+        check.checked = ativos.includes(check.value);
+    });
 }
 
-function renderizarListaLocais() {
-    const tbody = document.getElementById('lista-locais-gerencia');
-    if (!tbody) return;
-
-    const locais = Array.isArray(cacheLocais) ? [...cacheLocais] : [];
-    locais.sort((a, b) => obterTextoLocal(a).localeCompare(obterTextoLocal(b), 'pt-BR'));
-
-    tbody.innerHTML = locais.length ? locais.map(local => `
-        <tr>
-            <td>${local.rua || '--'}</td>
-            <td>${local.local || local.posicao || '--'}</td>
-            <td style="text-align:right;">
-                <button class="btn btn-sm btn-danger" onclick="removerLocalEstoque('${local.id}')"><i class="ri-delete-bin-line"></i></button>
-            </td>
-        </tr>
-    `).join('') : '<tr><td colspan="3" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum local cadastrado.</td></tr>';
+function obterAcoesTexto(funcionario) {
+    const lista = Array.isArray(funcionario?.acoes_permitidas) ? funcionario.acoes_permitidas : [];
+    return lista.length ? lista.join(', ') : 'Sem ações extras';
 }
 
-async function salvarLocalEstoque() {
-    const rua = document.getElementById('local-rua')?.value?.trim() || '';
-    const local = document.getElementById('local-posicao')?.value?.trim() || '';
+function abrirPerfilFuncionario(id) {
+    const funcionario = (cacheFuncionarios || []).find(item => item.id === id);
+    if (!funcionario) return alert('Funcionário não encontrado.');
 
-    if (!rua || !local) return alert('Informe a rua e o local.');
+    const box = document.getElementById('perfil-funcionario-conteudo');
+    const modal = document.getElementById('modal-perfil-funcionario');
+    if (!box || !modal) return;
 
-    await db.collection('locais_kell').add({
-        rua,
-        local,
-        posicao: local,
-        criado_em: Date.now()
+    box.innerHTML = `
+        <div class="modal-subtle-box">
+            <div style="font-size:22px; font-weight:800; color:var(--text-main); margin-bottom:6px;">${funcionario.nome || 'Sem nome'}</div>
+            <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">${funcionario.email || funcionario.id}</div>
+            <div class="form-grid-2">
+                <div class="modal-subtle-box"><div class="modal-section-title">Nível</div><div style="font-weight:800; color:var(--text-main);">${funcionario.nivel || 'JUNIOR'}</div></div>
+                <div class="modal-subtle-box"><div class="modal-section-title">Criado em</div><div style="font-weight:800; color:var(--text-main);">${funcionario.criado_em ? new Date(funcionario.criado_em).toLocaleString('pt-BR') : '--'}</div></div>
+            </div>
+            <div class="modal-section-title" style="margin-top:18px;">Permissões por ação</div>
+            <div style="font-size:13px; color:var(--text-main); line-height:1.7; margin-top:8px;">${obterAcoesTexto(funcionario)}</div>
+        </div>
+    `;
+    modal.style.display = 'flex';
+}
+
+function renderizarAuditoria() {
+    const corpo = document.getElementById('corpo-auditoria');
+    if (!corpo) return;
+    const busca = (document.getElementById('auditoria-busca')?.value || '').toLowerCase().trim();
+    const lista = (cacheAuditoria || []).filter(item => {
+        if (!busca) return true;
+        return [item.usuario, item.colecao, item.acao, JSON.stringify(item.detalhes || {})].join(' ').toLowerCase().includes(busca);
     });
 
-    document.getElementById('local-rua').value = '';
-    document.getElementById('local-posicao').value = '';
-    Toastify({ text: 'Local cadastrado!', style: { background: 'var(--primary)' } }).showToast();
+    corpo.innerHTML = lista.length ? lista.map(item => `
+        <tr>
+            <td>${item.data || '--'}</td>
+            <td>${item.usuario || '--'}</td>
+            <td>${item.colecao || '--'}</td>
+            <td><span class="status-badge bg-green">${item.acao || '--'}</span></td>
+            <td style="font-size:12px; color:var(--text-muted);">${Object.entries(item.detalhes || {}).map(([chave, valor]) => `${chave}: ${typeof valor === 'object' ? JSON.stringify(valor) : valor}`).join(' • ') || '--'}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="5" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum log encontrado.</td></tr>';
 }
 
-async function removerLocalEstoque(id) {
-    const local = (cacheLocais || []).find(item => item.id === id);
-    if (!confirm(`Remover o local ${obterTextoLocal(local)}? Os produtos já vinculados manterão o texto do local.`)) return;
-    await db.collection('locais_kell').doc(id).delete();
-    Toastify({ text: 'Local removido.', style: { background: 'var(--primary)' } }).showToast();
+function exportarAuditoriaCSV() {
+    if (!podeExecutarAcao('exportar_relatorios')) return alert('Você não tem permissão para exportar relatórios.');
+    const linhas = [['Data','Usuário','Coleção','Ação','Detalhes']];
+    (cacheAuditoria || []).forEach(item => {
+        linhas.push([
+            item.data || '',
+            item.usuario || '',
+            item.colecao || '',
+            item.acao || '',
+            JSON.stringify(item.detalhes || {})
+        ]);
+    });
+    baixarCSV('auditoria_kell.csv', linhas);
 }
 
-function renderizarListaFuncionarios() { 
-    if(document.getElementById('lista-funcionarios')) {
-        document.getElementById('lista-funcionarios').innerHTML = cacheFuncionarios.map(f=>`<div class="moto-item" style="justify-content:space-between"><span>${f.nome} <small style="color:var(--primary)">(${f.nivel})</small><br><small style="font-size:9px; color:#999">${f.email}</small></span><button class="btn btn-sm btn-danger" onclick="db.collection('funcionarios_kell').doc('${f.id}').delete()">Remover</button></div>`).join(''); 
+async function removerFuncionario(id) {
+    if (!podeExecutarAcao('gerenciar_equipe')) return alert('Você não tem permissão para remover funcionários.');
+    if (!confirm('Remover este funcionário da equipe?')) return;
+    await db.collection('funcionarios_kell').doc(id).delete();
+    if (typeof registrarAuditoria === "function") {
+        registrarAuditoria('EQUIPE', id, 'REMOCAO', { removido_por: auth.currentUser.email });
     }
 }
 
+function renderizarListaFuncionarios() { 
+    const lista = document.getElementById('lista-funcionarios');
+    if(!lista) return;
+    lista.innerHTML = cacheFuncionarios.map(f=>`
+        <div class="modal-subtle-box" style="margin-top:12px;">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                <div>
+                    <div style="font-weight:800; color:var(--text-main)">${f.nome || 'Sem nome'} <small style="color:var(--primary)">(${f.nivel || 'JUNIOR'})</small></div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${f.email || f.id}</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:8px;"><b>Ações:</b> ${obterAcoesTexto(f)}</div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn btn-sm btn-secondary" onclick="abrirPerfilFuncionario('${f.id}')">Perfil</button>
+                    ${podeExecutarAcao('gerenciar_equipe') ? `<button class="btn btn-sm btn-danger" onclick="removerFuncionario('${f.id}')">Remover</button>` : ''}
+                </div>
+            </div>
+        </div>
+    `).join(''); 
+}
+
 async function salvarFuncionario() {
+    if (!podeExecutarAcao('gerenciar_equipe')) return alert('Você não tem permissão para gerenciar a equipe.');
     const n = document.getElementById('func-nome').value;
     const s = document.getElementById('func-sobrenome').value;
     const nv = document.getElementById('func-nivel').value;
+    const acoesPermitidas = Array.from(document.querySelectorAll('.acao-permissao-check:checked')).map(el => el.value);
     
     // Validação para evitar logins quebrados
     if(!n || n.trim().length < 2) return alert("Erro: O Nome é obrigatório.");
@@ -104,8 +164,12 @@ async function salvarFuncionario() {
             email: email, 
             nome: nomeCompleto, 
             nivel: nv,
+            acoes_permitidas: acoesPermitidas,
             criado_em: Date.now()
         });
+        if(typeof registrarAuditoria === "function") {
+            registrarAuditoria('EQUIPE', email, 'LIBERACAO', { nome: nomeCompleto, nivel: nv, acoes: acoesPermitidas });
+        }
         
         const loginVisual = email.split('@')[0];
         
@@ -114,6 +178,7 @@ async function salvarFuncionario() {
         // Limpa campos
         document.getElementById('func-nome').value = '';
         document.getElementById('func-sobrenome').value = '';
+        aplicarPresetPermissoesEquipe();
         
     } catch (e) {
         alert("Erro ao registrar no banco: " + e.message);
