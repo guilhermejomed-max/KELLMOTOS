@@ -343,7 +343,7 @@ function aplicarPermissoes() {
 function toggleSidebarMini() { document.getElementById('sidebar').classList.toggle('collapsed'); }
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
 function togglePrivacy() { document.body.classList.toggle('privacy-on'); }
-function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); if (window.fecharScannerCodigo) fecharScannerCodigo(true); }
+function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); if (window.fecharScannerCodigo) fecharScannerCodigo(true); if (window.resetarEstadoModalCliente) resetarEstadoModalCliente(); if (window.resetarEdicaoFiadoManual) resetarEdicaoFiadoManual(); }
 function toggleConfig() { 
     const m = document.getElementById('modal-config');
     m.style.display = m.style.display === 'flex' ? 'none' : 'flex'; 

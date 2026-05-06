@@ -1,6 +1,7 @@
 ﻿let chartF = null;
 let listaItensNF = [];
 let clienteExtratoAtual = null;
+let fiadoManualEdicaoId = null;
 
 function obterNomeProdutoFinanceiro(produto) {
     if (!produto) return 'Produto';
@@ -374,6 +375,8 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
 
         const podeSelecionar = !v.pagamento_efetivado;
 
+        const podeEditarFiadoManual = !v.pagamento_efetivado && v.origem === 'FIADO_MANUAL';
+
         htmlLinhas += `
         <tr style="border-bottom:1px solid #eee;">
             <td style="padding:6px; font-size:11px;">${v.data}<br><span style="color:#999; font-size:9px;">${v.hora}</span></td>
@@ -382,6 +385,9 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
             <td style="padding:6px; text-align:center;">${statusBadge}</td>
             <td style="padding:6px; text-align:center;">
                 ${podeSelecionar ? `<input type="checkbox" class="checkbox-liquidacao" data-venda-id="${v.id}" data-valor="${valor.toFixed(2)}" onchange="atualizarResumoLiquidacao()">` : '-'}
+            </td>
+            <td style="padding:6px; text-align:center;" class="no-print" data-html2canvas-ignore="true">
+                ${podeEditarFiadoManual ? `<button class="btn btn-sm btn-secondary" onclick="abrirEdicaoFiadoManual('${v.id}')">Editar</button>` : '-'}
             </td>
         </tr>`;
     });
@@ -469,10 +475,11 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
                         <th style="padding:8px; text-align:right; width:20%;">Valor</th>
                         <th style="padding:8px; text-align:center; width:15%;">Status</th>
                         <th style="padding:8px; text-align:center; width:13%;">Receber</th>
+                        <th style="padding:8px; text-align:center; width:14%;" class="no-print" data-html2canvas-ignore="true">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${htmlLinhas || '<tr><td colspan="5" style="text-align:center; padding:15px; font-style:italic; color:#94a3b8;">Nenhum registro encontrado no período.</td></tr>'}
+                    ${htmlLinhas || '<tr><td colspan="6" style="text-align:center; padding:15px; font-style:italic; color:#94a3b8;">Nenhum registro encontrado no período.</td></tr>'}
                 </tbody>
             </table>
 
@@ -975,6 +982,101 @@ async function registrarFiadoManual() {
     document.getElementById('boleto-manual-valor').value = '';
 
     Toastify({ text: 'Lançamento manual adicionado ao fiado!', style: { background: 'var(--primary)' } }).showToast();
+}
+
+function resetarEdicaoFiadoManual() {
+    fiadoManualEdicaoId = null;
+    ['editar-fiado-cliente','editar-fiado-item','editar-fiado-qtd','editar-fiado-valor','editar-fiado-observacao'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+}
+
+function abrirEdicaoFiadoManual(id) {
+    const venda = (cacheVendas || []).find(item => item.id === id);
+    if (!venda) return alert('Lançamento não encontrado.');
+    if (venda.pagamento_efetivado) return alert('Esse fiado já foi recebido.');
+    if (venda.origem !== 'FIADO_MANUAL') return alert('Só é possível editar lançamentos manuais do fiado.');
+
+    fiadoManualEdicaoId = id;
+    document.getElementById('editar-fiado-cliente').value = venda.cliente || '';
+    document.getElementById('editar-fiado-item').value = venda.peca || venda.itens?.[0]?.nome || '';
+    document.getElementById('editar-fiado-qtd').value = parseInt(venda.qtd) || 1;
+    document.getElementById('editar-fiado-valor').value = parseFloat(venda.unitario || 0).toFixed(2);
+    document.getElementById('editar-fiado-observacao').value = venda.observacao || '';
+    document.getElementById('modal-editar-fiado').style.display = 'flex';
+}
+
+async function salvarEdicaoFiadoManual() {
+    if (!fiadoManualEdicaoId) return alert('Nenhum fiado manual selecionado para edição.');
+
+    const item = String(document.getElementById('editar-fiado-item')?.value || '').trim();
+    const qtd = parseInt(document.getElementById('editar-fiado-qtd')?.value) || 0;
+    const valorUnitario = parseFloat(document.getElementById('editar-fiado-valor')?.value) || 0;
+    const observacao = String(document.getElementById('editar-fiado-observacao')?.value || '').trim();
+
+    if (!item) return alert('Informe o item ou serviço.');
+    if (qtd <= 0) return alert('Informe uma quantidade válida.');
+    if (valorUnitario <= 0) return alert('Informe um valor válido.');
+
+    const vendaRef = db.collection('vendas_kell').doc(fiadoManualEdicaoId);
+
+    await db.runTransaction(async t => {
+        const vendaDoc = await t.get(vendaRef);
+        if (!vendaDoc.exists) throw new Error('Lançamento não encontrado.');
+        const venda = vendaDoc.data() || {};
+        if (venda.pagamento_efetivado) throw new Error('Esse fiado já foi recebido.');
+        if (venda.origem !== 'FIADO_MANUAL') throw new Error('Só é possível editar lançamentos manuais do fiado.');
+
+        const clienteId = venda.clienteId || '';
+        if (!clienteId) throw new Error('Cliente do fiado não vinculado.');
+
+        const clienteRef = db.collection('clientes_kell').doc(clienteId);
+        const clienteDoc = await t.get(clienteRef);
+        if (!clienteDoc.exists) throw new Error('Cliente não encontrado.');
+
+        const totalAnterior = parseFloat(venda.venda) || 0;
+        const novoTotal = qtd * valorUnitario;
+        const diferenca = novoTotal - totalAnterior;
+
+        t.update(clienteRef, {
+            debito: firebase.firestore.FieldValue.increment(diferenca)
+        });
+
+        t.update(vendaRef, {
+            itens: [{
+                id: venda.itens?.[0]?.id || `manual-${fiadoManualEdicaoId}`,
+                produtoId: '',
+                nome: item,
+                marca: '',
+                nome_peca: item,
+                codigo: '',
+                qtd,
+                unitario: valorUnitario,
+                total: novoTotal,
+                origem: 'FIADO_MANUAL'
+            }],
+            peca: item,
+            qtd,
+            venda: novoTotal,
+            unitario: valorUnitario,
+            observacao: observacao || 'Lançamento manual no fiado',
+            atualizado_em: Date.now(),
+            operador: auth.currentUser?.email || venda.operador || 'SISTEMA'
+        });
+    });
+
+    if (typeof registrarAuditoria === 'function') {
+        registrarAuditoria('CLIENTES', fiadoManualEdicaoId, 'FIADO_MANUAL_EDITADO', {
+            item,
+            qtd,
+            valor_unitario: valorUnitario
+        });
+    }
+
+    Toastify({ text: 'Fiado atualizado com sucesso!', style: { background: 'var(--primary)' } }).showToast();
+    fecharModais();
+    if (clienteExtratoAtual) abrirExtratoCompleto(clienteExtratoAtual);
 }
 
 

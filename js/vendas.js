@@ -3,6 +3,7 @@ let itemEcoPendente = null;
 let carrinhoVenda = [];
 let orcamentoAtualId = null;
 let anuncioProdutoPendente = null;
+let orcamentoEmEdicaoId = null;
 
 function obterNomeProdutoVenda(produto) {
     if (!produto) return 'Produto';
@@ -329,6 +330,7 @@ function renderizarCarrinhoVenda() {
 function limparCarrinhoVenda(limparCliente = false) {
     carrinhoVenda = [];
     vendaPendente = null;
+    orcamentoEmEdicaoId = null;
     renderizarCarrinhoVenda();
     if (limparCliente) {
         const nome = document.getElementById('cli-nome');
@@ -347,6 +349,7 @@ function limparCarrinhoVenda(limparCliente = false) {
         if (horasAtual) horasAtual.value = '';
         mostrarSelecaoCliente();
     }
+    atualizarEstadoModalCliente();
 }
 
 function removerItemCarrinho(index) {
@@ -469,9 +472,27 @@ function abrirVendaEco(id) {
 
 function abrirModalCliente() {
     if (!carrinhoVenda.length) return alert('Adicione pelo menos um item ao carrinho.');
+    orcamentoEmEdicaoId = null;
     fecharModais();
+    atualizarEstadoModalCliente();
     document.getElementById('modal-cliente').style.display = 'flex';
     mostrarSelecaoCliente();
+}
+
+function atualizarEstadoModalCliente() {
+    const titulo = document.getElementById('modal-cliente-titulo');
+    const btnOrcamento = document.getElementById('btn-criar-orcamento');
+    const btnVenda = document.getElementById('btn-confirmar-venda');
+    const editando = !!orcamentoEmEdicaoId;
+
+    if (titulo) titulo.innerText = editando ? 'Editar orçamento' : 'Venda / Orçamento';
+    if (btnOrcamento) btnOrcamento.innerText = editando ? 'Salvar alterações' : 'Criar orçamento';
+    if (btnVenda) btnVenda.style.display = editando ? 'none' : 'inline-flex';
+}
+
+function resetarEstadoModalCliente() {
+    orcamentoEmEdicaoId = null;
+    atualizarEstadoModalCliente();
 }
 
 function consultarProdutoBalcao(valorManual = '') {
@@ -679,8 +700,12 @@ async function criarOuEfetivarVenda(tipo = 'VENDA') {
     const proximaRevisao = agendaRevisao.slice().sort((a, b) => a.proxima_revisao_ts - b.proxima_revisao_ts)[0] || null;
 
     if (tipo === 'ORCAMENTO') {
+        const orcamentoAtual = orcamentoEmEdicaoId ? (cacheVendas || []).find(item => item.id === orcamentoEmEdicaoId && item.tipo === 'ORCAMENTO') : null;
+        if (orcamentoEmEdicaoId && !orcamentoAtual) throw new Error('Orçamento em edição não encontrado.');
+        if (orcamentoAtual?.status === 'VENDIDO') throw new Error('Esse orçamento já foi convertido em venda.');
+
         const orcamento = {
-            numero: gerarNumeroOrcamento(),
+            numero: orcamentoAtual?.numero || gerarNumeroOrcamento(),
             itens,
             peca: resumo,
             produtoId: itens.length === 1 ? itens[0].produtoId : '',
@@ -697,16 +722,23 @@ async function criarOuEfetivarVenda(tipo = 'VENDA') {
             agenda_revisao: agendaRevisao,
             proxima_revisao: proximaRevisao?.proxima_revisao || '',
             proxima_revisao_ts: proximaRevisao?.proxima_revisao_ts || null,
-            status: 'ABERTO',
+            status: orcamentoAtual?.status || 'ABERTO',
             tipo: 'ORCAMENTO',
-            data: new Date().toLocaleDateString('pt-BR'),
-            hora: new Date().toLocaleTimeString('pt-BR'),
-            timestamp: Date.now(),
+            data: orcamentoAtual?.data || new Date().toLocaleDateString('pt-BR'),
+            hora: orcamentoAtual?.hora || new Date().toLocaleTimeString('pt-BR'),
+            timestamp: orcamentoAtual?.timestamp || Date.now(),
+            atualizado_em: Date.now(),
             origem: itens.length === 1 ? (itens[0].origem || 'BALCAO') : 'CARRINHO',
             operador: auth.currentUser.email
         };
-        await db.collection('vendas_kell').add(orcamento);
-        Toastify({ text: 'Orçamento criado com sucesso!', style: { background: 'var(--primary)' } }).showToast();
+        if (orcamentoEmEdicaoId) {
+            await db.collection('vendas_kell').doc(orcamentoEmEdicaoId).update(orcamento);
+            if (typeof registrarAuditoria === 'function') registrarAuditoria('VENDAS', orcamentoEmEdicaoId, 'ORCAMENTO_EDITADO', { numero: orcamento.numero, cliente: orcamento.cliente, valor: orcamento.venda });
+        } else {
+            await db.collection('vendas_kell').add(orcamento);
+            if (typeof registrarAuditoria === 'function') registrarAuditoria('VENDAS', String(orcamento.numero || ''), 'ORCAMENTO_CRIADO', { cliente: orcamento.cliente, valor: orcamento.venda });
+        }
+        Toastify({ text: orcamentoEmEdicaoId ? 'Orçamento atualizado com sucesso!' : 'Orçamento criado com sucesso!', style: { background: 'var(--primary)' } }).showToast();
         fecharModais();
         limparCarrinhoVenda(true);
         return orcamento;
@@ -927,6 +959,8 @@ async function converterOrcamentoEmVenda(id) {
 function abrirOrcamentoParaEdicao(id) {
     const orcamento = (cacheVendas || []).find(item => item.id === id && item.tipo === 'ORCAMENTO');
     if (!orcamento) return;
+    if ((orcamento.status || 'ABERTO') === 'VENDIDO') return alert('Esse orçamento já foi convertido em venda.');
+    orcamentoEmEdicaoId = id;
     carrinhoVenda = normalizarItensDocumento(orcamento);
     renderizarCarrinhoVenda();
     document.getElementById('cli-nome').value = orcamento.cliente || '';
@@ -941,6 +975,7 @@ function abrirOrcamentoParaEdicao(id) {
     if (kmAtual) kmAtual.value = orcamento.motor_km_atual || '';
     if (horasAtual) horasAtual.value = orcamento.motor_horas_atual || '';
     mostrarSelecaoCliente();
+    atualizarEstadoModalCliente();
     document.getElementById('modal-cliente').style.display = 'flex';
 }
 
@@ -948,6 +983,7 @@ function duplicarOrcamento(id) {
     const orcamento = (cacheVendas || []).find(item => item.id === id && item.tipo === 'ORCAMENTO');
     if (!orcamento) return alert('Orçamento não encontrado.');
 
+    orcamentoEmEdicaoId = null;
     carrinhoVenda = normalizarItensDocumento(orcamento);
     renderizarCarrinhoVenda();
     document.getElementById('cli-nome').value = orcamento.cliente || '';
@@ -962,6 +998,7 @@ function duplicarOrcamento(id) {
     if (kmAtual) kmAtual.value = orcamento.motor_km_atual || '';
     if (horasAtual) horasAtual.value = orcamento.motor_horas_atual || '';
     mostrarSelecaoCliente();
+    atualizarEstadoModalCliente();
     document.getElementById('modal-cliente').style.display = 'flex';
     Toastify({ text: 'Orçamento carregado para duplicação.', style: { background: 'var(--primary)' } }).showToast();
 }
@@ -1310,7 +1347,7 @@ function renderizarOrcamentos() {
                 ${status !== 'VENDIDO' ? `<button class="btn btn-sm btn-primary" onclick="converterOrcamentoEmVenda('${o.id}')">Virar venda</button>` : ''}
                 <button class="btn btn-sm btn-secondary" onclick="imprimirOrcamento('${o.id}')"><i class="ri-printer-line"></i></button>
                 <button class="btn btn-sm btn-secondary" onclick="duplicarOrcamento('${o.id}')"><i class="ri-file-copy-line"></i></button>
-                <button class="btn btn-sm btn-secondary" onclick="abrirOrcamentoParaEdicao('${o.id}')">Abrir</button>
+                <button class="btn btn-sm btn-secondary" onclick="abrirOrcamentoParaEdicao('${o.id}')">Editar</button>
                 ${podeExecutarAcao('excluir_orcamento') ? `<button class="btn btn-sm btn-danger" onclick="excluirOrcamento('${o.id}')"><i class="ri-delete-bin-line"></i></button>` : ''}
             </td>
         </tr>`;
