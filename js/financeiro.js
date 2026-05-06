@@ -34,7 +34,7 @@ function atualizarSelectClientes() {
         html += `<option value="${c.id}">${nome}${cpf}${telefone}</option>`;
     });
 
-    ['cli-boleto-select', 'boleto-manual-cliente'].forEach(id => {
+    ['cli-boleto-select', 'boleto-manual-cliente', 'editar-orc-boleto-select'].forEach(id => {
         const select = document.getElementById(id);
         if (!select) return;
         const valorAtual = select.value || '';
@@ -635,6 +635,7 @@ function renderizarBoletos() {
             <td align="right">
                 <button class="btn btn-sm btn-secondary" onclick="abrirPainelCliente('${c.id}')">Painel</button>
                 <button class="btn btn-sm btn-secondary" onclick="abrirExtratoCompleto('${c.id}')"><i class="ri-file-list-3-line"></i></button>
+                <button class="btn btn-sm btn-secondary" onclick="abrirEdicaoFiadoPorCliente('${c.id}')"><i class="ri-edit-2-line"></i></button>
                 <button class="btn btn-sm btn-primary" onclick="liquidarDebito('${c.id}')"><i class="ri-check-double-line"></i></button>
             </td>
         </tr>
@@ -645,9 +646,28 @@ function renderizarBoletos() {
         <tr>
             <td onclick="abrirExtratoCompleto('${c.id}')"><b>${c.nome}</b></td>
             <td>${c.cpf || '--'}</td>
-            <td align="right"><button class="btn btn-sm btn-secondary" onclick="abrirPainelCliente('${c.id}')">Painel</button></td>
+            <td><span class="status-badge bg-green">Em dia</span></td>
+            <td align="right" style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+                <button class="btn btn-sm btn-secondary" onclick="abrirPainelCliente('${c.id}')">Painel</button>
+                <button class="btn btn-sm btn-secondary" onclick="abrirExtratoCompleto('${c.id}')"><i class="ri-file-list-3-line"></i></button>
+            </td>
         </tr>
     `).join('');
+}
+
+function abrirEdicaoFiadoPorCliente(id) {
+    const cliente = (cacheClientes || []).find(item => item.id === id);
+    if (!cliente) return alert('Cliente não encontrado.');
+
+    const pendentesEditaveis = obterVendasDoCliente(id, cliente.nome)
+        .filter(item => !item.pagamento_efetivado && item.origem === 'FIADO_MANUAL')
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    if (!pendentesEditaveis.length) {
+        return alert('Esse cliente não tem lançamento manual de fiado em aberto para editar.');
+    }
+
+    abrirEdicaoFiadoManual(pendentesEditaveis[0].id);
 }
 
 function abrirPainelCliente(id) {

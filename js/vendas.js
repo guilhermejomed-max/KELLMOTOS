@@ -4,6 +4,7 @@ let carrinhoVenda = [];
 let orcamentoAtualId = null;
 let anuncioProdutoPendente = null;
 let orcamentoEmEdicaoId = null;
+let orcamentoPopupEdicaoId = null;
 
 function obterNomeProdutoVenda(produto) {
     if (!produto) return 'Produto';
@@ -495,6 +496,47 @@ function resetarEstadoModalCliente() {
     atualizarEstadoModalCliente();
 }
 
+function resetarPopupEdicaoOrcamento() {
+    orcamentoPopupEdicaoId = null;
+    ['editar-orc-cliente','editar-orc-validade','editar-orc-km','editar-orc-horas','editar-orc-valor','editar-orc-observacao'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const selectPgto = document.getElementById('editar-orc-pgto');
+    const selectCliente = document.getElementById('editar-orc-boleto-select');
+    const resumo = document.getElementById('editar-orcamento-resumo');
+    if (selectPgto) selectPgto.value = 'DINHEIRO';
+    if (selectCliente) selectCliente.value = '';
+    if (resumo) resumo.innerHTML = '';
+    mostrarSelecaoClienteEdicaoOrcamento();
+}
+
+function mostrarSelecaoClienteEdicaoOrcamento() {
+    const isBoleto = document.getElementById('editar-orc-pgto')?.value === 'BOLETO';
+    const wrap = document.getElementById('editar-orc-boleto-wrap');
+    if (wrap) wrap.style.display = isBoleto ? 'block' : 'none';
+    if (isBoleto && typeof atualizarSelectClientes === 'function') {
+        atualizarSelectClientes();
+        const origem = document.getElementById('cli-boleto-select');
+        const destino = document.getElementById('editar-orc-boleto-select');
+        if (origem && destino && !destino.innerHTML) destino.innerHTML = origem.innerHTML;
+        sincronizarClienteEdicaoOrcamento(true);
+    }
+}
+
+function sincronizarClienteEdicaoOrcamento(porNome = false) {
+    const select = document.getElementById('editar-orc-boleto-select');
+    const inputNome = document.getElementById('editar-orc-cliente');
+    if (!select || !inputNome) return null;
+    if (porNome && !select.value) {
+        const clientePorNome = localizarClienteFiadoPorNome(inputNome.value);
+        if (clientePorNome) select.value = clientePorNome.id;
+    }
+    const cliente = (cacheClientes || []).find(item => item.id === select.value) || null;
+    if (cliente) inputNome.value = cliente.nome || inputNome.value;
+    return cliente;
+}
+
 function consultarProdutoBalcao(valorManual = '') {
     const busca = String(valorManual || document.getElementById('consulta-balcao-input')?.value || '').toLowerCase().trim();
     const box = document.getElementById('consulta-balcao-resultado');
@@ -956,11 +998,39 @@ async function converterOrcamentoEmVenda(id) {
     }
 }
 
-function abrirOrcamentoParaEdicao(id) {
+function abrirPopupEdicaoOrcamento(id) {
     const orcamento = (cacheVendas || []).find(item => item.id === id && item.tipo === 'ORCAMENTO');
     if (!orcamento) return;
     if ((orcamento.status || 'ABERTO') === 'VENDIDO') return alert('Esse orçamento já foi convertido em venda.');
+    orcamentoPopupEdicaoId = id;
+    const itens = normalizarItensDocumento(orcamento);
+    const resumo = document.getElementById('editar-orcamento-resumo');
+    const selectOrigem = document.getElementById('cli-boleto-select');
+    const selectDestino = document.getElementById('editar-orc-boleto-select');
+    if (selectOrigem && selectDestino) selectDestino.innerHTML = selectOrigem.innerHTML;
+    if (resumo) {
+        resumo.innerHTML = `
+            <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">O que será editado</div>
+            <div style="font-weight:800; color:var(--text-main); margin-bottom:6px;">${orcamento.numero || '---'} • ${orcamento.cliente || 'Consumidor'}</div>
+            <div style="font-size:13px; color:var(--text-main); line-height:1.6;">${itens.map(item => `${item.qtd}x ${item.nome}`).join(' • ') || 'Sem itens'}</div>
+        `;
+    }
+    document.getElementById('editar-orc-cliente').value = orcamento.cliente || '';
+    document.getElementById('editar-orc-pgto').value = orcamento.pagamento || 'DINHEIRO';
+    document.getElementById('editar-orc-boleto-select').value = orcamento.clienteId || '';
+    document.getElementById('editar-orc-validade').value = orcamento.validade || '';
+    document.getElementById('editar-orc-km').value = orcamento.motor_km_atual || '';
+    document.getElementById('editar-orc-horas').value = orcamento.motor_horas_atual || '';
+    document.getElementById('editar-orc-valor').value = `R$ ${(parseFloat(orcamento.venda) || 0).toFixed(2)}`;
+    document.getElementById('editar-orc-observacao').value = orcamento.observacao || '';
+    mostrarSelecaoClienteEdicaoOrcamento();
+    document.getElementById('modal-editar-orcamento').style.display = 'flex';
+}
+
+function abrirOrcamentoParaEdicao(id) {
     orcamentoEmEdicaoId = id;
+    const orcamento = (cacheVendas || []).find(item => item.id === id && item.tipo === 'ORCAMENTO');
+    if (!orcamento) return;
     carrinhoVenda = normalizarItensDocumento(orcamento);
     renderizarCarrinhoVenda();
     document.getElementById('cli-nome').value = orcamento.cliente || '';
@@ -977,6 +1047,46 @@ function abrirOrcamentoParaEdicao(id) {
     mostrarSelecaoCliente();
     atualizarEstadoModalCliente();
     document.getElementById('modal-cliente').style.display = 'flex';
+}
+
+function editarItensOrcamentoAtual() {
+    if (!orcamentoPopupEdicaoId) return alert('Nenhum orçamento selecionado.');
+    fecharModais();
+    abrirOrcamentoParaEdicao(orcamentoPopupEdicaoId);
+}
+
+async function salvarEdicaoOrcamentoDireta() {
+    if (!orcamentoPopupEdicaoId) return alert('Nenhum orçamento selecionado.');
+    const orcamento = (cacheVendas || []).find(item => item.id === orcamentoPopupEdicaoId && item.tipo === 'ORCAMENTO');
+    if (!orcamento) return alert('Orçamento não encontrado.');
+    if ((orcamento.status || 'ABERTO') === 'VENDIDO') return alert('Esse orçamento já foi convertido em venda.');
+
+    const pagamento = document.getElementById('editar-orc-pgto').value || 'DINHEIRO';
+    const clienteFiado = pagamento === 'BOLETO' ? sincronizarClienteEdicaoOrcamento(true) : null;
+    if (pagamento === 'BOLETO' && !clienteFiado) return alert('Selecione um cliente para o fiado.');
+
+    const payload = {
+        cliente: pagamento === 'BOLETO' ? (clienteFiado?.nome || document.getElementById('editar-orc-cliente').value || 'Consumidor') : (document.getElementById('editar-orc-cliente').value || 'Consumidor'),
+        clienteId: pagamento === 'BOLETO' ? (clienteFiado?.id || document.getElementById('editar-orc-boleto-select').value || '') : '',
+        pagamento,
+        validade: document.getElementById('editar-orc-validade').value || '',
+        motor_km_atual: parseInt(document.getElementById('editar-orc-km').value) || 0,
+        motor_horas_atual: parseInt(document.getElementById('editar-orc-horas').value) || 0,
+        observacao: String(document.getElementById('editar-orc-observacao').value || '').trim(),
+        atualizado_em: Date.now(),
+        operador: auth.currentUser?.email || orcamento.operador || 'SISTEMA'
+    };
+
+    const agendaRevisao = Array.isArray(orcamento.agenda_revisao) ? calcularAgendaRevisaoVenda(normalizarItensDocumento(orcamento), payload) : calcularAgendaRevisaoVenda(normalizarItensDocumento(orcamento), payload);
+    const proximaRevisao = agendaRevisao.slice().sort((a, b) => a.proxima_revisao_ts - b.proxima_revisao_ts)[0] || null;
+    payload.agenda_revisao = agendaRevisao;
+    payload.proxima_revisao = proximaRevisao?.proxima_revisao || '';
+    payload.proxima_revisao_ts = proximaRevisao?.proxima_revisao_ts || null;
+
+    await db.collection('vendas_kell').doc(orcamentoPopupEdicaoId).update(payload);
+    if (typeof registrarAuditoria === 'function') registrarAuditoria('VENDAS', orcamentoPopupEdicaoId, 'ORCAMENTO_EDITADO_DIRETO', { cliente: payload.cliente, pagamento: payload.pagamento });
+    Toastify({ text: 'Orçamento atualizado com sucesso!', style: { background: 'var(--primary)' } }).showToast();
+    fecharModais();
 }
 
 function duplicarOrcamento(id) {
@@ -1347,7 +1457,7 @@ function renderizarOrcamentos() {
                 ${status !== 'VENDIDO' ? `<button class="btn btn-sm btn-primary" onclick="converterOrcamentoEmVenda('${o.id}')">Virar venda</button>` : ''}
                 <button class="btn btn-sm btn-secondary" onclick="imprimirOrcamento('${o.id}')"><i class="ri-printer-line"></i></button>
                 <button class="btn btn-sm btn-secondary" onclick="duplicarOrcamento('${o.id}')"><i class="ri-file-copy-line"></i></button>
-                <button class="btn btn-sm btn-secondary" onclick="abrirOrcamentoParaEdicao('${o.id}')">Editar</button>
+                <button class="btn btn-sm btn-secondary" onclick="abrirPopupEdicaoOrcamento('${o.id}')">Editar</button>
                 ${podeExecutarAcao('excluir_orcamento') ? `<button class="btn btn-sm btn-danger" onclick="excluirOrcamento('${o.id}')"><i class="ri-delete-bin-line"></i></button>` : ''}
             </td>
         </tr>`;
