@@ -523,6 +523,10 @@ tbody tr:hover { background: rgba(16, 185, 129, 0.03); transform: scale(1.002); 
 }
 
 /* Estilos do Recibo Térmico */
+#modal-editar-fiado {
+    z-index: 10005;
+}
+
 #cupom-wrapper { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 10002; overflow-y: auto; justify-content: center; padding: 20px; }
 #cupom-print { background: #fff; width: 300px; padding: 20px 15px; color: #000; font-family: 'Courier New', Courier, monospace; line-height: 1.2; box-sizing: border-box; border: 1px solid #eee; font-size: 11px; text-transform: uppercase; margin: auto; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
 .cp-header { text-align: center; margin-bottom: 15px; }
