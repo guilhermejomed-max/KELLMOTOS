@@ -2,6 +2,7 @@
 let listaItensNF = [];
 let clienteExtratoAtual = null;
 let fiadoManualEdicaoId = null;
+let fiadoEdicaoClienteOriginalId = null;
 
 function obterNomeProdutoFinanceiro(produto) {
     if (!produto) return 'Produto';
@@ -34,7 +35,7 @@ function atualizarSelectClientes() {
         html += `<option value="${c.id}">${nome}${cpf}${telefone}</option>`;
     });
 
-    ['cli-boleto-select', 'boleto-manual-cliente', 'editar-orc-boleto-select'].forEach(id => {
+    ['cli-boleto-select', 'boleto-manual-cliente', 'editar-orc-boleto-select', 'editar-fiado-cliente-select'].forEach(id => {
         const select = document.getElementById(id);
         if (!select) return;
         const valorAtual = select.value || '';
@@ -336,6 +337,33 @@ function obterVendasDoCliente(id, nomeCliente = '') {
     });
 }
 
+function dataBRParaInput(dataBR) {
+    const partes = String(dataBR || '').split('/');
+    if (partes.length !== 3) return '';
+    return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+}
+
+function dataInputParaBR(dataInput) {
+    if (!dataInput) return new Date().toLocaleDateString('pt-BR');
+    const partes = String(dataInput).split('-');
+    if (partes.length !== 3) return dataInput;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+function horaParaInput(hora) {
+    const partes = String(hora || '').split(':');
+    if (partes.length < 2) return new Date().toTimeString().slice(0, 5);
+    return `${partes[0].padStart(2, '0')}:${partes[1].padStart(2, '0')}`;
+}
+
+function localizarClienteDoFiado(venda) {
+    if (!venda) return null;
+    return (cacheClientes || []).find(cliente => cliente.id === venda.clienteId)
+        || (clienteExtratoAtual ? (cacheClientes || []).find(cliente => cliente.id === clienteExtratoAtual) : null)
+        || (cacheClientes || []).find(cliente => normalizarTextoComparacao(cliente.nome) === normalizarTextoComparacao(venda.cliente))
+        || null;
+}
+
 // =========================
 // EXTRATO COMPLETO
 // =========================
@@ -375,8 +403,6 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
 
         const podeSelecionar = !v.pagamento_efetivado;
 
-        const podeEditarFiadoManual = !v.pagamento_efetivado && v.origem === 'FIADO_MANUAL';
-
         htmlLinhas += `
         <tr style="border-bottom:1px solid #eee;">
             <td style="padding:6px; font-size:11px;">${v.data}<br><span style="color:#999; font-size:9px;">${v.hora}</span></td>
@@ -387,7 +413,7 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
                 ${podeSelecionar ? `<input type="checkbox" class="checkbox-liquidacao" data-venda-id="${v.id}" data-valor="${valor.toFixed(2)}" onchange="atualizarResumoLiquidacao()">` : '-'}
             </td>
             <td style="padding:6px; text-align:center;" class="no-print" data-html2canvas-ignore="true">
-                ${podeEditarFiadoManual ? `<button class="btn btn-sm btn-secondary" onclick="abrirEdicaoFiadoManual('${v.id}')">Editar</button>` : '-'}
+                <button class="btn btn-sm btn-secondary" onclick="abrirEdicaoFiadoManual('${v.id}')">Editar</button>
             </td>
         </tr>`;
     });
@@ -650,6 +676,7 @@ function renderizarBoletos() {
             <td align="right" style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
                 <button class="btn btn-sm btn-secondary" onclick="abrirPainelCliente('${c.id}')">Painel</button>
                 <button class="btn btn-sm btn-secondary" onclick="abrirExtratoCompleto('${c.id}')"><i class="ri-file-list-3-line"></i></button>
+                <button class="btn btn-sm btn-secondary" onclick="abrirEdicaoFiadoPorCliente('${c.id}')"><i class="ri-edit-2-line"></i></button>
             </td>
         </tr>
     `).join('');
@@ -659,15 +686,15 @@ function abrirEdicaoFiadoPorCliente(id) {
     const cliente = (cacheClientes || []).find(item => item.id === id);
     if (!cliente) return alert('Cliente não encontrado.');
 
-    const pendentesEditaveis = obterVendasDoCliente(id, cliente.nome)
-        .filter(item => !item.pagamento_efetivado && item.origem === 'FIADO_MANUAL')
+    const lancamentos = obterVendasDoCliente(id, cliente.nome)
+        .filter(item => item.pagamento === 'BOLETO')
         .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-    if (!pendentesEditaveis.length) {
-        return alert('Esse cliente não tem lançamento manual de fiado em aberto para editar.');
+    if (!lancamentos.length) {
+        return alert('Esse cliente não tem lançamento de fiado para editar.');
     }
 
-    abrirEdicaoFiadoManual(pendentesEditaveis[0].id);
+    abrirEdicaoFiadoManual(lancamentos[0].id);
 }
 
 function abrirPainelCliente(id) {
@@ -1006,97 +1033,164 @@ async function registrarFiadoManual() {
 
 function resetarEdicaoFiadoManual() {
     fiadoManualEdicaoId = null;
-    ['editar-fiado-cliente','editar-fiado-item','editar-fiado-qtd','editar-fiado-valor','editar-fiado-observacao'].forEach(id => {
+    fiadoEdicaoClienteOriginalId = null;
+    ['editar-fiado-cliente','editar-fiado-cliente-select','editar-fiado-status','editar-fiado-data','editar-fiado-hora','editar-fiado-item','editar-fiado-qtd','editar-fiado-valor','editar-fiado-observacao'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    const status = document.getElementById('editar-fiado-status');
+    if (status) status.value = 'ABERTO';
 }
 
 function abrirEdicaoFiadoManual(id) {
     const venda = (cacheVendas || []).find(item => item.id === id);
     if (!venda) return alert('Lançamento não encontrado.');
-    if (venda.pagamento_efetivado) return alert('Esse fiado já foi recebido.');
-    if (venda.origem !== 'FIADO_MANUAL') return alert('Só é possível editar lançamentos manuais do fiado.');
+    if (venda.pagamento !== 'BOLETO') return alert('Esse lançamento não é fiado.');
+
+    if (typeof atualizarSelectClientes === 'function') atualizarSelectClientes();
+
+    const cliente = localizarClienteDoFiado(venda);
+    if (!cliente) return alert('Cliente do fiado não encontrado.');
 
     fiadoManualEdicaoId = id;
-    document.getElementById('editar-fiado-cliente').value = venda.cliente || '';
+    fiadoEdicaoClienteOriginalId = cliente.id;
+
+    const qtd = parseInt(venda.qtd) || (Array.isArray(venda.itens) ? venda.itens.reduce((acc, item) => acc + (parseInt(item.qtd) || 0), 0) : 1) || 1;
+    const valorUnitario = parseFloat(venda.unitario) || ((parseFloat(venda.venda) || 0) / Math.max(qtd, 1));
+
+    document.getElementById('editar-fiado-cliente').value = cliente.nome || venda.cliente || '';
+    document.getElementById('editar-fiado-cliente-select').value = cliente.id;
+    document.getElementById('editar-fiado-status').value = venda.pagamento_efetivado ? 'PAGO' : 'ABERTO';
+    document.getElementById('editar-fiado-data').value = dataBRParaInput(venda.data);
+    document.getElementById('editar-fiado-hora').value = horaParaInput(venda.hora);
     document.getElementById('editar-fiado-item').value = venda.peca || venda.itens?.[0]?.nome || '';
-    document.getElementById('editar-fiado-qtd').value = parseInt(venda.qtd) || 1;
-    document.getElementById('editar-fiado-valor').value = parseFloat(venda.unitario || 0).toFixed(2);
+    document.getElementById('editar-fiado-qtd').value = qtd;
+    document.getElementById('editar-fiado-valor').value = valorUnitario.toFixed(2);
     document.getElementById('editar-fiado-observacao').value = venda.observacao || '';
     document.getElementById('modal-editar-fiado').style.display = 'flex';
 }
 
 async function salvarEdicaoFiadoManual() {
-    if (!fiadoManualEdicaoId) return alert('Nenhum fiado manual selecionado para edição.');
+    if (!fiadoManualEdicaoId) return alert('Nenhum lançamento de fiado selecionado para edição.');
 
+    const clienteNovoId = document.getElementById('editar-fiado-cliente-select')?.value || '';
+    const clienteNovo = (cacheClientes || []).find(cliente => cliente.id === clienteNovoId);
+    const status = document.getElementById('editar-fiado-status')?.value || 'ABERTO';
+    const dataInput = document.getElementById('editar-fiado-data')?.value || '';
+    const horaInput = document.getElementById('editar-fiado-hora')?.value || '';
     const item = String(document.getElementById('editar-fiado-item')?.value || '').trim();
     const qtd = parseInt(document.getElementById('editar-fiado-qtd')?.value) || 0;
     const valorUnitario = parseFloat(document.getElementById('editar-fiado-valor')?.value) || 0;
     const observacao = String(document.getElementById('editar-fiado-observacao')?.value || '').trim();
 
+    if (!clienteNovo) return alert('Selecione um cliente válido.');
     if (!item) return alert('Informe o item ou serviço.');
     if (qtd <= 0) return alert('Informe uma quantidade válida.');
     if (valorUnitario <= 0) return alert('Informe um valor válido.');
 
     const vendaRef = db.collection('vendas_kell').doc(fiadoManualEdicaoId);
+    const novoTotal = qtd * valorUnitario;
+    const pagamentoEfetivado = status === 'PAGO';
+    const dataBR = dataInputParaBR(dataInput);
+    const horaFinal = horaInput || new Date().toTimeString().slice(0, 5);
+    const timestampEditado = dataInput
+        ? new Date(`${dataInput}T${horaFinal}`).getTime()
+        : Date.now();
 
     await db.runTransaction(async t => {
         const vendaDoc = await t.get(vendaRef);
         if (!vendaDoc.exists) throw new Error('Lançamento não encontrado.');
         const venda = vendaDoc.data() || {};
-        if (venda.pagamento_efetivado) throw new Error('Esse fiado já foi recebido.');
-        if (venda.origem !== 'FIADO_MANUAL') throw new Error('Só é possível editar lançamentos manuais do fiado.');
+        if (venda.pagamento !== 'BOLETO') throw new Error('Esse lançamento não é fiado.');
 
-        const clienteId = venda.clienteId || '';
-        if (!clienteId) throw new Error('Cliente do fiado não vinculado.');
+        const clienteAntigoId = venda.clienteId || fiadoEdicaoClienteOriginalId || clienteExtratoAtual || '';
+        const clienteAntigoRef = clienteAntigoId ? db.collection('clientes_kell').doc(clienteAntigoId) : null;
+        const clienteNovoRef = db.collection('clientes_kell').doc(clienteNovoId);
 
-        const clienteRef = db.collection('clientes_kell').doc(clienteId);
-        const clienteDoc = await t.get(clienteRef);
-        if (!clienteDoc.exists) throw new Error('Cliente não encontrado.');
+        const clienteAntigoDoc = clienteAntigoRef ? await t.get(clienteAntigoRef) : null;
+        const clienteNovoDoc = clienteAntigoId === clienteNovoId && clienteAntigoDoc
+            ? clienteAntigoDoc
+            : await t.get(clienteNovoRef);
+
+        if (clienteAntigoRef && !clienteAntigoDoc.exists) throw new Error('Cliente original do fiado não encontrado.');
+        if (!clienteNovoDoc.exists) throw new Error('Cliente selecionado não encontrado.');
 
         const totalAnterior = parseFloat(venda.venda) || 0;
-        const novoTotal = qtd * valorUnitario;
-        const diferenca = novoTotal - totalAnterior;
+        const debitoAnterior = venda.pagamento_efetivado ? 0 : totalAnterior;
+        const debitoNovo = pagamentoEfetivado ? 0 : novoTotal;
 
-        t.update(clienteRef, {
-            debito: firebase.firestore.FieldValue.increment(diferenca)
-        });
+        if (clienteAntigoId === clienteNovoId) {
+            const saldoAtual = parseFloat(clienteNovoDoc.data().debito) || 0;
+            t.update(clienteNovoRef, { debito: Math.max(0, saldoAtual - debitoAnterior + debitoNovo) });
+        } else {
+            if (clienteAntigoRef && clienteAntigoDoc?.exists) {
+                const saldoAntigo = parseFloat(clienteAntigoDoc.data().debito) || 0;
+                t.update(clienteAntigoRef, { debito: Math.max(0, saldoAntigo - debitoAnterior) });
+            }
+            const saldoNovo = parseFloat(clienteNovoDoc.data().debito) || 0;
+            t.update(clienteNovoRef, { debito: Math.max(0, saldoNovo + debitoNovo) });
+        }
 
-        t.update(vendaRef, {
+        const itemBase = Array.isArray(venda.itens) && venda.itens.length ? venda.itens[0] : {};
+        const custoTotal = parseFloat(venda.financeiro?.custo_prod) || (Array.isArray(venda.itens)
+            ? venda.itens.reduce((acc, itemVenda) => acc + ((parseFloat(itemVenda.custo_unitario) || 0) * (parseInt(itemVenda.qtd) || 0)), 0)
+            : 0);
+        const lucro = novoTotal - custoTotal;
+        const financeiro = venda.financeiro
+            ? { ...venda.financeiro, lucro_liquido: lucro }
+            : (custoTotal ? { custo_prod: custoTotal, lucro_liquido: lucro } : undefined);
+
+        const updatePayload = {
+            cliente: clienteNovo.nome || venda.cliente || 'Cliente',
+            clienteId: clienteNovoId,
+            pagamento: 'BOLETO',
+            pagamento_efetivado: pagamentoEfetivado,
+            data_pagamento: pagamentoEfetivado ? (venda.data_pagamento || new Date().toLocaleString('pt-BR')) : firebase.firestore.FieldValue.delete(),
             itens: [{
-                id: venda.itens?.[0]?.id || `manual-${fiadoManualEdicaoId}`,
-                produtoId: '',
+                id: itemBase.id || `fiado-${fiadoManualEdicaoId}`,
+                produtoId: itemBase.produtoId || venda.produtoId || '',
                 nome: item,
-                marca: '',
+                marca: itemBase.marca || '',
                 nome_peca: item,
-                codigo: '',
+                codigo: itemBase.codigo || '',
                 qtd,
                 unitario: valorUnitario,
                 total: novoTotal,
-                origem: 'FIADO_MANUAL'
+                origem: itemBase.origem || venda.origem || 'FIADO'
             }],
             peca: item,
             qtd,
             venda: novoTotal,
             unitario: valorUnitario,
-            observacao: observacao || 'Lançamento manual no fiado',
+            observacao: observacao || venda.observacao || 'Lançamento no fiado',
+            data: dataBR,
+            hora: horaFinal,
+            timestamp: Number.isNaN(timestampEditado) ? (venda.timestamp || Date.now()) : timestampEditado,
             atualizado_em: Date.now(),
-            operador: auth.currentUser?.email || venda.operador || 'SISTEMA'
-        });
+            atualizado_por: auth.currentUser?.email || 'SISTEMA',
+            operador: venda.operador || auth.currentUser?.email || 'SISTEMA',
+            lucro
+        };
+
+        if (financeiro) updatePayload.financeiro = financeiro;
+
+        t.update(vendaRef, updatePayload);
     });
 
     if (typeof registrarAuditoria === 'function') {
-        registrarAuditoria('CLIENTES', fiadoManualEdicaoId, 'FIADO_MANUAL_EDITADO', {
+        registrarAuditoria('CLIENTES', fiadoManualEdicaoId, 'FIADO_EDITADO', {
+            cliente: clienteNovo.nome,
+            status,
             item,
             qtd,
-            valor_unitario: valorUnitario
+            valor_unitario: valorUnitario,
+            total: novoTotal
         });
     }
 
     Toastify({ text: 'Fiado atualizado com sucesso!', style: { background: 'var(--primary)' } }).showToast();
     fecharModais();
-    if (clienteExtratoAtual) abrirExtratoCompleto(clienteExtratoAtual);
+    abrirExtratoCompleto(clienteNovoId);
 }
 
 
