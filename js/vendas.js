@@ -1251,7 +1251,25 @@ function baixarOrcamentoPDF() {
         margin: 5,
         filename: `Orcamento_${orcamentoAtualId}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            onclone: (documento) => {
+                documento.body.classList.remove('dark-mode', 'privacy-on');
+                documento.documentElement.style.background = '#ffffff';
+                documento.body.style.background = '#ffffff';
+                documento.body.style.color = '#0f172a';
+                const visualizacao = documento.getElementById('orcamento-visualizacao');
+                if (visualizacao) {
+                    visualizacao.style.background = '#ffffff';
+                    visualizacao.style.color = '#0f172a';
+                    visualizacao.querySelectorAll('*').forEach(elemento => {
+                        elemento.style.filter = 'none';
+                    });
+                }
+            }
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().from(el).set(opt).save();
