@@ -570,6 +570,32 @@ tbody tr:hover { background: rgba(16, 185, 129, 0.03); transform: scale(1.002); 
     color: #334155 !important;
 }
 
+/* O orçamento é um documento: sua leitura não deve depender do tema do aplicativo. */
+#modal-orcamento .modal-body,
+#orcamento-visualizacao,
+#orcamento-visualizacao > div {
+    background: #ffffff !important;
+    color: #334155 !important;
+}
+#orcamento-visualizacao h1,
+#orcamento-visualizacao h2,
+#orcamento-visualizacao h3,
+#orcamento-visualizacao h4,
+#orcamento-visualizacao p,
+#orcamento-visualizacao td,
+#orcamento-visualizacao div,
+#orcamento-visualizacao span {
+    color: #334155 !important;
+}
+#orcamento-visualizacao th,
+#orcamento-visualizacao th * {
+    color: #ffffff !important;
+    background: #0f172a !important;
+}
+#orcamento-visualizacao strong {
+    color: #0f172a !important;
+}
+
 /* BOTTOM NAVIGATION (MOBILE) */
 .bottom-nav {
     display: none; position: fixed; bottom: 0; left: 0; width: 100%;
