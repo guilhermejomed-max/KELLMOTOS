@@ -1261,6 +1261,14 @@ function baixarOrcamentoPDF() {
                 documento.body.style.background = '#ffffff';
                 documento.body.style.color = '#0f172a';
                 const visualizacao = documento.getElementById('orcamento-visualizacao');
+                const estiloExportacao = documento.createElement('style');
+                estiloExportacao.textContent = `
+                    #orcamento-visualizacao, #orcamento-visualizacao * { filter:none !important; opacity:1 !important; }
+                    #orcamento-visualizacao td { color:#334155 !important; background:#ffffff !important; }
+                    #orcamento-visualizacao th { color:#ffffff !important; background:#0f172a !important; }
+                    #orcamento-visualizacao strong { color:#0f172a !important; }
+                `;
+                documento.head.appendChild(estiloExportacao);
                 if (visualizacao) {
                     visualizacao.style.background = '#ffffff';
                     visualizacao.style.color = '#0f172a';
@@ -1273,6 +1281,23 @@ function baixarOrcamentoPDF() {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().from(el).set(opt).save();
+}
+
+function imprimirOrcamentoAtual() {
+    const visualizacao = document.getElementById('orcamento-visualizacao');
+    if (!visualizacao) return;
+    const janela = window.open('', '_blank', 'width=900,height=700');
+    if (!janela) return alert('Permita a abertura da janela de impressão para continuar.');
+    janela.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Orçamento KELL MOTOS</title><style>
+        * { box-sizing:border-box; filter:none !important; opacity:1 !important; }
+        body { margin:0; padding:18px; background:#fff !important; color:#334155 !important; font-family:Arial,sans-serif; }
+        #orcamento-visualizacao { background:#fff !important; color:#334155 !important; }
+        #orcamento-visualizacao td { color:#334155 !important; background:#fff !important; }
+        #orcamento-visualizacao th { color:#fff !important; background:#0f172a !important; }
+        #orcamento-visualizacao strong { color:#0f172a !important; }
+        @page { margin:10mm; }
+    </style></head><body><div id="orcamento-visualizacao">${visualizacao.innerHTML}</div><script>window.onload=()=>window.print();<\/script></body></html>`);
+    janela.document.close();
 }
 
 function abrirGeradorAnuncio(id) {
