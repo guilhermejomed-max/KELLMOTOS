@@ -1493,7 +1493,7 @@ function renderizarOrcamentos() {
 }
 
 function abrirNovoOrcamento() {
-    itensNovoOrcamento = [{ nome: '', qtd: 1, unitario: 0 }];
+    itensNovoOrcamento = Array.from({ length: 10 }, () => ({ nome: '', qtd: 1, unitario: 0 }));
     const hoje = new Date().toISOString().slice(0, 10);
     const data = document.getElementById('novo-orcamento-data');
     const cliente = document.getElementById('novo-orcamento-cliente');
@@ -1532,7 +1532,7 @@ function renderizarItensNovoOrcamento() {
     corpo.innerHTML = itensNovoOrcamento.map((item, indice) => {
         const subtotal = (parseFloat(item.qtd) || 0) * (parseFloat(item.unitario) || 0);
         const nome = String(item.nome || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        return `<tr><td><input class="input-style" style="margin:0; min-width:220px;" placeholder="Ex: Troca de óleo" value="${nome}" oninput="atualizarItemNovoOrcamento(${indice}, 'nome', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="1" step="1" value="${item.qtd || 1}" oninput="atualizarItemNovoOrcamento(${indice}, 'qtd', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="0" step="0.01" value="${item.unitario || 0}" oninput="atualizarItemNovoOrcamento(${indice}, 'unitario', this.value)"></td><td id="novo-orc-subtotal-${indice}" style="text-align:right; font-weight:800;">R$ ${subtotal.toFixed(2)}</td><td style="text-align:right;"><button class="btn btn-sm btn-danger" onclick="removerItemNovoOrcamento(${indice})"><i class="ri-delete-bin-line"></i></button></td></tr>`;
+        return `<tr><td><input class="input-style" style="margin:0; min-width:220px;" placeholder="Descreva o item ou serviço" value="${nome}" oninput="atualizarItemNovoOrcamento(${indice}, 'nome', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="1" step="1" value="${item.qtd || 1}" oninput="atualizarItemNovoOrcamento(${indice}, 'qtd', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="0" step="0.01" value="${item.unitario || 0}" oninput="atualizarItemNovoOrcamento(${indice}, 'unitario', this.value)"></td><td id="novo-orc-subtotal-${indice}" style="text-align:right; font-weight:800;">R$ ${subtotal.toFixed(2)}</td></tr>`;
     }).join('');
     atualizarTotaisNovoOrcamento();
 }
