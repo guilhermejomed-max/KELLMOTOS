@@ -5,6 +5,7 @@ let orcamentoAtualId = null;
 let anuncioProdutoPendente = null;
 let orcamentoEmEdicaoId = null;
 let orcamentoPopupEdicaoId = null;
+let itensNovoOrcamento = [];
 
 function obterNomeProdutoVenda(produto) {
     if (!produto) return 'Produto';
@@ -914,7 +915,7 @@ async function converterOrcamentoEmVenda(id) {
 
             const leiturasEstoque = [];
             let custo = 0;
-            for (const item of itens) {
+            for (const item of itens.filter(item => item.produtoId)) {
                 const refProduto = db.collection('estoque_kell').doc(item.produtoId);
                 const produtoDoc = await t.get(refProduto);
                 if (!produtoDoc.exists) throw new Error(`Produto não encontrado: ${item.nome}`);
@@ -981,8 +982,8 @@ async function converterOrcamentoEmVenda(id) {
             t.update(db.collection('vendas_kell').doc(id), { status: 'VENDIDO', venda_numero: num, convertido_em: Date.now() });
         });
         if (typeof registrarMovimentacaoProduto === 'function') {
-            for (const item of itens) {
-                await registrarMovimentacaoProduto(item.produtoId || item.id, {
+        for (const item of itens.filter(item => item.produtoId)) {
+            await registrarMovimentacaoProduto(item.produtoId || item.id, {
                     tipo: 'SAIDA_ORCAMENTO',
                     motivo: `Conversão orçamento ${orcamento.numero || ''}`,
                     impacto: `-${parseInt(item.qtd) || 0} unidade(s)`,
@@ -1492,16 +1493,78 @@ function renderizarOrcamentos() {
 }
 
 function abrirNovoOrcamento() {
-    mudarTab('vendas');
-    setTimeout(() => {
-        const carrinhoVazio = !Array.isArray(carrinhoVenda) || !carrinhoVenda.length;
-        if (carrinhoVazio) {
-            Toastify({ text: 'Adicione os itens ao carrinho para criar o orçamento.', style: { background: 'var(--primary)' } }).showToast();
-            document.getElementById('venda-codigo-input')?.focus();
-            return;
-        }
-        abrirModalCliente();
-    }, 120);
+    itensNovoOrcamento = [{ nome: '', qtd: 1, unitario: 0 }];
+    const hoje = new Date().toISOString().slice(0, 10);
+    const data = document.getElementById('novo-orcamento-data');
+    const cliente = document.getElementById('novo-orcamento-cliente');
+    const nomeLoja = document.getElementById('novo-orcamento-loja');
+    const infoLoja = document.getElementById('novo-orcamento-loja-info');
+    if (data) data.value = hoje;
+    if (cliente) cliente.value = '';
+    if (nomeLoja) nomeLoja.innerText = configEmpresa?.nome || 'KELL MOTOS';
+    if (infoLoja) infoLoja.innerText = [configEmpresa?.endereco, configEmpresa?.telefone, configEmpresa?.cnpj ? `CNPJ: ${configEmpresa.cnpj}` : ''].filter(Boolean).join(' • ') || 'Informações da loja';
+    renderizarItensNovoOrcamento();
+    fecharModais();
+    document.getElementById('modal-novo-orcamento').style.display = 'flex';
+}
+
+function adicionarItemNovoOrcamento() {
+    itensNovoOrcamento.push({ nome: '', qtd: 1, unitario: 0 });
+    renderizarItensNovoOrcamento();
+}
+
+function atualizarItemNovoOrcamento(indice, campo, valor) {
+    if (!itensNovoOrcamento[indice]) return;
+    itensNovoOrcamento[indice][campo] = campo === 'nome' ? valor : (parseFloat(valor) || 0);
+    atualizarTotaisNovoOrcamento();
+}
+
+function removerItemNovoOrcamento(indice) {
+    itensNovoOrcamento.splice(indice, 1);
+    if (!itensNovoOrcamento.length) itensNovoOrcamento.push({ nome: '', qtd: 1, unitario: 0 });
+    renderizarItensNovoOrcamento();
+}
+
+function renderizarItensNovoOrcamento() {
+    const corpo = document.getElementById('novo-orcamento-itens');
+    const totalEl = document.getElementById('novo-orcamento-total');
+    if (!corpo || !totalEl) return;
+    corpo.innerHTML = itensNovoOrcamento.map((item, indice) => {
+        const subtotal = (parseFloat(item.qtd) || 0) * (parseFloat(item.unitario) || 0);
+        const nome = String(item.nome || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        return `<tr><td><input class="input-style" style="margin:0; min-width:220px;" placeholder="Ex: Troca de óleo" value="${nome}" oninput="atualizarItemNovoOrcamento(${indice}, 'nome', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="1" step="1" value="${item.qtd || 1}" oninput="atualizarItemNovoOrcamento(${indice}, 'qtd', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="0" step="0.01" value="${item.unitario || 0}" oninput="atualizarItemNovoOrcamento(${indice}, 'unitario', this.value)"></td><td id="novo-orc-subtotal-${indice}" style="text-align:right; font-weight:800;">R$ ${subtotal.toFixed(2)}</td><td style="text-align:right;"><button class="btn btn-sm btn-danger" onclick="removerItemNovoOrcamento(${indice})"><i class="ri-delete-bin-line"></i></button></td></tr>`;
+    }).join('');
+    atualizarTotaisNovoOrcamento();
+}
+
+function atualizarTotaisNovoOrcamento() {
+    const totalEl = document.getElementById('novo-orcamento-total');
+    const total = itensNovoOrcamento.reduce((soma, item) => soma + ((parseFloat(item.qtd) || 0) * (parseFloat(item.unitario) || 0)), 0);
+    if (totalEl) totalEl.innerText = `R$ ${total.toFixed(2)}`;
+    itensNovoOrcamento.forEach((item, indice) => {
+        const subtotalEl = document.getElementById(`novo-orc-subtotal-${indice}`);
+        if (subtotalEl) subtotalEl.innerText = `R$ ${((parseFloat(item.qtd) || 0) * (parseFloat(item.unitario) || 0)).toFixed(2)}`;
+    });
+}
+
+async function salvarNovoOrcamento() {
+    const cliente = document.getElementById('novo-orcamento-cliente')?.value.trim();
+    const data = document.getElementById('novo-orcamento-data')?.value;
+    const itensValidos = itensNovoOrcamento.filter(item => String(item.nome || '').trim() && (parseFloat(item.qtd) || 0) > 0);
+    if (!cliente) return alert('Informe o nome do cliente.');
+    if (!data) return alert('Informe a data do orçamento.');
+    if (!itensValidos.length) return alert('Adicione pelo menos um item com descrição e quantidade.');
+    const itens = itensValidos.map(item => ({ id: '', produtoId: '', nome: String(item.nome).trim(), qtd: parseFloat(item.qtd), unitario: parseFloat(item.unitario) || 0, total: (parseFloat(item.qtd) || 0) * (parseFloat(item.unitario) || 0), origem: 'ORCAMENTO_MANUAL' }));
+    const total = itens.reduce((soma, item) => soma + item.total, 0);
+    const payload = { numero: gerarNumeroOrcamento(), tipo: 'ORCAMENTO', status: 'ABERTO', cliente, clienteId: '', itens, peca: resumoItensVenda(itens), produtoId: '', qtd: itens.reduce((soma, item) => soma + item.qtd, 0), venda: total, unitario: itens.length === 1 ? itens[0].unitario : 0, pagamento: 'A DEFINIR', data: data.split('-').reverse().join('/'), data_referencia: data, hora: new Date().toLocaleTimeString('pt-BR'), timestamp: Date.now(), origem: 'ORCAMENTO_MANUAL', operador: auth.currentUser?.email || 'SISTEMA' };
+    try {
+        const doc = await db.collection('vendas_kell').add(payload);
+        if (typeof registrarAuditoria === 'function') registrarAuditoria('VENDAS', doc.id, 'ORCAMENTO_CRIADO', { numero: payload.numero, cliente, valor: total });
+        Toastify({ text: 'Orçamento salvo com sucesso!', style: { background: 'var(--primary)' } }).showToast();
+        fecharModais();
+    } catch (e) {
+        alert(e.message || e);
+    }
 }
 
 function exportarVendasCSV() {
