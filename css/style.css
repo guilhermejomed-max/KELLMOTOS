@@ -609,6 +609,7 @@ tbody tr:hover { background: rgba(16, 185, 129, 0.03); transform: scale(1.002); 
     .modal-content { box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; position: absolute; top: 0; left: 0; padding: 0 !important; margin: 0 !important; overflow: visible !important; }
     #relatorio-preview-box, #extrato-visualizacao, #orcamento-visualizacao { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
     .modal-header, .modal-footer, .no-print { display: none !important; }
+    #modal-orcamento .blur-sensitive { filter: none !important; }
     ::-webkit-scrollbar { display: none; }
 }
 

@@ -1124,8 +1124,8 @@ function imprimirOrcamento(id) {
         <tr style="border-bottom:1px solid #eee;">
             <td style="padding:6px; font-size:11px; color:#334155;">${item.nome}</td>
             <td style="padding:6px; text-align:center; font-size:11px;">${item.qtd}</td>
-            <td style="padding:6px; text-align:right; font-size:11px;">R$ <span class="blur-sensitive">${parseFloat(item.unitario || 0).toFixed(2)}</span></td>
-            <td style="padding:6px; text-align:right; font-size:11px; font-weight:bold;">R$ <span class="blur-sensitive">${parseFloat(item.total || 0).toFixed(2)}</span></td>
+            <td style="padding:6px; text-align:right; font-size:11px;">R$ ${parseFloat(item.unitario || 0).toFixed(2)}</td>
+            <td style="padding:6px; text-align:right; font-size:11px; font-weight:bold;">R$ ${parseFloat(item.total || 0).toFixed(2)}</td>
         </tr>
     `).join('');
     const status = orcamento.status || 'ABERTO';
@@ -1179,7 +1179,7 @@ function imprimirOrcamento(id) {
                 </div>
                 <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
                     <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Valor do orçamento</small>
-                    <div style="font-size:12px; font-weight:800; color:#334155;">R$ <span class="blur-sensitive">${parseFloat(orcamento.venda || 0).toFixed(2)}</span></div>
+                    <div style="font-size:12px; font-weight:800; color:#334155;">R$ ${parseFloat(orcamento.venda || 0).toFixed(2)}</div>
                 </div>
                 <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
                     <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Status</small>
@@ -1205,7 +1205,7 @@ function imprimirOrcamento(id) {
                 <div style="min-width:260px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:14px;">
                     <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b; margin-bottom:8px;">
                         <span>Total</span>
-                        <strong style="color:#0f172a;">R$ <span class="blur-sensitive">${parseFloat(orcamento.venda || 0).toFixed(2)}</span></strong>
+                        <strong style="color:#0f172a;">R$ ${parseFloat(orcamento.venda || 0).toFixed(2)}</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:12px; color:#64748b;">
                         <span>Pagamento</span>
