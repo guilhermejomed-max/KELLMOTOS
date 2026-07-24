@@ -559,6 +559,17 @@ tbody tr:hover { background: rgba(16, 185, 129, 0.03); transform: scale(1.002); 
 .privacy-on .blur-sensitive { filter: blur(6px); transition: 0.3s; }
 .privacy-on .blur-sensitive:hover { filter: blur(0); }
 
+/* Valores comerciais do documento devem permanecer legíveis, inclusive no tema escuro. */
+#orcamento-visualizacao .blur-sensitive,
+#orcamento-visualizacao td:nth-child(3),
+#orcamento-visualizacao td:nth-child(4),
+#orcamento-visualizacao td:nth-child(3) *,
+#orcamento-visualizacao td:nth-child(4) * {
+    filter: none !important;
+    opacity: 1 !important;
+    color: #334155 !important;
+}
+
 /* BOTTOM NAVIGATION (MOBILE) */
 .bottom-nav {
     display: none; position: fixed; bottom: 0; left: 0; width: 100%;
