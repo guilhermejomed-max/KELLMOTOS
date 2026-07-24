@@ -247,7 +247,7 @@ function iniciarApp() {
 }
 
 function mudarTab(t) {
-    const tabs = ['estoque','vendas','servicos','catalogo','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos','auditoria'];
+    const tabs = ['estoque','vendas','orcamentos','servicos','catalogo','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos','auditoria'];
     tabs.forEach(id => {
         const el = document.getElementById('sec-' + id);
         if(el) el.classList.add('hidden');
@@ -274,6 +274,12 @@ function mudarTab(t) {
     if(t === 'vendas') {
         requestAnimationFrame(() => {
             if(window.focarCampoCodigoVenda) focarCampoCodigoVenda();
+        });
+    }
+
+    if(t === 'orcamentos') {
+        requestAnimationFrame(() => {
+            if(window.renderizarOrcamentos) renderizarOrcamentos();
         });
     }
 

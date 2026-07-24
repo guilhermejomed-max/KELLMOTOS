@@ -1435,13 +1435,32 @@ function renderizarOrcamentos() {
     const lista = (typeof cacheVendas !== 'undefined' ? cacheVendas : []).filter(v => v.tipo === 'ORCAMENTO').slice(0, 50);
     const emAberto = lista.filter(v => (v.status || 'ABERTO') !== 'VENDIDO');
     const historicoLista = lista.filter(v => (v.status || 'ABERTO') === 'VENDIDO');
+    const busca = (document.getElementById('orcamentos-busca')?.value || '').trim().toLowerCase();
+    const filtroStatus = document.getElementById('orcamentos-status')?.value || 'ABERTOS';
+    const hoje = new Date().toISOString().slice(0, 10);
+    const vencendoHoje = emAberto.filter(o => o.validade === hoje).length;
+    const valorEmAberto = emAberto.reduce((total, o) => total + (parseFloat(o.venda) || 0), 0);
+
+    const atualizarKpi = (id, valor) => { const el = document.getElementById(id); if (el) el.innerText = valor; };
+    atualizarKpi('orc-kpi-abertos', emAberto.length);
+    atualizarKpi('orc-kpi-valor', `R$ ${valorEmAberto.toFixed(2)}`);
+    atualizarKpi('orc-kpi-vencendo', vencendoHoje);
+    atualizarKpi('orc-kpi-convertidos', historicoLista.length);
+
+    const visiveis = lista.filter(o => {
+        const status = o.status || 'ABERTO';
+        const correspondeStatus = filtroStatus === 'TODOS' || status === filtroStatus || (filtroStatus === 'ABERTOS' && status !== 'VENDIDO');
+        const texto = [o.numero, o.cliente, o.peca, resumoItensVenda(normalizarItensDocumento(o))].join(' ').toLowerCase();
+        return correspondeStatus && (!busca || texto.includes(busca));
+    });
+    const abertosVisiveis = visiveis.filter(v => (v.status || 'ABERTO') !== 'VENDIDO');
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum orçamento cadastrado.</td></tr>';
         historico.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:18px; color:var(--text-muted);">Sem histórico de orçamentos.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = emAberto.length ? emAberto.map(o => {
+    tbody.innerHTML = abertosVisiveis.length ? abertosVisiveis.map(o => {
         const valor = parseFloat(o.venda || 0).toFixed(2);
         const status = o.status || 'ABERTO';
         const badgeColor = 'bg-red';
@@ -1461,7 +1480,7 @@ function renderizarOrcamentos() {
                 ${podeExecutarAcao('excluir_orcamento') ? `<button class="btn btn-sm btn-danger" onclick="excluirOrcamento('${o.id}')"><i class="ri-delete-bin-line"></i></button>` : ''}
             </td>
         </tr>`;
-    }).join('') : '<tr><td colspan="6" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum orçamento em aberto.</td></tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum orçamento encontrado para este filtro.</td></tr>';
 
     historico.innerHTML = historicoLista.length ? historicoLista.map(o => `
         <tr>
@@ -1470,6 +1489,19 @@ function renderizarOrcamentos() {
             <td align="right"><button class="btn btn-sm btn-secondary" onclick="imprimirOrcamento('${o.id}')">Ver Histórico</button></td>
         </tr>
     `).join('') : '<tr><td colspan="3" style="text-align:center; padding:18px; color:var(--text-muted);">Sem histórico de orçamentos.</td></tr>';
+}
+
+function abrirNovoOrcamento() {
+    mudarTab('vendas');
+    setTimeout(() => {
+        const carrinhoVazio = !Array.isArray(carrinhoVenda) || !carrinhoVenda.length;
+        if (carrinhoVazio) {
+            Toastify({ text: 'Adicione os itens ao carrinho para criar o orçamento.', style: { background: 'var(--primary)' } }).showToast();
+            document.getElementById('venda-codigo-input')?.focus();
+            return;
+        }
+        abrirModalCliente();
+    }, 120);
 }
 
 function exportarVendasCSV() {

@@ -243,6 +243,7 @@
             <div class="menu-item" id="m-dash" onclick="mudarTab('dash')"><i class="ri-dashboard-3-line"></i> <span>Dashboard</span></div>
             <div class="menu-item active" id="m-estoque" onclick="mudarTab('estoque')"><i class="ri-box-3-line"></i> <span>Estoque</span></div>
             <div class="menu-item" id="m-vendas" onclick="mudarTab('vendas')"><i class="ri-shopping-cart-2-line"></i> <span>PDV / Vendas</span></div>
+            <div class="menu-item" id="m-orcamentos" onclick="mudarTab('orcamentos')"><i class="ri-file-list-3-line"></i> <span>Orçamentos</span></div>
             <div class="menu-item" id="m-servicos" onclick="mudarTab('servicos')"><i class="ri-tools-line"></i> <span>Serviços / O.S.</span></div>
             <div class="menu-item" id="m-catalogo" onclick="mudarTab('catalogo')"><i class="ri-smartphone-line"></i> <span>Catálogo</span></div>
             <div class="menu-item" id="m-reposicao" onclick="mudarTab('reposicao')"><i class="ri-clipboard-line"></i> <span>Reposição</span></div>
@@ -653,17 +654,42 @@
                     <div style="font-size:22px; font-weight:800; color:var(--primary);">Total: <span id="total-carrinho-venda">R$ 0,00</span></div>
                 </div>
             </div>
-            <div class="card" style="margin-bottom:20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <h3 style="margin:0;">Orçamentos</h3>
-                    <small style="color:var(--text-muted);">Crie um orçamento e converta em venda quando o cliente fechar.</small>
-                </div>
-                <div class="table-container" style="margin-top:12px;"><table><thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-orcamentos"></tbody></table></div>
-            </div>
-            <h3 style="margin-top:30px;">Histórico</h3>
-            <div class="table-container"><table><tbody id="corpo-historico-orcamentos"></tbody></table></div>
             <div class="card">
                 <div class="table-container"><table><thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Valor</th><th style="text-align: right">Recibo</th></tr></thead><tbody id="corpo-vendas"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="sec-orcamentos" class="hidden">
+            <div class="orcamentos-hero card">
+                <div>
+                    <span class="section-chip"><i class="ri-file-list-3-line"></i> Central de orçamentos</span>
+                    <h2>Propostas que viram vendas</h2>
+                    <p>Organize os atendimentos, acompanhe a validade e transforme um orçamento aprovado em venda sem redigitar os itens.</p>
+                </div>
+                <button class="btn btn-primary" onclick="abrirNovoOrcamento()"><i class="ri-add-line"></i> Novo orçamento</button>
+            </div>
+            <div class="orcamentos-kpis">
+                <div class="card orcamento-kpi"><span>Em aberto</span><strong id="orc-kpi-abertos">0</strong><small>aguardando retorno</small></div>
+                <div class="card orcamento-kpi"><span>Valor em propostas</span><strong id="orc-kpi-valor">R$ 0,00</strong><small>orçamentos em aberto</small></div>
+                <div class="card orcamento-kpi"><span>Vencem hoje</span><strong id="orc-kpi-vencendo">0</strong><small>precisam de atenção</small></div>
+                <div class="card orcamento-kpi"><span>Convertidos</span><strong id="orc-kpi-convertidos">0</strong><small>histórico da base</small></div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div class="orcamentos-toolbar">
+                    <div>
+                        <h3>Orçamentos em andamento</h3>
+                        <p>Acompanhe, edite, imprima ou converta quando o cliente aprovar.</p>
+                    </div>
+                    <div class="orcamentos-filtros">
+                        <input id="orcamentos-busca" class="input-style" placeholder="Buscar cliente, número ou item" oninput="renderizarOrcamentos()">
+                        <select id="orcamentos-status" class="input-style" onchange="renderizarOrcamentos()"><option value="ABERTOS">Em aberto</option><option value="TODOS">Todos</option></select>
+                    </div>
+                </div>
+                <div class="table-container" style="margin-top:16px;"><table><thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-orcamentos"></tbody></table></div>
+            </div>
+            <div class="card">
+                <div class="dashboard-card-header"><div><h3>Histórico de conversões</h3><p>Orçamentos que já foram concluídos como venda.</p></div></div>
+                <div class="table-container"><table><tbody id="corpo-historico-orcamentos"></tbody></table></div>
             </div>
         </div>
 

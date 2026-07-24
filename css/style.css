@@ -65,6 +65,22 @@ body {
     transition: background 0.3s ease, color 0.3s ease;
 }
 
+/* Central de orçamentos */
+.orcamentos-hero { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:30px; margin-bottom:20px; background:linear-gradient(120deg, rgba(16,185,129,.11), rgba(99,102,241,.08)); }
+.orcamentos-hero h2 { margin:0; font-size:28px; letter-spacing:-.8px; }
+.orcamentos-hero p { max-width:650px; margin:8px 0 0; color:var(--text-muted); line-height:1.6; }
+.orcamentos-kpis { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; margin-bottom:20px; }
+.orcamento-kpi { padding:20px; display:flex; flex-direction:column; gap:7px; }
+.orcamento-kpi span, .orcamento-kpi small { color:var(--text-muted); font-size:12px; font-weight:700; }
+.orcamento-kpi strong { color:var(--text-main); font-size:26px; letter-spacing:-.7px; }
+.orcamentos-toolbar { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+.orcamentos-toolbar h3 { margin:0; }
+.orcamentos-toolbar p { margin:6px 0 0; color:var(--text-muted); font-size:13px; }
+.orcamentos-filtros { display:flex; gap:10px; flex-wrap:wrap; }
+.orcamentos-filtros .input-style { width:auto; min-width:190px; margin:0; }
+@media (max-width: 900px) { .orcamentos-kpis { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .orcamentos-hero { align-items:flex-start; flex-direction:column; padding:22px; } .orcamentos-hero .btn { width:100%; } .orcamentos-kpis { grid-template-columns:1fr; } .orcamentos-filtros, .orcamentos-filtros .input-style { width:100%; } }
+
 /* Scrollbar Premium */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
