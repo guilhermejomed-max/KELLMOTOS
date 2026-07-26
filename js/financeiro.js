@@ -423,6 +423,13 @@ function criarRegistroPagamentoFiado(valor, observacao = '') {
     };
 }
 
+function parseValorMonetarioFiado(valorTexto) {
+    const texto = String(valorTexto || '').trim();
+    if (!texto) return 0;
+    if (texto.includes(',')) return parseFloat(texto.replace(/\./g, '').replace(',', '.')) || 0;
+    return parseFloat(texto.replace(/[^0-9.-]/g, '')) || 0;
+}
+
 // =========================
 // EXTRATO COMPLETO
 // =========================
@@ -484,7 +491,6 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
                 ${podeSelecionar ? `<input type="checkbox" class="checkbox-liquidacao" data-venda-id="${v.id}" data-valor="${saldoFiado.toFixed(2)}" onchange="atualizarResumoLiquidacao()">` : '-'}
             </td>
             <td style="padding:6px; text-align:center;" class="no-print" data-html2canvas-ignore="true">
-                ${podeSelecionar ? `<button class="btn btn-sm btn-primary" onclick="registrarPagamentoParcialFiado('${v.id}')">Receber parcial</button>` : ''}
                 <button class="btn btn-sm btn-secondary" onclick="abrirEdicaoFiadoManual('${v.id}')">Editar</button>
             </td>
         </tr>`;
@@ -565,6 +571,10 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
                 </div>
             </div>
 
+            <div data-html2canvas-ignore="true" class="no-print" style="margin-bottom:12px; display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-primary" style="padding:6px 10px; font-size:11px;" onclick="registrarPagamentoParcialCliente('${cl.id}')">Receber parcial do total</button>
+            </div>
+
             <table style="width:100%; border-collapse: collapse; font-size:11px;">
                 <thead>
                     <tr style="background:#f1f5f9; color:#475569; border-top:1px solid #cbd5e1; border-bottom:1px solid #cbd5e1;">
@@ -582,7 +592,7 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
             </table>
 
             <div data-html2canvas-ignore="true" class="no-print" style="margin-top:12px; display:flex; justify-content:flex-end;">
-                <button class="btn btn-primary" onclick="liquidarDebitosSelecionados('${cl.id}')">Receber selecionados</button>
+                <button class="btn btn-primary" onclick="liquidarDebitosSelecionados('${cl.id}')">Quitar selecionados</button>
             </div>
 
             <div style="margin-top:40px; page-break-inside: avoid;">
@@ -734,6 +744,7 @@ function renderizarBoletos() {
                 <button class="btn btn-sm btn-secondary" onclick="abrirPainelCliente('${c.id}')">Painel</button>
                 <button class="btn btn-sm btn-secondary" onclick="abrirExtratoCompleto('${c.id}')"><i class="ri-file-list-3-line"></i></button>
                 <button class="btn btn-sm btn-secondary" onclick="abrirEdicaoFiadoPorCliente('${c.id}')"><i class="ri-edit-2-line"></i></button>
+                <button class="btn btn-sm btn-primary" onclick="registrarPagamentoParcialCliente('${c.id}')">Receber parcial</button>
                 <button class="btn btn-sm btn-primary" onclick="liquidarDebito('${c.id}')"><i class="ri-check-double-line"></i></button>
             </td>
         </tr>
@@ -844,12 +855,113 @@ async function liquidarDebito(id) {
     abrirExtratoCompleto(id);
 }
 
+async function registrarPagamentoParcialCliente(clienteId) {
+    const cliente = (cacheClientes || []).find(item => item.id === clienteId);
+    if (!cliente) return alert('Cliente nao encontrado.');
+
+    const vendasAbertas = obterVendasDoCliente(cliente.id, cliente.nome)
+        .filter(item => item.pagamento === 'BOLETO' && obterSaldoFiado(item) > 0.01)
+        .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    const saldoLancamentos = vendasAbertas.reduce((soma, item) => soma + obterSaldoFiado(item), 0);
+    const saldoCliente = parseFloat(cliente.debito) || 0;
+    const saldoTotal = saldoLancamentos > 0.01 ? saldoLancamentos : saldoCliente;
+
+    if (saldoTotal <= 0.01) return alert('Esse cliente nao tem saldo em aberto no fiado.');
+    if (!vendasAbertas.length) return alert('Nao ha lancamentos em aberto para abater esse pagamento.');
+
+    const valorTexto = prompt(`Quanto o cliente pagou agora?\nSaldo total em aberto: R$ ${saldoTotal.toFixed(2)}`, '');
+    if (valorTexto === null) return;
+
+    const valorRecebido = parseValorMonetarioFiado(valorTexto);
+    if (valorRecebido <= 0) return alert('Informe um valor maior que zero.');
+    if (valorRecebido - saldoTotal > 0.01) return alert(`O valor informado e maior que o saldo total de R$ ${saldoTotal.toFixed(2)}.`);
+
+    const observacaoTexto = prompt('Observacao do pagamento (opcional):', '') || '';
+    const observacao = observacaoTexto ? `Pagamento parcial do total - ${observacaoTexto}` : 'Pagamento parcial do total';
+    const clienteRef = db.collection("clientes_kell").doc(cliente.id);
+    const vendaRefs = vendasAbertas.map(item => ({
+        ref: db.collection("vendas_kell").doc(item.id)
+    }));
+    let totalAplicado = 0;
+    let quantidadeQuitada = 0;
+
+    await db.runTransaction(async t => {
+        const clienteDoc = await t.get(clienteRef);
+        const vendaDocs = [];
+        for (const item of vendaRefs) {
+            vendaDocs.push({
+                ref: item.ref,
+                doc: await t.get(item.ref)
+            });
+        }
+
+        if (!clienteDoc.exists) throw new Error("Cliente nao encontrado.");
+
+        let restante = valorRecebido;
+        const debitoAtual = parseFloat(clienteDoc.data().debito) || 0;
+        const registroCliente = criarRegistroPagamentoFiado(valorRecebido, observacao);
+
+        for (const item of vendaDocs) {
+            if (restante <= 0.01) break;
+            if (!item.doc.exists) continue;
+
+            const vendaAtual = item.doc.data() || {};
+            const saldoVenda = obterSaldoFiado(vendaAtual);
+            const valorAplicado = Math.min(restante, saldoVenda);
+            if (valorAplicado <= 0.01) continue;
+
+            const totalVenda = obterValorTotalFiado(vendaAtual);
+            const novoPago = Math.min(totalVenda, obterValorPagoFiado(vendaAtual) + valorAplicado);
+            const novoSaldo = Math.max(0, totalVenda - novoPago);
+            const registro = criarRegistroPagamentoFiado(valorAplicado, observacao);
+            totalAplicado += valorAplicado;
+            restante = Math.max(0, restante - valorAplicado);
+            if (novoSaldo <= 0.01) quantidadeQuitada += 1;
+
+            t.update(item.ref, {
+                pagamentos_parciais: firebase.firestore.FieldValue.arrayUnion(registro),
+                valor_pago_fiado: novoPago,
+                saldo_fiado: novoSaldo,
+                pagamento_efetivado: novoSaldo <= 0.01,
+                data_pagamento: novoSaldo <= 0.01 ? registro.data : firebase.firestore.FieldValue.delete()
+            });
+        }
+
+        if (totalAplicado <= 0.01) throw new Error("Nao foi possivel aplicar o pagamento nos lancamentos em aberto.");
+
+        t.update(clienteRef, {
+            debito: Math.max(0, debitoAtual - totalAplicado),
+            pagamentos_parciais_cliente: firebase.firestore.FieldValue.arrayUnion({
+                ...registroCliente,
+                valor: totalAplicado
+            })
+        });
+    });
+
+    if (typeof registrarAuditoria === 'function') {
+        registrarAuditoria('CLIENTES', cliente.id, 'FIADO_PAGAMENTO_TOTAL_PARCIAL', {
+            cliente: cliente.nome,
+            valor: totalAplicado,
+            saldo_anterior: saldoTotal,
+            saldo_restante: Math.max(0, saldoTotal - totalAplicado),
+            lancamentos_quitados: quantidadeQuitada
+        });
+    }
+
+    Toastify({ text: `Pagamento de R$ ${totalAplicado.toFixed(2)} registrado no fiado do cliente!`, style: { background: 'var(--primary)' } }).showToast();
+    abrirExtratoCompleto(cliente.id);
+    abrirPainelCliente(cliente.id);
+    renderizarBoletos();
+}
+
 async function registrarPagamentoParcialFiado(vendaId) {
     const venda = (cacheVendas || []).find(item => item.id === vendaId);
     if (!venda) return alert('Lançamento não encontrado.');
     if (venda.pagamento !== 'BOLETO') return alert('Esse lançamento não é fiado.');
 
     const cliente = localizarClienteDoFiado(venda);
+    if (cliente) return registrarPagamentoParcialCliente(cliente.id);
     if (!cliente) return alert('Cliente do fiado não encontrado.');
 
     const saldoAtual = obterSaldoFiado(venda);
