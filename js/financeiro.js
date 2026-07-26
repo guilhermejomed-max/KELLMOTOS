@@ -364,6 +364,65 @@ function localizarClienteDoFiado(venda) {
         || null;
 }
 
+function obterValorTotalFiado(venda) {
+    return parseFloat(venda?.venda) || 0;
+}
+
+function obterPagamentosFiado(venda) {
+    return (Array.isArray(venda?.pagamentos_parciais) ? venda.pagamentos_parciais : [])
+        .map(pagamento => ({
+            ...pagamento,
+            valor: parseFloat(pagamento.valor) || 0
+        }))
+        .filter(pagamento => pagamento.valor > 0);
+}
+
+function obterValorPagoFiado(venda) {
+    const total = obterValorTotalFiado(venda);
+    const pagoRegistrado = parseFloat(venda?.valor_pago_fiado);
+    const pagoParcelas = obterPagamentosFiado(venda).reduce((soma, pagamento) => soma + pagamento.valor, 0);
+    if (Number.isFinite(pagoRegistrado) && pagoRegistrado > 0) return Math.min(total, pagoRegistrado);
+    if (pagoParcelas > 0) return Math.min(total, pagoParcelas);
+    return venda?.pagamento_efetivado ? total : 0;
+}
+
+function obterSaldoFiado(venda) {
+    if (venda?.pagamento_efetivado) return 0;
+    const saldoRegistrado = parseFloat(venda?.saldo_fiado);
+    if (Number.isFinite(saldoRegistrado) && saldoRegistrado >= 0) return saldoRegistrado;
+    return Math.max(0, obterValorTotalFiado(venda) - obterValorPagoFiado(venda));
+}
+
+function obterResumoPagamentosFiado(venda) {
+    const pagamentos = obterPagamentosFiado(venda);
+    if (!pagamentos.length) return '';
+    return pagamentos
+        .map(pagamento => `R$ ${pagamento.valor.toFixed(2)} em ${pagamento.data || '--'}`)
+        .join(' • ');
+}
+
+function renderizarResumoValoresFiado(venda) {
+    const total = obterValorTotalFiado(venda);
+    if (venda?.pagamento !== 'BOLETO') return `R$ ${total.toFixed(2)}`;
+    const pago = obterValorPagoFiado(venda);
+    const falta = obterSaldoFiado(venda);
+    return `
+        <div>Total: R$ ${total.toFixed(2)}</div>
+        <div style="color:#15803d;">Pago: R$ ${pago.toFixed(2)}</div>
+        <div style="color:#dc2626;">Falta: R$ ${falta.toFixed(2)}</div>
+    `;
+}
+
+function criarRegistroPagamentoFiado(valor, observacao = '') {
+    return {
+        id: `pgto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        valor,
+        data: new Date().toLocaleString('pt-BR'),
+        observacao: observacao || 'Pagamento avulso',
+        operador: auth.currentUser?.email || 'SISTEMA'
+    };
+}
+
 // =========================
 // EXTRATO COMPLETO
 // =========================
@@ -392,33 +451,46 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
     let totalComprado = 0, totalPago = 0, totalDevendo = 0, htmlLinhas = '';
 
     vendas.forEach(v => {
-        const valor = parseFloat(v.venda) || 0;
+        const valor = obterValorTotalFiado(v);
+        const valorPago = obterValorPagoFiado(v);
+        const saldoFiado = obterSaldoFiado(v);
+        const resumoPagamentos = obterResumoPagamentosFiado(v);
         totalComprado += valor;
-        if (v.pagamento_efetivado) totalPago += valor;
-        else totalDevendo += valor;
+        totalPago += valorPago;
+        totalDevendo += saldoFiado;
 
-        const statusBadge = v.pagamento_efetivado
+        const statusBadge = saldoFiado <= 0.01
             ? `<span style="color:#059669; font-weight:700; background:#d1fae5; padding:2px 6px; border-radius:4px; font-size:10px;">PAGO</span>`
+            : valorPago > 0.01
+                ? `<span style="color:#2563eb; font-weight:700; background:#dbeafe; padding:2px 6px; border-radius:4px; font-size:10px;">PARCIAL</span>`
             : `<span style="color:#dc2626; font-weight:700; background:#fee2e2; padding:2px 6px; border-radius:4px; font-size:10px;">ABERTO</span>`;
 
-        const podeSelecionar = !v.pagamento_efetivado;
+        const podeSelecionar = saldoFiado > 0.01;
 
         htmlLinhas += `
         <tr style="border-bottom:1px solid #eee;">
             <td style="padding:6px; font-size:11px;">${v.data}<br><span style="color:#999; font-size:9px;">${v.hora}</span></td>
-            <td style="padding:6px; font-size:11px; color:#334155;">${v.peca}</td>
-            <td style="padding:6px; text-align:right; font-size:11px; font-weight:700;">R$ <span class="blur-sensitive">${valor.toFixed(2)}</span></td>
+            <td style="padding:6px; font-size:11px; color:#334155;">
+                ${v.peca}
+                ${resumoPagamentos ? `<div style="margin-top:4px; color:#2563eb; font-size:9px;">Pagamentos: ${resumoPagamentos}</div>` : ''}
+            </td>
+            <td style="padding:6px; text-align:right; font-size:11px;">
+                <div style="font-weight:700;">Total: R$ <span class="blur-sensitive">${valor.toFixed(2)}</span></div>
+                <div style="color:#15803d;">Pago: R$ <span class="blur-sensitive">${valorPago.toFixed(2)}</span></div>
+                <div style="color:#dc2626;">Falta: R$ <span class="blur-sensitive">${saldoFiado.toFixed(2)}</span></div>
+            </td>
             <td style="padding:6px; text-align:center;">${statusBadge}</td>
             <td style="padding:6px; text-align:center;">
-                ${podeSelecionar ? `<input type="checkbox" class="checkbox-liquidacao" data-venda-id="${v.id}" data-valor="${valor.toFixed(2)}" onchange="atualizarResumoLiquidacao()">` : '-'}
+                ${podeSelecionar ? `<input type="checkbox" class="checkbox-liquidacao" data-venda-id="${v.id}" data-valor="${saldoFiado.toFixed(2)}" onchange="atualizarResumoLiquidacao()">` : '-'}
             </td>
             <td style="padding:6px; text-align:center;" class="no-print" data-html2canvas-ignore="true">
+                ${podeSelecionar ? `<button class="btn btn-sm btn-primary" onclick="registrarPagamentoParcialFiado('${v.id}')">Receber parcial</button>` : ''}
                 <button class="btn btn-sm btn-secondary" onclick="abrirEdicaoFiadoManual('${v.id}')">Editar</button>
             </td>
         </tr>`;
     });
 
-    const saldoFinal = cl.debito > 0 ? cl.debito : totalDevendo;
+    const saldoFinal = totalDevendo > 0.01 ? totalDevendo : (parseFloat(cl.debito) || 0);
 
     document.getElementById('extrato-visualizacao').innerHTML = `
         <div style="padding:20px; font-family:'Inter', 'Segoe UI', Arial, sans-serif; width:100%; box-sizing:border-box;">
@@ -705,15 +777,19 @@ function abrirPainelCliente(id) {
 
     const compras = obterVendasDoCliente(id, cliente.nome).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     const totalComprado = compras.reduce((acc, item) => acc + (parseFloat(item.venda) || 0), 0);
+    const totalPagoFiado = compras
+        .filter(item => item.pagamento === 'BOLETO')
+        .reduce((acc, item) => acc + obterValorPagoFiado(item), 0);
     const revisoes = compras.flatMap(v => Array.isArray(v.agenda_revisao) ? v.agenda_revisao : []).sort((a, b) => (a.proxima_revisao_ts || 0) - (b.proxima_revisao_ts || 0));
     const ultimasPecas = compras.slice(0, 5).map(v => v.peca || 'Item');
 
     vazio.style.display = 'none';
     box.style.display = 'block';
     box.innerHTML = `
-        <div class="form-grid-3">
+        <div class="form-grid-4">
             <div class="modal-subtle-box"><div class="modal-section-title">Cliente</div><div style="font-weight:700; color:var(--text-main);">${cliente.nome || '--'}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${cliente.telefone || 'Sem telefone'}</div></div>
             <div class="modal-subtle-box"><div class="modal-section-title">Total comprado</div><div style="font-weight:700; color:var(--text-main);">R$ ${totalComprado.toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${compras.length} compra(s)</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Pago no fiado</div><div style="font-weight:700; color:#15803d;">R$ ${totalPagoFiado.toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">Pagamentos avulsos</div></div>
             <div class="modal-subtle-box"><div class="modal-section-title">Fiado atual</div><div style="font-weight:700; color:${(parseFloat(cliente.debito) || 0) > 0 ? '#b91c1c' : 'var(--text-main)'};">R$ ${(parseFloat(cliente.debito) || 0).toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">CPF: ${cliente.cpf || '--'}</div></div>
         </div>
         <div class="form-grid-2" style="margin-top:16px;">
@@ -728,13 +804,13 @@ function abrirPainelCliente(id) {
         </div>
         <div class="table-container" style="margin-top:16px;">
             <table>
-                <thead><tr><th>Data</th><th>Resumo</th><th>Valor</th><th>Retorno</th></tr></thead>
+                <thead><tr><th>Data</th><th>Resumo</th><th>Valores</th><th>Retorno</th></tr></thead>
                 <tbody>
                     ${compras.slice(0, 12).map(item => `
                         <tr>
                             <td>${item.data || '--'}</td>
                             <td>${item.peca || '--'}</td>
-                            <td>R$ ${(parseFloat(item.venda) || 0).toFixed(2)}</td>
+                            <td>${renderizarResumoValoresFiado(item)}</td>
                             <td>${item.proxima_revisao || '--'}</td>
                         </tr>
                     `).join('') || '<tr><td colspan="4" style="text-align:center; padding:18px; color:var(--text-muted);">Sem histórico para este cliente.</td></tr>'}
@@ -768,6 +844,73 @@ async function liquidarDebito(id) {
     abrirExtratoCompleto(id);
 }
 
+async function registrarPagamentoParcialFiado(vendaId) {
+    const venda = (cacheVendas || []).find(item => item.id === vendaId);
+    if (!venda) return alert('Lançamento não encontrado.');
+    if (venda.pagamento !== 'BOLETO') return alert('Esse lançamento não é fiado.');
+
+    const cliente = localizarClienteDoFiado(venda);
+    if (!cliente) return alert('Cliente do fiado não encontrado.');
+
+    const saldoAtual = obterSaldoFiado(venda);
+    if (saldoAtual <= 0.01) return alert('Esse lançamento já está quitado.');
+
+    const valorTexto = prompt(`Quanto o cliente pagou agora?\nSaldo atual: R$ ${saldoAtual.toFixed(2)}`, '');
+    if (valorTexto === null) return;
+
+    const valorRecebido = parseFloat(String(valorTexto).replace(',', '.')) || 0;
+    if (valorRecebido <= 0) return alert('Informe um valor maior que zero.');
+    if (valorRecebido - saldoAtual > 0.01) return alert(`O valor informado é maior que o saldo restante de R$ ${saldoAtual.toFixed(2)}.`);
+
+    const observacao = prompt('Observação do pagamento (opcional):', '') || '';
+    const clienteRef = db.collection("clientes_kell").doc(cliente.id);
+    const vendaRef = db.collection("vendas_kell").doc(vendaId);
+    let quitado = false;
+
+    await db.runTransaction(async t => {
+        const clienteDoc = await t.get(clienteRef);
+        const vendaDoc = await t.get(vendaRef);
+        if (!clienteDoc.exists) throw new Error("Cliente não encontrado.");
+        if (!vendaDoc.exists) throw new Error("Lançamento não encontrado.");
+
+        const vendaAtual = vendaDoc.data() || {};
+        const saldoVenda = obterSaldoFiado(vendaAtual);
+        const valorAplicado = Math.min(valorRecebido, saldoVenda);
+        if (valorAplicado <= 0.01) throw new Error("Esse lançamento já está quitado.");
+
+        const totalVenda = obterValorTotalFiado(vendaAtual);
+        const novoPago = Math.min(totalVenda, obterValorPagoFiado(vendaAtual) + valorAplicado);
+        const novoSaldo = Math.max(0, totalVenda - novoPago);
+        quitado = novoSaldo <= 0.01;
+        const registro = criarRegistroPagamentoFiado(valorAplicado, observacao);
+        const debitoAtual = parseFloat(clienteDoc.data().debito) || 0;
+
+        t.update(vendaRef, {
+            pagamentos_parciais: firebase.firestore.FieldValue.arrayUnion(registro),
+            valor_pago_fiado: novoPago,
+            saldo_fiado: novoSaldo,
+            pagamento_efetivado: quitado,
+            data_pagamento: quitado ? registro.data : firebase.firestore.FieldValue.delete()
+        });
+
+        t.update(clienteRef, {
+            debito: Math.max(0, debitoAtual - valorAplicado)
+        });
+    });
+
+    if (typeof registrarAuditoria === 'function') {
+        registrarAuditoria('CLIENTES', vendaId, 'FIADO_PAGAMENTO_PARCIAL', {
+            cliente: cliente.nome,
+            valor: valorRecebido,
+            quitado
+        });
+    }
+
+    Toastify({ text: quitado ? 'Fiado quitado!' : 'Pagamento parcial registrado!', style: { background: 'var(--primary)' } }).showToast();
+    abrirExtratoCompleto(cliente.id);
+    abrirPainelCliente(cliente.id);
+}
+
 async function liquidarDebitosSelecionados(id = clienteExtratoAtual) {
     const selecionados = obterDebitosSelecionados();
     if (!id) return;
@@ -783,17 +926,33 @@ async function liquidarDebitosSelecionados(id = clienteExtratoAtual) {
         if (!clienteDoc.exists) throw new Error("Cliente não encontrado.");
 
         const debitoAtual = parseFloat(clienteDoc.data().debito) || 0;
-        const novoDebito = Math.max(0, debitoAtual - totalRecebido);
+        let totalRecebidoReal = 0;
 
-        selecionados.forEach(item => {
+        for (const item of selecionados) {
             const vendaRef = db.collection("vendas_kell").doc(item.id);
-            t.update(vendaRef, {
-                pagamento_efetivado: true,
-                data_pagamento: new Date().toLocaleString('pt-BR')
-            });
-        });
+            const vendaDoc = await t.get(vendaRef);
+            if (!vendaDoc.exists) continue;
+            const venda = vendaDoc.data() || {};
+            const saldoVenda = obterSaldoFiado(venda);
+            const valorAplicado = Math.min(item.valor, saldoVenda);
+            if (valorAplicado <= 0.01) continue;
 
-        t.update(clienteRef, { debito: novoDebito });
+            const totalVenda = obterValorTotalFiado(venda);
+            const novoPago = Math.min(totalVenda, obterValorPagoFiado(venda) + valorAplicado);
+            const novoSaldo = Math.max(0, totalVenda - novoPago);
+            const registro = criarRegistroPagamentoFiado(valorAplicado, 'Quitação pelo extrato');
+            totalRecebidoReal += valorAplicado;
+
+            t.update(vendaRef, {
+                pagamentos_parciais: firebase.firestore.FieldValue.arrayUnion(registro),
+                valor_pago_fiado: novoPago,
+                saldo_fiado: novoSaldo,
+                pagamento_efetivado: novoSaldo <= 0.01,
+                data_pagamento: novoSaldo <= 0.01 ? registro.data : firebase.firestore.FieldValue.delete()
+            });
+        }
+
+        t.update(clienteRef, { debito: Math.max(0, debitoAtual - totalRecebidoReal) });
     });
 
     Toastify({ text: "Baixa realizada com sucesso!", style: { background: "var(--primary)" } }).showToast();
@@ -1115,9 +1274,11 @@ async function salvarEdicaoFiadoManual() {
         if (clienteAntigoRef && !clienteAntigoDoc.exists) throw new Error('Cliente original do fiado não encontrado.');
         if (!clienteNovoDoc.exists) throw new Error('Cliente selecionado não encontrado.');
 
-        const totalAnterior = parseFloat(venda.venda) || 0;
-        const debitoAnterior = venda.pagamento_efetivado ? 0 : totalAnterior;
-        const debitoNovo = pagamentoEfetivado ? 0 : novoTotal;
+        const debitoAnterior = obterSaldoFiado(venda);
+        const pagoAnterior = obterValorPagoFiado(venda);
+        const valorPagoNovo = pagamentoEfetivado ? novoTotal : Math.min(novoTotal, pagoAnterior);
+        const debitoNovo = pagamentoEfetivado ? 0 : Math.max(0, novoTotal - valorPagoNovo);
+        const estaQuitado = pagamentoEfetivado || debitoNovo <= 0.01;
 
         if (clienteAntigoId === clienteNovoId) {
             const saldoAtual = parseFloat(clienteNovoDoc.data().debito) || 0;
@@ -1144,8 +1305,10 @@ async function salvarEdicaoFiadoManual() {
             cliente: clienteNovo.nome || venda.cliente || 'Cliente',
             clienteId: clienteNovoId,
             pagamento: 'BOLETO',
-            pagamento_efetivado: pagamentoEfetivado,
-            data_pagamento: pagamentoEfetivado ? (venda.data_pagamento || new Date().toLocaleString('pt-BR')) : firebase.firestore.FieldValue.delete(),
+            pagamento_efetivado: estaQuitado,
+            valor_pago_fiado: valorPagoNovo,
+            saldo_fiado: debitoNovo,
+            data_pagamento: estaQuitado ? (venda.data_pagamento || new Date().toLocaleString('pt-BR')) : firebase.firestore.FieldValue.delete(),
             itens: [{
                 id: itemBase.id || `fiado-${fiadoManualEdicaoId}`,
                 produtoId: itemBase.produtoId || venda.produtoId || '',
@@ -1192,8 +1355,3 @@ async function salvarEdicaoFiadoManual() {
     fecharModais();
     abrirExtratoCompleto(clienteNovoId);
 }
-
-
-
-
-
