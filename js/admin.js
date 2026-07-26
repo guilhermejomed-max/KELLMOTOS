@@ -1,4 +1,4 @@
-function renderizarListaMotos() { 
+function renderizarListaMotos() {
     const selecionadas = new Set(
         Array.from(document.querySelectorAll('.moto-check:checked')).map(el => el.value)
     );
@@ -22,10 +22,70 @@ document.addEventListener('DOMContentLoaded', () => {
     aplicarPresetPermissoesEquipe();
 });
 
-async function salvarMoto() { 
-    const n = document.getElementById('nova-moto').value; 
-    if(n) await db.collection("motos_kell").add({nome:n}); 
-    document.getElementById('nova-moto').value=''; 
+async function salvarMoto() {
+    const n = document.getElementById('nova-moto').value;
+    if(n) await db.collection("motos_kell").add({nome:n});
+    document.getElementById('nova-moto').value='';
+}
+
+function obterTextoLocal(local) {
+    if (!local) return 'Sem local';
+    const partes = [local.rua, local.local || local.posicao]
+        .map(v => String(v || '').trim())
+        .filter(Boolean);
+    return partes.join(' • ') || 'Sem local';
+}
+
+function renderizarListaLocais() {
+    const tbody = document.getElementById('lista-locais-gerencia');
+    if (!tbody) return;
+
+    const locais = Array.isArray(cacheLocais) ? [...cacheLocais] : [];
+    locais.sort((a, b) => obterTextoLocal(a).localeCompare(obterTextoLocal(b), 'pt-BR'));
+
+    tbody.innerHTML = locais.length ? locais.map(local => `
+        <tr>
+            <td>${local.rua || '--'}</td>
+            <td>${local.local || local.posicao || '--'}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-sm btn-danger" onclick="removerLocalEstoque('${local.id}')"><i class="ri-delete-bin-line"></i></button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="3" style="text-align:center; padding:18px; color:var(--text-muted);">Nenhum local cadastrado.</td></tr>';
+}
+
+async function salvarLocalEstoque() {
+    if (!podeExecutarAcao('ajustar_estoque')) return alert('Você não tem permissão para cadastrar locais.');
+    const rua = document.getElementById('local-rua')?.value?.trim() || '';
+    const local = document.getElementById('local-posicao')?.value?.trim() || '';
+
+    if (!rua || !local) return alert('Informe a rua e o local.');
+
+    await db.collection('locais_kell').add({
+        rua,
+        local,
+        posicao: local,
+        criado_em: Date.now()
+    });
+
+    if (typeof registrarAuditoria === "function") {
+        registrarAuditoria('LOCAIS', 'novo', 'CRIACAO', { rua, local });
+    }
+
+    document.getElementById('local-rua').value = '';
+    document.getElementById('local-posicao').value = '';
+    Toastify({ text: 'Local cadastrado!', style: { background: 'var(--primary)' } }).showToast();
+}
+
+async function removerLocalEstoque(id) {
+    if (!podeExecutarAcao('ajustar_estoque')) return alert('Você não tem permissão para remover locais.');
+    const local = (cacheLocais || []).find(item => item.id === id);
+    if (!confirm(`Remover o local ${obterTextoLocal(local)}? Os produtos já vinculados manterão o texto do local.`)) return;
+    await db.collection('locais_kell').doc(id).delete();
+    if (typeof registrarAuditoria === "function") {
+        registrarAuditoria('LOCAIS', id, 'REMOCAO', { local: obterTextoLocal(local) });
+    }
+    Toastify({ text: 'Local removido.', style: { background: 'var(--primary)' } }).showToast();
 }
 
 function aplicarPresetPermissoesEquipe() {
@@ -57,11 +117,11 @@ function abrirPerfilFuncionario(id) {
 
     box.innerHTML = `
         <div class="modal-subtle-box">
-            <div style="font-size:22px; font-weight:800; color:var(--text-main); margin-bottom:6px;">${funcionario.nome || 'Sem nome'}</div>
+            <div style="font-size:22px; font-weight:700; color:var(--text-main); margin-bottom:6px;">${funcionario.nome || 'Sem nome'}</div>
             <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">${funcionario.email || funcionario.id}</div>
             <div class="form-grid-2">
-                <div class="modal-subtle-box"><div class="modal-section-title">Nível</div><div style="font-weight:800; color:var(--text-main);">${funcionario.nivel || 'JUNIOR'}</div></div>
-                <div class="modal-subtle-box"><div class="modal-section-title">Criado em</div><div style="font-weight:800; color:var(--text-main);">${funcionario.criado_em ? new Date(funcionario.criado_em).toLocaleString('pt-BR') : '--'}</div></div>
+                <div class="modal-subtle-box"><div class="modal-section-title">Nível</div><div style="font-weight:700; color:var(--text-main);">${funcionario.nivel || 'JUNIOR'}</div></div>
+                <div class="modal-subtle-box"><div class="modal-section-title">Criado em</div><div style="font-weight:700; color:var(--text-main);">${funcionario.criado_em ? new Date(funcionario.criado_em).toLocaleString('pt-BR') : '--'}</div></div>
             </div>
             <div class="modal-section-title" style="margin-top:18px;">Permissões por ação</div>
             <div style="font-size:13px; color:var(--text-main); line-height:1.7; margin-top:8px;">${obterAcoesTexto(funcionario)}</div>
@@ -114,14 +174,14 @@ async function removerFuncionario(id) {
     }
 }
 
-function renderizarListaFuncionarios() { 
+function renderizarListaFuncionarios() {
     const lista = document.getElementById('lista-funcionarios');
     if(!lista) return;
     lista.innerHTML = cacheFuncionarios.map(f=>`
         <div class="modal-subtle-box" style="margin-top:12px;">
             <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
                 <div>
-                    <div style="font-weight:800; color:var(--text-main)">${f.nome || 'Sem nome'} <small style="color:var(--primary)">(${f.nivel || 'JUNIOR'})</small></div>
+                    <div style="font-weight:700; color:var(--text-main)">${f.nome || 'Sem nome'} <small style="color:var(--primary)">(${f.nivel || 'JUNIOR'})</small></div>
                     <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${f.email || f.id}</div>
                     <div style="font-size:12px; color:var(--text-muted); margin-top:8px;"><b>Ações:</b> ${obterAcoesTexto(f)}</div>
                 </div>
@@ -131,7 +191,7 @@ function renderizarListaFuncionarios() {
                 </div>
             </div>
         </div>
-    `).join(''); 
+    `).join('');
 }
 
 async function salvarFuncionario() {
@@ -140,14 +200,14 @@ async function salvarFuncionario() {
     const s = document.getElementById('func-sobrenome').value;
     const nv = document.getElementById('func-nivel').value;
     const acoesPermitidas = Array.from(document.querySelectorAll('.acao-permissao-check:checked')).map(el => el.value);
-    
+
     // Validação para evitar logins quebrados
     if(!n || n.trim().length < 2) return alert("Erro: O Nome é obrigatório.");
     if(!s || s.trim().length < 2) return alert("Erro: O Sobrenome é obrigatório para gerar o login.");
-    
+
     // Combina nome e sobrenome
     const nomeCompleto = n.trim() + " " + s.trim();
-    
+
     // Gera o login usando a função global do core.js (que remove acentos e formata)
     // Se formatUsername não estiver disponível por algum erro, faz um fallback simples
     let email = "";
@@ -158,11 +218,11 @@ async function salvarFuncionario() {
         let clean = nomeCompleto.toLowerCase().replace(/\s+/g, '.').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         email = clean + "@kellmotos.com.br";
     }
-    
+
     try {
         await db.collection("funcionarios_kell").doc(email).set({
-            email: email, 
-            nome: nomeCompleto, 
+            email: email,
+            nome: nomeCompleto,
             nivel: nv,
             acoes_permitidas: acoesPermitidas,
             criado_em: Date.now()
@@ -170,16 +230,16 @@ async function salvarFuncionario() {
         if(typeof registrarAuditoria === "function") {
             registrarAuditoria('EQUIPE', email, 'LIBERACAO', { nome: nomeCompleto, nivel: nv, acoes: acoesPermitidas });
         }
-        
+
         const loginVisual = email.split('@')[0];
-        
+
         alert(`✅ FUNCIONÁRIO LIBERADO!\n\nNome: ${nomeCompleto}\nNível: ${nv}\n\n👉 LOGIN DE ACESSO: ${loginVisual}\n\nInforme este login ao funcionário. Ele deve ir em "Alternar Modo" > "CRIAR SENHA" e usar exatamente este login.`);
-        
+
         // Limpa campos
         document.getElementById('func-nome').value = '';
         document.getElementById('func-sobrenome').value = '';
         aplicarPresetPermissoesEquipe();
-        
+
     } catch (e) {
         alert("Erro ao registrar no banco: " + e.message);
     }
@@ -191,7 +251,7 @@ function atualizarConfigUI() {
     document.getElementById('cfg-cnpj').value = configEmpresa.cnpj || "";
     document.getElementById('cfg-endereco').value = configEmpresa.endereco || "";
     document.getElementById('cfg-telefone').value = configEmpresa.telefone || "";
-    
+
     document.getElementById('cfg-imposto').value = configEmpresa.imposto_medio || 0;
     document.getElementById('cfg-taxa-cartao').value = configEmpresa.taxa_cartao || 0;
     document.getElementById('cfg-custo-fixo').value = configEmpresa.custo_fixo_medio || 0;
@@ -201,17 +261,17 @@ function atualizarConfigUI() {
 
 async function salvarConfigGeral() {
     const cfg = {
-        nome: document.getElementById('cfg-nome').value, 
+        nome: document.getElementById('cfg-nome').value,
         cnpj: document.getElementById('cfg-cnpj').value,
-        endereco: document.getElementById('cfg-endereco').value, 
+        endereco: document.getElementById('cfg-endereco').value,
         telefone: document.getElementById('cfg-telefone').value,
-        margem: parseFloat(document.getElementById('cfg-margem').value)||0, 
+        margem: parseFloat(document.getElementById('cfg-margem').value)||0,
         margemEco: parseFloat(document.getElementById('cfg-margem-eco').value)||0,
         imposto_medio: parseFloat(document.getElementById('cfg-imposto').value)||0,
         taxa_cartao: parseFloat(document.getElementById('cfg-taxa-cartao').value)||0,
         custo_fixo_medio: parseFloat(document.getElementById('cfg-custo-fixo').value)||0
     };
-    
+
     await db.collection("config_kell").doc("empresa").set(cfg);
     // Verifica se registrarAuditoria existe
     if(typeof registrarAuditoria === "function") {

@@ -1,11 +1,11 @@
-﻿// --- CONFIGURAÃ‡ÃƒO FIREBASE ---
-const firebaseConfig = { 
-    apiKey: "AIzaSyCDrwonWKHZ12zhzLKdFWTDgxHc-juX3F0", 
-    authDomain: "kellmotos.firebaseapp.com", 
-    projectId: "kellmotos", 
-    storageBucket: "kellmotos.firebasestorage.app", 
-    messagingSenderId: "244705542944", 
-    appId: "1:244705542944:web:ff7464334b36ecaa464d45" 
+// --- CONFIGURAÃ‡ÃƒO FIREBASE ---
+const firebaseConfig = {
+    apiKey: "AIzaSyCDrwonWKHZ12zhzLKdFWTDgxHc-juX3F0",
+    authDomain: "kellmotos.firebaseapp.com",
+    projectId: "kellmotos",
+    storageBucket: "kellmotos.firebasestorage.app",
+    messagingSenderId: "244705542944",
+    appId: "1:244705542944:web:ff7464334b36ecaa464d45"
 };
 
 // InicializaÃ§Ã£o Ãšnica
@@ -18,32 +18,32 @@ const db = firebase.firestore();
 // --- LISTA DE MESTRES (SEMPRE SENIOR - IGNORA O BANCO) ---
 // Adicione aqui todos os e-mails que devem ter acesso total OBRIGATÃ“RIO
 const EMAILS_MESTRES = [
-    "amg.gui@gmail.com", 
+    "amg.gui@gmail.com",
     "admin@kellmotos.com.br"
 ];
 
 // --- ESTADO GLOBAL ---
-let cacheEstoque=[], cacheVendas=[], cacheMotos=[], cacheFuncionarios=[], cacheClientes=[], cacheDespesas=[], cacheAuditoria=[];
-let userNivel = 'SENIOR'; 
+let cacheEstoque=[], cacheVendas=[], cacheMotos=[], cacheFuncionarios=[], cacheClientes=[], cacheDespesas=[], cacheAuditoria=[], cacheLocais=[];
+let userNivel = 'SENIOR';
 let currentFuncionario = null;
 let configEmpresa = {
-    nome: "KELL MOTOS", 
-    cnpj: "", 
-    margem: 40, 
-    margemEco: 35, 
-    imposto_medio: 4, 
-    taxa_cartao: 3.5, 
+    nome: "KELL MOTOS",
+    cnpj: "",
+    margem: 40,
+    margemEco: 35,
+    imposto_medio: 4,
+    taxa_cartao: 3.5,
     custo_fixo_medio: 2.00
 };
 
 // --- FUNÃ‡ÃƒO DE FORMATAÃ‡ÃƒO DE USUÃRIO ---
-function formatUsername(u) { 
+function formatUsername(u) {
     if(!u) return "";
     let clean = u.toLowerCase().trim();
     clean = clean.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Remove acentos
     clean = clean.replace(/\s+/g, '.'); // Troca espaÃ§o por ponto
     clean = clean.replace(/[^a-z0-9.@]/g, ""); // Remove caracteres especiais
-    return clean.includes("@") ? clean : clean + "@kellmotos.com.br"; 
+    return clean.includes("@") ? clean : clean + "@kellmotos.com.br";
 }
 
 // --- LOGS ---
@@ -56,7 +56,7 @@ async function registrarAuditoria(colecao, docId, acao, detalhes) {
             colecao: colecao,
             doc_afetado: docId,
             acao: acao,
-            detalhes: detalhes 
+            detalhes: detalhes
         });
     } catch(e) { console.error("Log erro:", e); }
 }
@@ -65,7 +65,7 @@ async function registrarAuditoria(colecao, docId, acao, detalhes) {
 async function fazerLogin() {
     const u = document.getElementById('username').value;
     const p = document.getElementById('password').value;
-    
+
     if(!u || !p) return Toastify({text: "Preencha todos os campos", style:{background:"var(--danger)"}}).showToast();
 
     const email = formatUsername(u);
@@ -73,9 +73,9 @@ async function fazerLogin() {
     auth.signInWithEmailAndPassword(email, p)
         .catch(e => {
             let msg = "Erro desconhecido: " + e.message;
-            if(e.code === 'auth/user-not-found') msg = "UsuÃ¡rio nÃ£o encontrado. Cadastre-se primeiro.";
+            if(e.code === 'auth/user-not-found') msg = "Usuário não encontrado. Cadastre-se primeiro.";
             if(e.code === 'auth/wrong-password') msg = "Senha incorreta.";
-            if(e.code === 'auth/invalid-email') msg = "Formato de usuÃ¡rio invÃ¡lido.";
+            if(e.code === 'auth/invalid-email') msg = "Formato de usuário inválido.";
             alert(msg);
         });
 }
@@ -88,20 +88,20 @@ function alternarModoLogin() {
     if(l.style.display !== 'none') {
         l.style.display = 'none';
         s.style.display = 'block';
-        document.getElementById('login-title').innerText = "CRIAR SENHA";
+        document.getElementById('login-title').innerText = "Criar senha";
     } else {
         l.style.display = 'block';
         s.style.display = 'none';
-        document.getElementById('login-title').innerText = "KELL MOTOS PRO";
+        document.getElementById('login-title').innerText = "Kell Motos Pro";
     }
 }
 
 async function cadastrarPrimeiraSenha() {
     const u = document.getElementById('setup-username').value;
     const p = document.getElementById('setup-password').value;
-    
-    if(!u || p.length < 6) return alert("A senha deve ter no mÃ­nimo 6 caracteres.");
-    
+
+    if(!u || p.length < 6) return alert("A senha deve ter no mínimo 6 caracteres.");
+
     const email = formatUsername(u);
 
     // === RECUPERAÃ‡ÃƒO DO ADMIN (SEGURANÃ‡A) ===
@@ -111,11 +111,11 @@ async function cadastrarPrimeiraSenha() {
         try {
             await auth.createUserWithEmailAndPassword(email, p);
             await db.collection("funcionarios_kell").doc(email).set(dadosAdmin);
-            alert("Conta MASTER criada/restaurada! O sistema entrarÃ¡ automaticamente.");
+            alert("Conta MASTER criada/restaurada! O sistema entrará automaticamente.");
         } catch(e) {
             if(e.code === 'auth/email-already-in-use') {
                 await db.collection("funcionarios_kell").doc(email).set(dadosAdmin, {merge: true});
-                alert("UsuÃ¡rio Mestre identificado. PermissÃµes restauradas.\nVolte e faÃ§a login.");
+                alert("Usuário Mestre identificado. Permissões restauradas.\nVolte e faça login.");
                 alternarModoLogin();
             } else {
                 alert("Erro Admin: " + e.message);
@@ -126,16 +126,16 @@ async function cadastrarPrimeiraSenha() {
 
     // === FLUXO NORMAL (FUNCIONÃRIOS) ===
     const doc = await db.collection("funcionarios_kell").doc(email).get();
-    
+
     if(!doc.exists) {
-        return alert(`ACESSO NÃƒO LIBERADO!\n\nO usuÃ¡rio "${email}" nÃ£o foi encontrado.\n\nPeÃ§a para o Admin cadastrar seu Nome no menu 'Equipe'.`);
+        return alert(`ACESSO NÃO LIBERADO!\n\nO usuário "${email}" não foi encontrado.\n\nPeça para o Admin cadastrar seu Nome no menu 'Equipe'.`);
     }
-    
+
     auth.createUserWithEmailAndPassword(email, p)
         .then(() => alert("Senha criada! Entrando..."))
         .catch(e => {
             if(e.code === 'auth/email-already-in-use') {
-                alert("VocÃª jÃ¡ tem senha. Volte e faÃ§a login.");
+                alert("Você já tem senha. Volte e faça login.");
                 alternarModoLogin();
             } else {
                 alert("Erro ao criar senha: " + e.message);
@@ -147,19 +147,19 @@ async function cadastrarPrimeiraSenha() {
 auth.onAuthStateChanged(u => {
     const loginScreen = document.getElementById('login-screen');
     const mainContent = document.getElementById('main-content');
-    
+
     if(u) {
         if(loginScreen) loginScreen.style.display = 'none';
         if(mainContent) mainContent.style.display = 'block';
         if(document.getElementById('user-name-display')) {
             document.getElementById('user-name-display').innerText = u.email.split('@')[0];
         }
-        iniciarApp(); 
-        
+        iniciarApp();
+
         // Redireciona com delay
         setTimeout(() => {
             mudarTab('dash');
-        }, 1500); 
+        }, 1500);
     } else {
         if(loginScreen) loginScreen.style.display = 'flex';
         if(mainContent) mainContent.style.display = 'none';
@@ -169,7 +169,7 @@ auth.onAuthStateChanged(u => {
 function iniciarApp() {
     if(!auth.currentUser) return;
     const email = auth.currentUser.email;
-    
+
     db.collection("config_kell").doc("empresa").onSnapshot(d => {
         if(d.exists) configEmpresa = d.data();
         if(window.atualizarConfigUI) atualizarConfigUI();
@@ -177,34 +177,34 @@ function iniciarApp() {
 
     // --- LÃ“GICA DE NÃVEL BLINDADA (AQUI ESTÃ A CORREÃ‡ÃƒO) ---
     db.collection("funcionarios_kell").doc(email).onSnapshot(d => {
-        
+
         // 1. REGRA SUPREMA: Se estiver na lista EMAILS_MESTRES, Ã© SENIOR e ponto final.
         // Isso ignora qualquer coisa que esteja escrita no banco de dados.
         if (EMAILS_MESTRES.includes(email)) {
             userNivel = 'SENIOR';
             currentFuncionario = d.exists ? { id: d.id, ...d.data() } : { id: email, email, nome: 'Master Admin', nivel: 'SENIOR' };
-            
+
             // Opcional: Corrige o banco silenciosamente para ficar bonito no cadastro
             if (d.exists && d.data().nivel !== 'SENIOR') {
                 db.collection("funcionarios_kell").doc(email).update({nivel: 'SENIOR'});
             }
-        } 
+        }
         // 2. Se nÃ£o for mestre, obedece o banco
         else if (d.exists) {
             userNivel = d.data().nivel;
             currentFuncionario = { id: d.id, ...d.data() };
-        } 
+        }
         // 3. Se nÃ£o achar nada, vira JUNIOR por seguranÃ§a
         else {
             userNivel = 'JUNIOR';
             currentFuncionario = null;
         }
-        
+
         // Atualiza a interface
         if(document.getElementById('user-role-display')) {
             document.getElementById('user-role-display').innerText = userNivel;
         }
-        
+
         // Reaplica as permissÃµes imediatamente
         aplicarPermissoes();
     });
@@ -233,12 +233,19 @@ function iniciarApp() {
         if(window.renderizarBoletos) renderizarBoletos();
         if(window.atualizarSelectClientes) atualizarSelectClientes();
     });
-    db.collection("despesas_kell").orderBy('timestamp','desc').limit(50).onSnapshot(s => { 
-        cacheDespesas = s.docs.map(d=>({id:d.id,...d.data()})); 
-        if(window.renderizarDespesas) renderizarDespesas(); 
+    db.collection("despesas_kell").orderBy('timestamp','desc').limit(50).onSnapshot(s => {
+        cacheDespesas = s.docs.map(d=>({id:d.id,...d.data()}));
+        if(window.renderizarDespesas) renderizarDespesas();
     });
 
     db.collection("motos_kell").onSnapshot(s => { cacheMotos = s.docs.map(d=>({id:d.id,...d.data()})); if(window.renderizarListaMotos) renderizarListaMotos(); });
+    db.collection("locais_kell").onSnapshot(s => {
+        cacheLocais = s.docs.map(d=>({id:d.id,...d.data()}));
+        if(window.renderizarListaLocais) renderizarListaLocais();
+        if(window.atualizarSelectLocaisProduto) atualizarSelectLocaisProduto();
+        if(window.renderizarEstoque) renderizarEstoque();
+        if(window.renderizarInventarioGeral) renderizarInventarioGeral();
+    });
     db.collection("funcionarios_kell").onSnapshot(s => { cacheFuncionarios = s.docs.map(d=>({id:d.id,...d.data()})); if(window.renderizarListaFuncionarios) renderizarListaFuncionarios(); });
     db.collection("logs_auditoria").orderBy('timestamp','desc').limit(300).onSnapshot(s => {
         cacheAuditoria = s.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -247,14 +254,14 @@ function iniciarApp() {
 }
 
 function mudarTab(t) {
-    const tabs = ['estoque','vendas','orcamentos','servicos','catalogo','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos','auditoria'];
+    const tabs = ['estoque','vendas','orcamentos','servicos','catalogo','reposicao','ecommerce','boleto','despesas','dash','funcionarios','motos','auditoria','locais'];
     tabs.forEach(id => {
         const el = document.getElementById('sec-' + id);
         if(el) el.classList.add('hidden');
     });
     const target = document.getElementById('sec-' + t);
     if(target) target.classList.remove('hidden');
-    
+
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     const activeMenu = document.getElementById('m-' + t);
     if(activeMenu) activeMenu.classList.add('active');
@@ -263,7 +270,7 @@ function mudarTab(t) {
     if(document.getElementById('page-title')) {
         document.getElementById('page-title').innerText = title === 'Dash' ? 'Dashboard' : title;
     }
-    
+
     if(t === 'dash') {
         requestAnimationFrame(() => {
             if(window.atualizarKPIs) atualizarKPIs();
@@ -313,7 +320,7 @@ function podeExecutarAcao(acao) {
 }
 
 function aplicarPermissoes() {
-    const todosMenus = ['m-dash','m-estoque','m-vendas','m-servicos','m-catalogo','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos','m-auditoria'];
+    const todosMenus = ['m-dash','m-estoque','m-vendas','m-servicos','m-catalogo','m-reposicao','m-ecommerce','m-boleto','m-despesas','m-funcionarios','m-motos','m-auditoria','m-locais'];
     const btnConfig = document.getElementById('btn-config-geral');
 
     // 1. Esconde tudo
@@ -328,14 +335,14 @@ function aplicarPermissoes() {
     if(userNivel === 'SENIOR') {
         permitidos = todosMenus;
         if(btnConfig) btnConfig.style.display = 'block';
-    } 
+    }
     else if (userNivel === 'PLENO') {
-        permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-servicos', 'm-catalogo', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos'];
+        permitidos = ['m-dash', 'm-estoque', 'm-vendas', 'm-servicos', 'm-catalogo', 'm-reposicao', 'm-ecommerce', 'm-boleto', 'm-motos', 'm-locais'];
         if (podeExecutarAcao('ver_auditoria')) permitidos.push('m-auditoria');
-    } 
-    else { 
+    }
+    else {
         // JUNIOR
-        permitidos = ['m-estoque', 'm-vendas', 'm-catalogo', 'm-motos'];
+        permitidos = ['m-estoque', 'm-vendas', 'm-catalogo', 'm-motos', 'm-locais'];
         if (podeExecutarAcao('gerenciar_os')) permitidos.push('m-servicos');
     }
 
@@ -350,9 +357,9 @@ function toggleSidebarMini() { document.getElementById('sidebar').classList.togg
 function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
 function togglePrivacy() { document.body.classList.toggle('privacy-on'); }
 function fecharModais() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); if (window.fecharScannerCodigo) fecharScannerCodigo(true); if (window.resetarEstadoModalCliente) resetarEstadoModalCliente(); if (window.resetarEdicaoFiadoManual) resetarEdicaoFiadoManual(); if (window.resetarPopupEdicaoOrcamento) resetarPopupEdicaoOrcamento(); }
-function toggleConfig() { 
+function toggleConfig() {
     const m = document.getElementById('modal-config');
-    m.style.display = m.style.display === 'flex' ? 'none' : 'flex'; 
+    m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
 }
 
 function baixarCSV(nomeArquivo, linhas) {

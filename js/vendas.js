@@ -1,4 +1,4 @@
-﻿let vendaPendente = null;
+let vendaPendente = null;
 let itemEcoPendente = null;
 let carrinhoVenda = [];
 let orcamentoAtualId = null;
@@ -146,8 +146,8 @@ function renderizarSugestoesCarrinho() {
         <div style="padding:16px; border:1px solid var(--border-color); border-radius:16px; background:var(--bg-body);">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
                 <div>
-                    <div style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.4px;">Kit de manutenção</div>
-                    <div style="font-size:14px; font-weight:800; color:var(--text-main);">Sugestões para aumentar o ticket do atendimento</div>
+                    <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:none; letter-spacing:0;">Kit de manutenção</div>
+                    <div style="font-size:14px; font-weight:700; color:var(--text-main);">Sugestões para aumentar o ticket do atendimento</div>
                 </div>
                 <div style="font-size:12px; color:var(--text-muted);">Baseado nas peças já selecionadas</div>
             </div>
@@ -155,8 +155,8 @@ function renderizarSugestoesCarrinho() {
                 ${sugestoes.slice(0, 6).map(item => `
                     <div style="border:1px solid var(--border-color); border-radius:14px; padding:12px; background:var(--bg-card);">
                         <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${item.codigo || 'Sem código'}</div>
-                        <div style="font-size:14px; font-weight:800; color:var(--text-main); line-height:1.35; margin-bottom:6px;">${obterNomeProdutoVenda(item)}</div>
-                        <div style="font-size:13px; color:var(--primary); font-weight:800; margin-bottom:10px;">R$ ${(parseFloat(item.repasse) || 0).toFixed(2)}</div>
+                        <div style="font-size:14px; font-weight:700; color:var(--text-main); line-height:1.35; margin-bottom:6px;">${obterNomeProdutoVenda(item)}</div>
+                        <div style="font-size:13px; color:var(--primary); font-weight:700; margin-bottom:10px;">R$ ${(parseFloat(item.repasse) || 0).toFixed(2)}</div>
                         <button class="btn btn-secondary btn-sm" onclick="adicionarProdutoAoCarrinhoPorId('${item.id}')">Adicionar ao carrinho</button>
                     </div>
                 `).join('')}
@@ -300,26 +300,26 @@ function renderizarCarrinhoVenda() {
         const total = (parseInt(item.qtd) || 0) * (parseFloat(item.unitario) || 0);
         const observacoes = [];
         if (item.exige_base_troca || item.status_base_troca === 'BASE_PENDENTE' || item.status_base_troca === 'AGUARDANDO_RETIFICA') {
-            observacoes.push('<span style="font-size:11px; font-weight:800; color:#b45309;">Base de troca</span>');
+            observacoes.push('<span style="font-size:11px; font-weight:700; color:#b45309;">Base de troca</span>');
         }
         if (parseInt(item.intervalo_revisao_dias) > 0) {
-            observacoes.push(`<span style="font-size:11px; font-weight:800; color:#2563eb;">Revisão em ${parseInt(item.intervalo_revisao_dias)} dias</span>`);
+            observacoes.push(`<span style="font-size:11px; font-weight:700; color:#2563eb;">Revisão em ${parseInt(item.intervalo_revisao_dias)} dias</span>`);
         }
         return `<tr>
             <td>
-                <div style="font-weight:800; color:var(--text-main);">${item.nome}</div>
+                <div style="font-weight:700; color:var(--text-main);">${item.nome}</div>
                 <div style="font-size:12px; color:var(--text-muted);">${item.codigo || 'Sem código'}</div>
                 ${observacoes.length ? `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">${observacoes.join('')}</div>` : ''}
             </td>
             <td>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <button class="btn btn-sm btn-secondary" onclick="alterarQtdCarrinho(${index}, -1)">-</button>
-                    <span style="min-width:24px; text-align:center; font-weight:800;">${item.qtd}</span>
+                    <span style="min-width:24px; text-align:center; font-weight:700;">${item.qtd}</span>
                     <button class="btn btn-sm btn-secondary" onclick="alterarQtdCarrinho(${index}, 1)">+</button>
                 </div>
             </td>
             <td>R$ ${(parseFloat(item.unitario) || 0).toFixed(2)}</td>
-            <td style="font-weight:800;">R$ ${total.toFixed(2)}</td>
+            <td style="font-weight:700;">R$ ${total.toFixed(2)}</td>
             <td style="text-align:right;"><button class="btn btn-sm btn-secondary" onclick="removerItemCarrinho(${index})"><i class="ri-delete-bin-line"></i></button></td>
         </tr>`;
     }).join('');
@@ -558,15 +558,15 @@ function consultarProdutoBalcao(valorManual = '') {
         <div style="display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:start;">
             <div>
                 <div style="font-size:12px; color:var(--text-muted);">${produto.codigo || 'Sem código'} • ${produto.localizacao?.corredor || '--'} ${produto.localizacao?.caixa || '--'} ${produto.localizacao?.prateleira || '--'}</div>
-                <div style="font-size:20px; font-weight:800; color:var(--text-main); margin-top:4px;">${obterNomeProdutoVenda(produto)}</div>
+                <div style="font-size:20px; font-weight:700; color:var(--text-main); margin-top:4px;">${obterNomeProdutoVenda(produto)}</div>
                 <div style="font-size:13px; color:var(--text-muted); margin-top:8px;">${(produto.compatibilidade || []).slice(0, 4).join(', ') || 'Sem aplicação informada'}</div>
                 ${relacionados.length ? `<div style="margin-top:12px; font-size:13px; color:var(--text-main);"><b>Relacionados:</b> ${relacionados.map(item => obterNomeProdutoVenda(item)).join(', ')}</div>` : ''}
             </div>
             <div style="text-align:right;">
                 <div style="font-size:12px; color:var(--text-muted);">Estoque</div>
-                <div style="font-size:22px; font-weight:800; color:var(--text-main);">${parseInt(produto.qtd) || 0}</div>
+                <div style="font-size:22px; font-weight:700; color:var(--text-main);">${parseInt(produto.qtd) || 0}</div>
                 <div style="font-size:12px; color:var(--text-muted); margin-top:8px;">Preço</div>
-                <div style="font-size:24px; font-weight:800; color:var(--primary);">R$ ${(parseFloat(produto.repasse) || 0).toFixed(2)}</div>
+                <div style="font-size:24px; font-weight:700; color:var(--primary);">R$ ${(parseFloat(produto.repasse) || 0).toFixed(2)}</div>
             </div>
         </div>
     `;
@@ -630,12 +630,12 @@ function abrirOrdemServico(id) {
     if (!ordem || !box || !modal) return;
     box.innerHTML = `
         <div class="form-grid-2">
-            <div class="modal-subtle-box"><div class="modal-section-title">Cliente</div><div style="font-weight:800; color:var(--text-main);">${ordem.cliente || '--'}</div></div>
-            <div class="modal-subtle-box"><div class="modal-section-title">Status</div><div style="font-weight:800; color:var(--text-main);">${ordem.status || 'ABERTA'}</div></div>
-            <div class="modal-subtle-box"><div class="modal-section-title">Veículo</div><div style="font-weight:800; color:var(--text-main);">${ordem.veiculo || '--'}</div></div>
-            <div class="modal-subtle-box"><div class="modal-section-title">Placa / ID</div><div style="font-weight:800; color:var(--text-main);">${ordem.placa || '--'}</div></div>
-            <div class="modal-subtle-box"><div class="modal-section-title">KM</div><div style="font-weight:800; color:var(--text-main);">${ordem.km_atual || '--'}</div></div>
-            <div class="modal-subtle-box"><div class="modal-section-title">Previsão</div><div style="font-weight:800; color:var(--text-main);">${ordem.previsao ? ordem.previsao.split('-').reverse().join('/') : '--'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Cliente</div><div style="font-weight:700; color:var(--text-main);">${ordem.cliente || '--'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Status</div><div style="font-weight:700; color:var(--text-main);">${ordem.status || 'ABERTA'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Veículo</div><div style="font-weight:700; color:var(--text-main);">${ordem.veiculo || '--'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Placa / ID</div><div style="font-weight:700; color:var(--text-main);">${ordem.placa || '--'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">KM</div><div style="font-weight:700; color:var(--text-main);">${ordem.km_atual || '--'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Previsão</div><div style="font-weight:700; color:var(--text-main);">${ordem.previsao ? ordem.previsao.split('-').reverse().join('/') : '--'}</div></div>
         </div>
         <div class="modal-subtle-box" style="margin-top:16px;"><div class="modal-section-title">Diagnóstico</div><div style="margin-top:8px; color:var(--text-main); line-height:1.6;">${ordem.diagnostico || '--'}</div></div>
         <div class="modal-subtle-box" style="margin-top:16px;"><div class="modal-section-title">Serviço</div><div style="margin-top:8px; color:var(--text-main); line-height:1.6;">${ordem.servico || '--'}</div></div>
@@ -1011,8 +1011,8 @@ function abrirPopupEdicaoOrcamento(id) {
     if (selectOrigem && selectDestino) selectDestino.innerHTML = selectOrigem.innerHTML;
     if (resumo) {
         resumo.innerHTML = `
-            <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">O que será editado</div>
-            <div style="font-weight:800; color:var(--text-main); margin-bottom:6px;">${orcamento.numero || '---'} • ${orcamento.cliente || 'Consumidor'}</div>
+            <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none; margin-bottom:8px;">O que será editado</div>
+            <div style="font-weight:700; color:var(--text-main); margin-bottom:6px;">${orcamento.numero || '---'} • ${orcamento.cliente || 'Consumidor'}</div>
             <div style="font-size:13px; color:var(--text-main); line-height:1.6;">${itens.map(item => `${item.qtd}x ${item.nome}`).join(' • ') || 'Sem itens'}</div>
         `;
     }
@@ -1125,24 +1125,24 @@ function imprimirOrcamento(id) {
             <td style="padding:6px; font-size:11px; color:#334155;">${item.nome}</td>
             <td style="padding:6px; text-align:center; font-size:11px;">${item.qtd}</td>
             <td style="padding:6px; text-align:right; font-size:11px;">R$ ${parseFloat(item.unitario || 0).toFixed(2)}</td>
-            <td style="padding:6px; text-align:right; font-size:11px; font-weight:bold;">R$ ${parseFloat(item.total || 0).toFixed(2)}</td>
+            <td style="padding:6px; text-align:right; font-size:11px; font-weight:700;">R$ ${parseFloat(item.total || 0).toFixed(2)}</td>
         </tr>
     `).join('');
     const status = orcamento.status || 'ABERTO';
     const statusBadge = status === 'VENDIDO'
-        ? `<span style="color:#059669; font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; font-size:10px;">VENDIDO</span>`
-        : `<span style="color:#dc2626; font-weight:bold; background:#fee2e2; padding:2px 6px; border-radius:4px; font-size:10px;">ABERTO</span>`;
+        ? `<span style="color:#059669; font-weight:700; background:#d1fae5; padding:2px 6px; border-radius:4px; font-size:10px;">VENDIDO</span>`
+        : `<span style="color:#dc2626; font-weight:700; background:#fee2e2; padding:2px 6px; border-radius:4px; font-size:10px;">ABERTO</span>`;
 
     document.getElementById('orcamento-visualizacao').innerHTML = `
-        <div style="padding:20px; font-family:'Plus Jakarta Sans', sans-serif; width:100%; box-sizing:border-box;">
+        <div style="padding:20px; font-family:'Inter', 'Segoe UI', Arial, sans-serif; width:100%; box-sizing:border-box;">
             <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #0f172a; padding-bottom:15px;">
-                <h2 style="margin:0; color:#0f172a; font-size:22px; text-transform:uppercase; letter-spacing:-0.5px;">${configEmpresa.nome}</h2>
+                <h2 style="margin:0; color:#0f172a; font-size:22px; text-transform:none; letter-spacing:0;">${configEmpresa.nome}</h2>
                 <div style="font-size:11px; color:#64748b; margin-top:5px; line-height:1.4;">
                     ${configEmpresa.endereco ? configEmpresa.endereco + ' • ' : ''}
                     CNPJ: ${configEmpresa.cnpj || 'Não Informado'}<br>
                     Tel: ${configEmpresa.telefone || 'Não Informado'}
                 </div>
-                <div style="margin-top:10px; font-weight:800; font-size:12px; color:#0f172a; border:1px solid #0f172a; display:inline-block; padding:4px 12px; border-radius:20px; text-transform:uppercase;">
+                <div style="margin-top:10px; font-weight:700; font-size:12px; color:#0f172a; border:1px solid #0f172a; display:inline-block; padding:4px 12px; border-radius:20px; text-transform:none;">
                     Orçamento de Venda
                 </div>
             </div>
@@ -1150,23 +1150,23 @@ function imprimirOrcamento(id) {
             <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:20px;">
                 <table style="width:100%; font-size:11px; border-collapse:collapse;">
                     <tr>
-                        <td style="color:#64748b; font-weight:bold; width:100px; padding-bottom:4px;">ORÇAMENTO:</td>
-                        <td style="font-weight:bold; color:#0f172a; font-size:13px; padding-bottom:4px;">${orcamento.numero || '---'}</td>
+                        <td style="color:#64748b; font-weight:700; width:100px; padding-bottom:4px;">ORÇAMENTO:</td>
+                        <td style="font-weight:700; color:#0f172a; font-size:13px; padding-bottom:4px;">${orcamento.numero || '---'}</td>
                     </tr>
                     <tr>
-                        <td style="color:#64748b; font-weight:bold; padding-bottom:4px;">CLIENTE:</td>
+                        <td style="color:#64748b; font-weight:700; padding-bottom:4px;">CLIENTE:</td>
                         <td style="color:#334155; padding-bottom:4px;">${orcamento.cliente || 'Consumidor'}</td>
                     </tr>
                     <tr>
-                        <td style="color:#64748b; font-weight:bold; padding-bottom:4px;">EMISSÃO:</td>
+                        <td style="color:#64748b; font-weight:700; padding-bottom:4px;">EMISSÃO:</td>
                         <td style="color:#334155; padding-bottom:4px;">${orcamento.data || '--'} ${orcamento.hora || ''}</td>
                     </tr>
                     <tr>
-                        <td style="color:#64748b; font-weight:bold; padding-bottom:4px;">PAGAMENTO:</td>
+                        <td style="color:#64748b; font-weight:700; padding-bottom:4px;">PAGAMENTO:</td>
                         <td style="color:#334155; padding-bottom:4px;">${orcamento.pagamento || 'Não informado'}</td>
                     </tr>
                     <tr>
-                        <td style="color:#64748b; font-weight:bold;">VALIDADE:</td>
+                        <td style="color:#64748b; font-weight:700;">VALIDADE:</td>
                         <td style="color:#334155;">${orcamento.validade ? orcamento.validade.split('-').reverse().join('/') : 'Não informada'}</td>
                     </tr>
                 </table>
@@ -1174,16 +1174,16 @@ function imprimirOrcamento(id) {
 
             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
                 <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
-                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Total de itens</small>
-                    <div style="font-size:12px; font-weight:800; color:#334155;">${itens.reduce((acc, item) => acc + (parseInt(item.qtd) || 0), 0)}</div>
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:none;">Total de itens</small>
+                    <div style="font-size:12px; font-weight:700; color:#334155;">${itens.reduce((acc, item) => acc + (parseInt(item.qtd) || 0), 0)}</div>
                 </div>
                 <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
-                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Valor do orçamento</small>
-                    <div style="font-size:12px; font-weight:800; color:#334155;">R$ ${parseFloat(orcamento.venda || 0).toFixed(2)}</div>
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:none;">Valor do orçamento</small>
+                    <div style="font-size:12px; font-weight:700; color:#334155;">R$ ${parseFloat(orcamento.venda || 0).toFixed(2)}</div>
                 </div>
                 <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
-                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Status</small>
-                    <div style="font-size:12px; font-weight:800; color:#334155;">${statusBadge}</div>
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:none;">Status</small>
+                    <div style="font-size:12px; font-weight:700; color:#334155;">${statusBadge}</div>
                 </div>
             </div>
 
@@ -1216,7 +1216,7 @@ function imprimirOrcamento(id) {
 
             ${orcamento.observacao ? `
                 <div style="margin-top:20px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #cbd5e1;">
-                    <div style="color:#64748b; font-weight:bold; font-size:11px; margin-bottom:8px;">OBSERVAÇÃO:</div>
+                    <div style="color:#64748b; font-weight:700; font-size:11px; margin-bottom:8px;">OBSERVAÇÃO:</div>
                     <div style="font-size:11px; color:#334155; line-height:1.6;">${orcamento.observacao}</div>
                 </div>
             ` : ''}
@@ -1229,7 +1229,7 @@ function imprimirOrcamento(id) {
                 <div style="display:flex; justify-content:center; margin-top:10px;">
                     <div style="text-align:center; width:70%;">
                         <div style="border-top:1px dashed #0f172a; margin-bottom:5px;"></div>
-                        <span style="font-size:11px; font-weight:bold; color:#0f172a; text-transform:uppercase;">${orcamento.cliente || 'Consumidor'}</span><br>
+                        <span style="font-size:11px; font-weight:700; color:#0f172a; text-transform:none;">${orcamento.cliente || 'Consumidor'}</span><br>
                         <span style="font-size:9px; color:#64748b;">Assinatura do Cliente / Responsável</span>
                     </div>
                 </div>
@@ -1327,17 +1327,17 @@ function renderizarModalAnuncioProduto() {
         <div style="display:grid; grid-template-columns:minmax(280px, 0.9fr) minmax(0, 1.1fr); gap:20px; align-items:start;">
             <div>
                 <div style="padding:18px; border:1px solid var(--border-color); border-radius:18px; background:var(--bg-body);">
-                    <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">Produto base</div>
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none; margin-bottom:8px;">Produto base</div>
                     <h3 style="margin:0 0 6px 0; color:var(--text-main);">${nome}</h3>
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">Código: ${produto.codigo || 'Sem código'} • Estoque: ${parseInt(produto.qtd) || 0}</div>
                     <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px;">
                         <div style="padding:12px; border-radius:14px; background:var(--bg-card); border:1px solid var(--border-color);">
-                            <div style="font-size:10px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Preço balcão</div>
-                            <div style="font-size:18px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produto.repasse) || 0).toFixed(2)}</div>
+                            <div style="font-size:10px; color:var(--text-muted); font-weight:700; text-transform:none;">Preço balcão</div>
+                            <div style="font-size:18px; font-weight:700; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produto.repasse) || 0).toFixed(2)}</div>
                         </div>
                         <div style="padding:12px; border-radius:14px; background:var(--bg-card); border:1px solid var(--border-color);">
-                            <div style="font-size:10px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Preço online</div>
-                            <div style="font-size:18px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produto.eco_venda) || 0).toFixed(2)}</div>
+                            <div style="font-size:10px; color:var(--text-muted); font-weight:700; text-transform:none;">Preço online</div>
+                            <div style="font-size:18px; font-weight:700; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produto.eco_venda) || 0).toFixed(2)}</div>
                         </div>
                     </div>
                     <div style="margin-top:16px; font-size:11px; color:var(--text-muted); line-height:1.6;">
@@ -1347,7 +1347,7 @@ function renderizarModalAnuncioProduto() {
                 </div>
 
                 <div style="margin-top:16px; padding:18px; border:1px solid var(--border-color); border-radius:18px; background:var(--bg-body);">
-                    <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">Fotos do anúncio</div>
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none; margin-bottom:8px;">Fotos do anúncio</div>
                     <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(88px, 1fr)); gap:10px;">
                         ${imagens.length ? imagens.map(img => `<div style="height:88px; border-radius:14px; overflow:hidden; background:#fff; border:1px solid var(--border-color);"><img src="${img}" alt="Imagem do anúncio" style="width:100%; height:100%; object-fit:cover;"></div>`).join('') : `<div style="grid-column:1/-1; padding:18px; text-align:center; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:14px;">Sem imagens no produto.</div>`}
                     </div>
@@ -1356,7 +1356,7 @@ function renderizarModalAnuncioProduto() {
 
             <div>
                 <div style="padding:18px; border:1px solid var(--border-color); border-radius:18px; background:var(--bg-body);">
-                    <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">Rascunho do anúncio</div>
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none; margin-bottom:8px;">Rascunho do anúncio</div>
                     <label class="input-label">Título</label>
                     <input id="anuncio-titulo" class="input-style" value="${String(draft.titulo || '').replace(/"/g, '&quot;')}" placeholder="Título do anúncio">
                     <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
@@ -1575,7 +1575,7 @@ function renderizarItensNovoOrcamento() {
     corpo.innerHTML = itensNovoOrcamento.map((item, indice) => {
         const subtotal = (parseFloat(item.qtd) || 0) * (parseFloat(item.unitario) || 0);
         const nome = String(item.nome || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        return `<tr><td><input class="input-style" style="margin:0; min-width:220px;" placeholder="Descreva o item ou serviço" value="${nome}" oninput="atualizarItemNovoOrcamento(${indice}, 'nome', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="1" step="1" value="${item.qtd || 1}" oninput="atualizarItemNovoOrcamento(${indice}, 'qtd', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="0" step="0.01" value="${item.unitario || 0}" oninput="atualizarItemNovoOrcamento(${indice}, 'unitario', this.value)"></td><td id="novo-orc-subtotal-${indice}" style="text-align:right; font-weight:800;">R$ ${subtotal.toFixed(2)}</td></tr>`;
+        return `<tr><td><input class="input-style" style="margin:0; min-width:220px;" placeholder="Descreva o item ou serviço" value="${nome}" oninput="atualizarItemNovoOrcamento(${indice}, 'nome', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="1" step="1" value="${item.qtd || 1}" oninput="atualizarItemNovoOrcamento(${indice}, 'qtd', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="0" step="0.01" value="${item.unitario || 0}" oninput="atualizarItemNovoOrcamento(${indice}, 'unitario', this.value)"></td><td id="novo-orc-subtotal-${indice}" style="text-align:right; font-weight:700;">R$ ${subtotal.toFixed(2)}</td></tr>`;
     }).join('');
     atualizarTotaisNovoOrcamento();
 }
@@ -1668,7 +1668,7 @@ function renderizarEcommerce() {
 
             h += `<tr>
                 <td>
-                    <div style="font-weight:800; color:var(--text-main);">${obterNomeProdutoVenda(p)}</div>
+                    <div style="font-weight:700; color:var(--text-main);">${obterNomeProdutoVenda(p)}</div>
                     <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${statusAnuncio}</div>
                 </td>
                 <td>${custoHtml}</td>

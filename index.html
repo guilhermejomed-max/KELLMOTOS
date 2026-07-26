@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KELL MOTOS PRO | Enterprise ERP</title>
-    
+
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
@@ -16,7 +16,9 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="css/style.css?v=20260724-2">
     <style>
@@ -49,9 +51,9 @@
             background: rgba(16,185,129,0.10);
             color: var(--primary-hover);
             font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .4px;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing:0;
             margin-bottom: 10px;
         }
         .section-subtitle {
@@ -145,16 +147,16 @@
         .product-highlight-card span {
             color: var(--text-muted);
             font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .6px;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing:0;
             margin-bottom: 6px;
         }
         .product-highlight-card strong {
             color: var(--text-main);
             font-size: 24px;
             line-height: 1.1;
-            letter-spacing: -.4px;
+            letter-spacing:0;
         }
         .moto-selector-list {
             max-height: 164px;
@@ -217,18 +219,18 @@
             <div style="width: 80px; height: 80px; background: var(--primary); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
                 <i class="ri-motorbike-fill" style="font-size: 40px; color: white;"></i>
             </div>
-            <h2 id="login-title">KELL MOTOS PRO</h2>
+            <h2 id="login-title">Kell Motos Pro</h2>
             <div id="login-fields">
                 <input type="text" id="username" class="input-style login-input" placeholder="Usuário">
                 <input type="password" id="password" class="input-style login-input" placeholder="Senha">
-                <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="fazerLogin()">ACESSAR</button>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="fazerLogin()">Acessar</button>
             </div>
             <div id="setup-fields" style="display: none;">
                 <input type="text" id="setup-username" class="input-style login-input" placeholder="Nome.Sobrenome">
                 <input type="password" id="setup-password" class="input-style login-input" placeholder="Senha">
-                <button class="btn btn-info" style="width: 100%; margin-top: 15px;" onclick="cadastrarPrimeiraSenha()">REGISTRAR</button>
+                <button class="btn btn-info" style="width: 100%; margin-top: 15px;" onclick="cadastrarPrimeiraSenha()">Registrar</button>
             </div>
-            <a href="#" onclick="alternarModoLogin()" style="display:block; margin-top:20px; font-size:11px; color:#fff; opacity:0.6;">Alternar Modo</a>
+            <a href="#" onclick="alternarModoLogin()" style="display:block; margin-top:20px; font-size:11px; color:#fff; opacity:0.6;">Alternar modo</a>
         </div>
     </div>
 
@@ -255,6 +257,7 @@
             <div class="menu-item" id="m-funcionarios" onclick="mudarTab('funcionarios')"><i class="ri-team-line"></i> <span>Equipe</span></div>
             <div class="menu-item" id="m-auditoria" onclick="mudarTab('auditoria')"><i class="ri-shield-check-line"></i> <span>Auditoria</span></div>
             <div class="menu-item" id="m-motos" onclick="mudarTab('motos')"><i class="ri-motorbike-line"></i> <span>Motos</span></div>
+            <div class="menu-item" id="m-locais" onclick="mudarTab('locais')"><i class="ri-map-pin-2-line"></i> <span>Locais</span></div>
         </nav>
         <div class="sidebar-footer"><button class="btn btn-secondary" style="width:100%; color:var(--danger)" onclick="fazerLogout()">Sair</button></div>
     </aside>
@@ -435,8 +438,37 @@
             <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
                 <input type="text" id="busca" class="input-style" style="max-width:400px;" placeholder="Buscar..." onkeyup="renderizarEstoque()">
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="toggleInventarioGeral()"><i class="ri-clipboard-line"></i> Modo inventário</button>
                     <button class="btn btn-secondary" onclick="exportarEstoqueCSV()">Exportar estoque</button>
                     <button class="btn btn-primary" onclick="toggleFormCadastro()">+ Novo</button>
+                </div>
+            </div>
+            <div class="card hidden inventory-card" id="painel-inventario-geral">
+                <div class="inventory-header">
+                    <div>
+                        <span class="section-chip">Modo inventário</span>
+                        <h3>Contagem geral do estoque</h3>
+                        <p class="section-subtitle">Conte todos os itens por Rua e Local, confira a diferença e aplique o ajuste no estoque.</p>
+                    </div>
+                    <div class="inventory-actions">
+                        <button class="btn btn-secondary" onclick="exportarInventarioGeralCSV()"><i class="ri-file-download-line"></i> Exportar</button>
+                        <button class="btn btn-primary" onclick="aplicarInventarioGeral()"><i class="ri-check-double-line"></i> Aplicar contagem</button>
+                    </div>
+                </div>
+                <div class="inventory-summary">
+                    <div><span>Itens no estoque</span><strong id="inv-geral-total-itens">0</strong></div>
+                    <div><span>Itens contados</span><strong id="inv-geral-total-contados">0</strong></div>
+                    <div><span>Diferença total</span><strong id="inv-geral-diferenca-total">0</strong></div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin:16px 0;">
+                    <input id="busca-inventario-geral" class="input-style" placeholder="Buscar produto, código, rua ou local" style="max-width:360px; margin:0;" oninput="renderizarInventarioGeral()">
+                    <select id="filtro-local-inventario" class="input-style" style="max-width:280px; margin:0;" onchange="renderizarInventarioGeral()"></select>
+                </div>
+                <div class="table-container inventory-table">
+                    <table>
+                        <thead><tr><th>Produto</th><th>Rua / Local</th><th>Sistema</th><th>Contagem</th><th>Diferença</th><th>Ações</th></tr></thead>
+                        <tbody id="corpo-inventario-geral"></tbody>
+                    </table>
                 </div>
             </div>
             <div class="card" style="margin-bottom:20px;">
@@ -544,17 +576,17 @@
                             </div>
                         </div>
                         <div class="product-form-grid" style="margin-top:14px;">
-                            <div>
-                                <label class="input-label">Corredor</label>
-                                <input id="loc-corredor" class="input-style" placeholder="Ex: A1">
+                            <div style="grid-column:1 / -1;">
+                                <label class="input-label">Local cadastrado</label>
+                                <select id="loc-cadastrado" class="input-style" onchange="aplicarLocalSelecionadoProduto()"></select>
                             </div>
                             <div>
-                                <label class="input-label">Caixa</label>
-                                <input id="loc-caixa" class="input-style" placeholder="Ex: CX-03">
+                                <label class="input-label">Rua</label>
+                                <input id="loc-corredor" class="input-style" placeholder="Ex: Rua 1">
                             </div>
                             <div>
-                                <label class="input-label">Prateleira</label>
-                                <input id="loc-prateleira" class="input-style" placeholder="Ex: P2">
+                                <label class="input-label">Local</label>
+                                <input id="loc-caixa" class="input-style" placeholder="Ex: A-1">
                             </div>
                         </div>
                         <div class="product-form-grid" style="margin-top:14px;">
@@ -651,7 +683,7 @@
                 <div id="painel-sugestoes-carrinho" style="display:none; margin-top:16px;"></div>
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
                     <div style="font-size:13px; color:var(--text-muted);">Itens: <b id="total-itens-carrinho">0</b></div>
-                    <div style="font-size:22px; font-weight:800; color:var(--primary);">Total: <span id="total-carrinho-venda">R$ 0,00</span></div>
+                    <div style="font-size:22px; font-weight:700; color:var(--primary);">Total: <span id="total-carrinho-venda">R$ 0,00</span></div>
                 </div>
             </div>
             <div class="card">
@@ -765,7 +797,7 @@
                     <input id="calc_brinde" class="input-style" value="0" placeholder="Brinde">
                     <input id="calc_margem_alvo" class="input-style" placeholder="Margem %" oninput="executarCalculoOnline()">
                 </div>
-                <input id="calc_venda" class="input-style" readonly style="margin-top:10px; font-weight:bold;">
+                <input id="calc_venda" class="input-style" readonly style="margin-top:10px; font-weight:700;">
                 <button class="btn btn-primary" style="margin-top:10px;" onclick="salvarPrecoOnline()">Salvar</button>
             </div>
             <div class="table-container"><table><thead><tr><th>Produto</th><th>Custo</th><th>Balcão</th><th>Online</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-ecommerce"></tbody></table></div>
@@ -913,6 +945,35 @@
                 <div id="lista-motos-gerencia" style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
             </div>
         </div>
+
+        <div id="sec-locais" class="hidden">
+            <div class="card">
+                <div class="form-card-header">
+                    <div>
+                        <span class="section-chip">Cadastro de local</span>
+                        <h3 style="margin:10px 0 0;">Ruas e locais</h3>
+                        <p class="section-subtitle">Cadastre os endereços físicos onde as peças ficam no estoque.</p>
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div class="field-group">
+                        <label class="field-label">Rua</label>
+                        <input id="local-rua" class="input-style" placeholder="Ex: Rua 1">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Local</label>
+                        <input id="local-posicao" class="input-style" placeholder="Ex: A-1">
+                    </div>
+                </div>
+                <button class="btn btn-primary" style="margin-top:12px;" onclick="salvarLocalEstoque()"><i class="ri-save-3-line"></i> Salvar local</button>
+                <div class="table-container" style="margin-top:20px;">
+                    <table>
+                        <thead><tr><th>Rua</th><th>Local</th><th style="text-align:right">Ações</th></tr></thead>
+                        <tbody id="lista-locais-gerencia"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </main>
 
     <nav class="bottom-nav">
@@ -926,10 +987,10 @@
 
 
     <div id="modal-scanner-codigo" class="modal"><div class="modal-content" style="max-width:540px;"><div class="modal-header">Leitor de código<button onclick="fecharScannerCodigo()">X</button></div><div class="modal-body"><div id="scanner-codigo-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Posicione o código de barras dentro da câmera.</div><div id="scanner-codigo-reader" style="width:100%; min-height:280px; border-radius:16px; overflow:hidden; background:#000;"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharScannerCodigo()">Fechar</button></div></div></div>    <div id="modal-qtd" class="modal"><div class="modal-content" style="max-width:300px;"><div class="modal-header"><span id="m-qtd-titulo">Qtd</span><button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="number" id="venda-qtd-input" class="input-style" value="1" style="font-size:24px; text-align:center;"><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="adicionarItemCarrinhoPendente()">Adicionar ao carrinho</button></div></div></div>
-    
+
     <div id="modal-cliente" class="modal"><div class="modal-content"><div class="modal-header"><span id="modal-cliente-titulo">Venda / Orçamento</span><button onclick="fecharModais()">X</button></div><div class="modal-body"><input type="text" id="cli-nome" class="input-style" placeholder="Cliente"><select id="cli-pgto" class="input-style" onchange="mostrarSelecaoCliente()"><option value="DINHEIRO">Dinheiro</option><option value="PIX">Pix</option><option value="CARTAO">Cartão</option><option value="BOLETO">Fiado</option></select><div id="selecao-cliente-boleto" style="display: none;"><select id="cli-boleto-select" class="input-style" onchange="sincronizarClienteFiadoSelecionado()"></select></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;"><div><label class="input-label">KM atual</label><input id="motor-km-atual" type="number" class="input-style" placeholder="Opcional"></div><div><label class="input-label">Horas de uso</label><input id="motor-horas-atual" type="number" class="input-style" placeholder="Opcional"></div></div><div style="display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px;"><div><label class="input-label">Validade do orçamento</label><input id="orc-validade" type="date" class="input-style"></div><div><label class="input-label">Observação</label><textarea id="orc-observacao" class="input-style" placeholder="Observação para o cliente ou detalhe interno" style="min-height:90px; resize:vertical;"></textarea></div></div></div><div class="modal-footer"><button id="btn-criar-orcamento" class="btn btn-secondary" onclick="criarOrcamento()">Criar orçamento</button><button id="btn-confirmar-venda" class="btn btn-primary" onclick="confirmarVenda()">Concluir venda</button></div></div></div>
 
-    <div id="modal-novo-orcamento" class="modal"><div class="modal-content" style="max-width:900px;"><div class="modal-header"><span>Novo orçamento</span><button onclick="fecharModais()">X</button></div><div class="modal-body"><div class="modal-subtle-box" style="margin-bottom:16px;"><div id="novo-orcamento-loja" style="font-size:18px; font-weight:800; color:var(--text-main);">KELL MOTOS</div><div id="novo-orcamento-loja-info" style="font-size:12px; color:var(--text-muted); margin-top:4px;">Informações da loja</div></div><div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;"><div><label class="input-label">Nome do cliente</label><input id="novo-orcamento-cliente" class="input-style" placeholder="Nome do cliente"></div><div><label class="input-label">Data</label><input id="novo-orcamento-data" type="date" class="input-style"></div></div><div style="margin:20px 0 10px;"><h3 style="margin:0;">Planilha do orçamento</h3><p style="margin:5px 0 0; color:var(--text-muted); font-size:12px;">Escreva livremente em cada linha; as colunas calculam o total automaticamente.</p></div><div class="table-container"><table><thead><tr><th>Descrição</th><th style="width:110px;">Qtd.</th><th style="width:160px;">Valor unitário</th><th style="width:140px; text-align:right;">Subtotal</th></tr></thead><tbody id="novo-orcamento-itens"></tbody></table></div><div style="display:flex; justify-content:flex-end; margin-top:18px;"><div class="modal-subtle-box" style="min-width:240px; text-align:right;"><span style="font-size:12px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Total do orçamento</span><strong id="novo-orcamento-total" style="display:block; font-size:28px; color:var(--primary); margin-top:4px;">R$ 0,00</strong></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Cancelar</button><button class="btn btn-primary" onclick="salvarNovoOrcamento()"><i class="ri-save-3-line"></i> Salvar orçamento</button></div></div></div>
+    <div id="modal-novo-orcamento" class="modal"><div class="modal-content" style="max-width:900px;"><div class="modal-header"><span>Novo orçamento</span><button onclick="fecharModais()">X</button></div><div class="modal-body"><div class="modal-subtle-box" style="margin-bottom:16px;"><div id="novo-orcamento-loja" style="font-size:18px; font-weight:700; color:var(--text-main);">KELL MOTOS</div><div id="novo-orcamento-loja-info" style="font-size:12px; color:var(--text-muted); margin-top:4px;">Informações da loja</div></div><div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;"><div><label class="input-label">Nome do cliente</label><input id="novo-orcamento-cliente" class="input-style" placeholder="Nome do cliente"></div><div><label class="input-label">Data</label><input id="novo-orcamento-data" type="date" class="input-style"></div></div><div style="margin:20px 0 10px;"><h3 style="margin:0;">Planilha do orçamento</h3><p style="margin:5px 0 0; color:var(--text-muted); font-size:12px;">Escreva livremente em cada linha; as colunas calculam o total automaticamente.</p></div><div class="table-container"><table><thead><tr><th>Descrição</th><th style="width:110px;">Qtd.</th><th style="width:160px;">Valor unitário</th><th style="width:140px; text-align:right;">Subtotal</th></tr></thead><tbody id="novo-orcamento-itens"></tbody></table></div><div style="display:flex; justify-content:flex-end; margin-top:18px;"><div class="modal-subtle-box" style="min-width:240px; text-align:right;"><span style="font-size:12px; color:var(--text-muted); font-weight:700; text-transform:none;">Total do orçamento</span><strong id="novo-orcamento-total" style="display:block; font-size:28px; color:var(--primary); margin-top:4px;">R$ 0,00</strong></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Cancelar</button><button class="btn btn-primary" onclick="salvarNovoOrcamento()"><i class="ri-save-3-line"></i> Salvar orçamento</button></div></div></div>
 
     <div id="modal-produto-detalhes" class="modal"><div class="modal-content" style="max-width:980px;"><div class="modal-header">Produto<button onclick="fecharModais()">X</button></div><div class="modal-body"><div id="produto-detalhes-conteudo"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="fecharModais()">Fechar</button></div></div></div>
 
@@ -956,18 +1017,18 @@
     <div id="cupom-wrapper" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10002; overflow-y:auto; justify-content:center; padding:20px;">
         <div id="cupom-print">
             <div style="text-align:center; border-bottom:1px dashed #000; padding-bottom:5px; margin-bottom:5px;">
-                <div id="cp-empresa-nome" style="font-size:14px; font-weight:bold;"></div>
+                <div id="cp-empresa-nome" style="font-size:14px; font-weight:700;"></div>
                 <div id="cp-empresa-end" style="font-size:9px;"></div>
                 <div style="font-size:9px;">CNPJ: <span id="cp-empresa-cnpj"></span></div>
                 <div style="font-size:9px;">TEL: <span id="cp-empresa-tel"></span></div>
             </div>
-            <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:2px;">
+            <div style="display:flex; justify-content:space-between; font-weight:700; margin-bottom:2px;">
                 <span>PEDIDO: <span id="cp-num"></span></span>
                 <span id="cp-data"></span>
             </div>
             <div style="font-size:9px; margin-bottom:5px;">EMITIDO EM: <span id="cp-hora"></span></div>
             <div style="border-top:1px dashed #000; padding-top:2px; margin-bottom:5px;">
-                <div style="font-weight:bold;">CLIENTE:</div>
+                <div style="font-weight:700;">CLIENTE:</div>
                 <div id="cp-cli" style="white-space: normal; word-wrap: break-word;"></div>
             </div>
             <table style="width:100%; border-collapse:collapse; margin-bottom:5px;">
@@ -975,13 +1036,13 @@
                 <tbody id="cp-itens"></tbody>
             </table>
             <div style="border-top:1px solid #000; padding-top:2px;">
-                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:12px;"><span>TOTAL:</span><span id="cp-total"></span></div>
+                <div style="display:flex; justify-content:space-between; font-weight:700; font-size:12px;"><span>TOTAL:</span><span id="cp-total"></span></div>
                 <div style="display:flex; justify-content:space-between; margin-top:2px;"><span>PGTO:</span><b id="cp-pgto"></b></div>
                 <div style="font-size:9px; margin-top:2px;">OP: <span id="cp-operador"></span></div>
             </div>
             <div style="text-align:center; margin-top:10px; border-top:1px dashed #000; padding-top:5px;">
                 <div id="qrcode-venda" style="display:flex; justify-content:center; margin-bottom:5px;"></div>
-                <div style="font-size:9px; font-weight:bold;">OBRIGADO PELA PREFERÊNCIA!</div>
+                <div style="font-size:9px; font-weight:700;">OBRIGADO PELA PREFERÊNCIA!</div>
                 <div style="font-size:8px;">*** SEM VALOR FISCAL ***</div>
             </div>
         </div>

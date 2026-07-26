@@ -1,4 +1,4 @@
-﻿let imagemBase64Temp = "";
+let imagemBase64Temp = "";
 
 function normalizarListaImagens(lista) {
     return (Array.isArray(lista) ? lista : [])
@@ -73,6 +73,57 @@ function obterNomeProdutoEstoque(produto) {
     return partes.join(' ') || produto.modelo || 'Produto';
 }
 
+function obterLocalCadastradoPorId(id) {
+    return Array.isArray(cacheLocais) ? cacheLocais.find(local => local.id === id) : null;
+}
+
+function obterLocalizacaoProduto(produto) {
+    const localCadastrado = obterLocalCadastradoPorId(produto?.localizacao?.localId);
+    if (localCadastrado) return localCadastrado;
+
+    const localizacao = produto?.localizacao || {};
+    const localFisico = localizacao.local || localizacao.posicao || localizacao.caixa || '';
+    return {
+        id: localizacao.localId || '',
+        rua: localizacao.rua || localizacao.corredor || '',
+        local: localFisico,
+        posicao: localFisico
+    };
+}
+
+function textoLocalizacaoProduto(produto) {
+    const local = obterLocalizacaoProduto(produto);
+    if (typeof obterTextoLocal === 'function') return obterTextoLocal(local);
+    return [local.rua, local.local || local.posicao].filter(Boolean).join(' • ') || 'Sem local';
+}
+
+function atualizarSelectLocaisProduto() {
+    const selects = [
+        document.getElementById('loc-cadastrado'),
+        document.getElementById('filtro-local-inventario')
+    ].filter(Boolean);
+    const locais = Array.isArray(cacheLocais) ? [...cacheLocais] : [];
+    locais.sort((a, b) => obterTextoLocal(a).localeCompare(obterTextoLocal(b), 'pt-BR'));
+
+    selects.forEach(select => {
+        const valorAtual = select.value;
+        const primeiraOpcao = select.id === 'filtro-local-inventario' ? 'Todos os locais' : 'Selecionar local cadastrado';
+        select.innerHTML = `<option value="">${primeiraOpcao}</option>` + locais.map(local => `<option value="${local.id}">${obterTextoLocal(local)}</option>`).join('');
+        select.value = valorAtual;
+    });
+}
+
+function aplicarLocalSelecionadoProduto() {
+    const select = document.getElementById('loc-cadastrado');
+    const local = obterLocalCadastradoPorId(select?.value || '');
+    if (!local) return;
+
+    const rua = document.getElementById('loc-corredor');
+    const localCampo = document.getElementById('loc-caixa');
+    if (rua) rua.value = local.rua || '';
+    if (localCampo) localCampo.value = local.local || local.posicao || '';
+}
+
 function abrirVendaProdutoEstoque(id) {
     const produto = obterProdutoEstoque(id);
     if (produto && typeof abrirVenda === 'function') abrirVenda(id, produto);
@@ -137,7 +188,7 @@ function imprimirEtiquetaProduto(produto) {
         return;
     }
 
-    janela.document.write(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Etiqueta ${codigo}</title><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}.etiqueta{width:60mm;min-height:35mm;border:1px solid #111;border-radius:6px;padding:3.5mm;display:flex;flex-direction:column;justify-content:space-between;gap:2.5mm}.nome{font-size:11px;font-weight:700;line-height:1.2;text-align:center}.codigo{font-size:11px;font-weight:700;text-align:center;letter-spacing:1px}.preco{font-size:14px;font-weight:800;text-align:center}.barra{display:flex;justify-content:center;align-items:center;overflow:hidden}.barra svg{width:100%;height:auto}</style></head><body><div class="etiqueta"><div class="nome">${nome}</div><div class="barra">${barcodeSvg}</div><div class="codigo">${codigo}</div><div class="preco">${preco}</div></div><script>window.onload=function(){setTimeout(function(){window.print();},150);};<\/script></body></html>`);
+    janela.document.write(`<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Etiqueta ${codigo}</title><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}.etiqueta{width:60mm;min-height:35mm;border:1px solid #111;border-radius:6px;padding:3.5mm;display:flex;flex-direction:column;justify-content:space-between;gap:2.5mm}.nome{font-size:11px;font-weight:700;line-height:1.2;text-align:center}.codigo{font-size:11px;font-weight:700;text-align:center;letter-spacing:0}.preco{font-size:14px;font-weight:700;text-align:center}.barra{display:flex;justify-content:center;align-items:center;overflow:hidden}.barra svg{width:100%;height:auto}</style></head><body><div class="etiqueta"><div class="nome">${nome}</div><div class="barra">${barcodeSvg}</div><div class="codigo">${codigo}</div><div class="preco">${preco}</div></div><script>window.onload=function(){setTimeout(function(){window.print();},150);};<\/script></body></html>`);
     janela.document.close();
 }
 
@@ -194,7 +245,7 @@ function buscarProdutoInventario() {
     box.style.display = encontrados.length ? 'block' : 'none';
     box.innerHTML = encontrados.map(p => `
         <div style="padding:10px; cursor:pointer; border-bottom:1px solid var(--border-color);" onclick="selecionarProdutoInventario('${p.id}')">
-            <div style="font-weight:800; color:var(--text-main);">${obterNomeProdutoEstoque(p)}</div>
+            <div style="font-weight:700; color:var(--text-main);">${obterNomeProdutoEstoque(p)}</div>
             <div style="font-size:12px; color:var(--text-muted);">${p.codigo || 'Sem código'} • Estoque: ${parseInt(p.qtd) || 0}</div>
         </div>
     `).join('');
@@ -241,6 +292,180 @@ async function aplicarContagemInventario() {
     document.getElementById('inventario-qtd-fisica').value = '';
     document.getElementById('inventario-motivo').value = '';
 }
+
+function obterInventarioGeralSalvo() {
+    try {
+        return JSON.parse(localStorage.getItem('inventario_geral_kell') || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function salvarInventarioGeralLocal(dados) {
+    localStorage.setItem('inventario_geral_kell', JSON.stringify(dados || {}));
+}
+
+function toggleInventarioGeral() {
+    const painel = document.getElementById('painel-inventario-geral');
+    if (!painel) return;
+    painel.classList.toggle('hidden');
+    if (!painel.classList.contains('hidden')) {
+        atualizarSelectLocaisProduto();
+        renderizarInventarioGeral();
+        painel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function atualizarResumoInventarioGeral() {
+    const dados = obterInventarioGeralSalvo();
+    const lista = Array.isArray(cacheEstoque) ? cacheEstoque : [];
+    const idsContados = Object.keys(dados).filter(id => lista.some(p => p.id === id));
+    const diferenca = idsContados.reduce((acc, id) => {
+        const produto = lista.find(p => p.id === id);
+        return acc + ((parseInt(dados[id]) || 0) - (parseInt(produto?.qtd) || 0));
+    }, 0);
+
+    if (document.getElementById('inv-geral-total-itens')) document.getElementById('inv-geral-total-itens').innerText = lista.length;
+    if (document.getElementById('inv-geral-total-contados')) document.getElementById('inv-geral-total-contados').innerText = idsContados.length;
+    if (document.getElementById('inv-geral-diferenca-total')) document.getElementById('inv-geral-diferenca-total').innerText = diferenca > 0 ? `+${diferenca}` : String(diferenca);
+}
+
+function atualizarContagemInventarioGeral(id, valor) {
+    const dados = obterInventarioGeralSalvo();
+    if (valor === '') {
+        delete dados[id];
+    } else {
+        dados[id] = parseInt(valor) || 0;
+    }
+    salvarInventarioGeralLocal(dados);
+    atualizarResumoInventarioGeral();
+
+    const diffEl = document.getElementById(`inv-geral-diff-${id}`);
+    const produto = obterProdutoEstoque(id);
+    if (diffEl && produto) {
+        const diff = Object.prototype.hasOwnProperty.call(dados, id)
+            ? ((parseInt(dados[id]) || 0) - (parseInt(produto.qtd) || 0))
+            : null;
+        diffEl.innerText = diff === null ? '--' : (diff > 0 ? `+${diff}` : String(diff));
+        diffEl.className = diff === null || diff === 0 ? 'inventory-diff ok' : 'inventory-diff alert';
+    }
+}
+
+function renderizarInventarioGeral() {
+    const corpo = document.getElementById('corpo-inventario-geral');
+    if (!corpo) return;
+
+    const busca = (document.getElementById('busca-inventario-geral')?.value || '').toLowerCase().trim();
+    const filtroLocal = document.getElementById('filtro-local-inventario')?.value || '';
+    const dados = obterInventarioGeralSalvo();
+
+    const lista = (Array.isArray(cacheEstoque) ? [...cacheEstoque] : []).filter(p => {
+        const texto = [obterNomeProdutoEstoque(p), p.codigo, textoLocalizacaoProduto(p), ...(p.compatibilidade || [])].join(' ').toLowerCase();
+        const bateBusca = texto.includes(busca);
+        const bateLocal = !filtroLocal || p.localizacao?.localId === filtroLocal;
+        return bateBusca && bateLocal;
+    });
+
+    lista.sort((a, b) => textoLocalizacaoProduto(a).localeCompare(textoLocalizacaoProduto(b), 'pt-BR') || obterNomeProdutoEstoque(a).localeCompare(obterNomeProdutoEstoque(b), 'pt-BR'));
+
+    corpo.innerHTML = lista.length ? lista.map(p => {
+        const sistema = parseInt(p.qtd) || 0;
+        const contado = Object.prototype.hasOwnProperty.call(dados, p.id) ? dados[p.id] : '';
+        const diff = contado === '' ? '' : ((parseInt(contado) || 0) - sistema);
+        return `
+            <tr>
+                <td><strong>${obterNomeProdutoEstoque(p)}</strong><br><small style="color:var(--text-muted);">${p.codigo || 'Sem código'}</small></td>
+                <td>${textoLocalizacaoProduto(p)}</td>
+                <td><span class="stock-pill ok">${sistema}</span></td>
+                <td><input type="number" class="input-style inventory-count-input" value="${contado}" placeholder="0" oninput="atualizarContagemInventarioGeral('${p.id}', this.value)"></td>
+                <td><span id="inv-geral-diff-${p.id}" class="${diff === '' || diff === 0 ? 'inventory-diff ok' : 'inventory-diff alert'}">${diff === '' ? '--' : (diff > 0 ? `+${diff}` : diff)}</span></td>
+                <td><button class="btn btn-sm btn-secondary" onclick="limparContagemInventarioGeral('${p.id}')">Limpar</button></td>
+            </tr>
+        `;
+    }).join('') : '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">Nenhum item encontrado para a contagem.</td></tr>';
+
+    atualizarResumoInventarioGeral();
+}
+
+function limparContagemInventarioGeral(id) {
+    const dados = obterInventarioGeralSalvo();
+    delete dados[id];
+    salvarInventarioGeralLocal(dados);
+    renderizarInventarioGeral();
+}
+
+async function aplicarInventarioGeral() {
+    if (!podeExecutarAcao('ajustar_estoque')) return alert('Você não tem permissão para ajustar estoque.');
+    const dados = obterInventarioGeralSalvo();
+    const ids = Object.keys(dados).filter(id => obterProdutoEstoque(id));
+    if (!ids.length) return alert('Nenhum item contado para aplicar.');
+
+    const confirmado = confirm(`Aplicar a contagem em ${ids.length} item(ns)? Isso vai substituir a quantidade atual no estoque.`);
+    if (!confirmado) return;
+
+    const operador = auth.currentUser ? auth.currentUser.email : 'SISTEMA';
+    const momento = Date.now();
+
+    for (let i = 0; i < ids.length; i += 450) {
+        const batch = db.batch();
+        ids.slice(i, i + 450).forEach(id => {
+            const produto = obterProdutoEstoque(id);
+            const antes = parseInt(produto?.qtd) || 0;
+            const depois = parseInt(dados[id]) || 0;
+            const diferenca = depois - antes;
+            const historicoAtual = obterHistoricoMovimentacoesProduto(produto).slice(0, 29);
+            batch.update(db.collection('estoque_kell').doc(id), {
+                qtd: depois,
+                inventario_em: momento,
+                inventario_operador: operador,
+                historico_movimentacoes: [{
+                    tipo: 'INVENTARIO_GERAL',
+                    motivo: 'Contagem geral do estoque',
+                    impacto: `${antes} -> ${depois} (${diferenca >= 0 ? '+' : ''}${diferenca})`,
+                    data: new Date(momento).toLocaleString('pt-BR'),
+                    usuario: operador,
+                    timestamp: momento
+                }, ...historicoAtual]
+            });
+        });
+        await batch.commit();
+    }
+
+    if (typeof registrarAuditoria === 'function') {
+        registrarAuditoria('ESTOQUE', 'inventario_geral', 'INVENTARIO_GERAL', { itens: ids.length, usuario: operador });
+    }
+
+    salvarInventarioGeralLocal({});
+    renderizarInventarioGeral();
+    Toastify({ text: 'Inventário geral aplicado ao estoque!', style: { background: 'var(--primary)' } }).showToast();
+}
+
+function exportarInventarioGeralCSV() {
+    if (!podeExecutarAcao('exportar_relatorios')) return alert('Você não tem permissão para exportar relatórios.');
+    const dados = obterInventarioGeralSalvo();
+    const linhas = [['Produto','Codigo','Rua / Local','Sistema','Contado','Diferenca']];
+
+    (cacheEstoque || []).forEach(p => {
+        const sistema = parseInt(p.qtd) || 0;
+        const contado = Object.prototype.hasOwnProperty.call(dados, p.id) ? parseInt(dados[p.id]) || 0 : '';
+        const diff = contado === '' ? '' : contado - sistema;
+        linhas.push([obterNomeProdutoEstoque(p), p.codigo || '', textoLocalizacaoProduto(p), sistema, contado, diff]);
+    });
+
+    if (typeof baixarCSV === 'function') {
+        baixarCSV(`inventario_kell_${new Date().toISOString().slice(0, 10)}.csv`, linhas);
+        return;
+    }
+
+    const csv = linhas.map(linha => linha.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventario_kell_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
 // =========================
 // RENDERIZAÃ‡ÃƒO DO ESTOQUE
 // =========================
@@ -257,7 +482,7 @@ function renderizarEstoque() {
         : [];
 
     const filtered = lista.filter(p =>
-        [p.modelo, p.marca, p.nome_peca, p.codigo, p.fornecedor, ...(p.compatibilidade || [])]
+        [p.modelo, p.marca, p.nome_peca, p.codigo, p.fornecedor, textoLocalizacaoProduto(p), ...(p.compatibilidade || [])]
             .join(' ')
             .toLowerCase()
             .includes(q)
@@ -300,20 +525,21 @@ function renderizarEstoque() {
                         <div style="display:flex; align-items:center; gap:12px; min-width:240px;">
                             ${imagem}
                             <div style="min-width:0;">
-                                <div style="font-weight:800;color:var(--text-main);font-size:13px;line-height:1.2;margin-bottom:4px;">${nomeProduto}</div>
+                                <div style="font-weight:700;color:var(--text-main);font-size:13px;line-height:1.2;margin-bottom:4px;">${nomeProduto}</div>
                                 <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Marca: ${p.marca || 'Não informada'}</div>
+                                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;"><i class="ri-map-pin-2-line"></i> ${textoLocalizacaoProduto(p)}</div>
                                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                                    <span style="font-size:10px;font-weight:800;color:var(--primary);background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${p.codigo || 'S/C'}</span>
-                                    ${imagensProduto.length > 0 ? `<span style="font-size:10px;font-weight:800;color:#1d4ed8;background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${imagensProduto.length} foto(s)</span>` : ''}
-                                    ${qtdAtual <= 2 ? `<span style="font-size:10px;font-weight:800;color:#b91c1c;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.18);padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">Reposição</span>` : ''}
-                                    ${(p.exige_base_troca || p.status_base_troca === 'BASE_PENDENTE' || p.status_base_troca === 'AGUARDANDO_RETIFICA') ? `<span style="font-size:10px;font-weight:800;color:${statusBase.cor};background:${statusBase.fundo};border:1px solid transparent;padding:4px 8px;border-radius:999px;letter-spacing:0.2px;">${statusBase.label}</span>` : ''}
+                                    <span style="font-size:10px;font-weight:700;color:var(--primary);background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0;">${p.codigo || 'S/C'}</span>
+                                    ${imagensProduto.length > 0 ? `<span style="font-size:10px;font-weight:700;color:#1d4ed8;background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.15);padding:4px 8px;border-radius:999px;letter-spacing:0;">${imagensProduto.length} foto(s)</span>` : ''}
+                                    ${qtdAtual <= 2 ? `<span style="font-size:10px;font-weight:700;color:#b91c1c;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.18);padding:4px 8px;border-radius:999px;letter-spacing:0;">Reposição</span>` : ''}
+                                    ${(p.exige_base_troca || p.status_base_troca === 'BASE_PENDENTE' || p.status_base_troca === 'AGUARDANDO_RETIFICA') ? `<span style="font-size:10px;font-weight:700;color:${statusBase.cor};background:${statusBase.fundo};border:1px solid transparent;padding:4px 8px;border-radius:999px;letter-spacing:0;">${statusBase.label}</span>` : ''}
                                 </div>
                             </div>
                         </div>
                     </td>
                     <td><div style="font-size:12px;color:var(--text-main);line-height:1.4;max-width:250px;">${compatibilidadeTexto}<span style="color:var(--text-muted); font-weight:700;">${compatibilidadeExtra}</span></div></td>
                     <td>${badge}</td>
-                    <td style="font-weight:800; white-space:nowrap;">R$ ${precoVenda.toFixed(2)}</td>
+                    <td style="font-weight:700; white-space:nowrap;">R$ ${precoVenda.toFixed(2)}</td>
                     <td style="text-align:right;">
                         <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;">
                             <button class="btn btn-primary btn-sm" style="min-width:42px;height:38px;padding:0 12px;border-radius:10px;box-shadow:0 4px 12px rgba(16,185,129,0.20);" title="Vender produto" onclick="abrirVendaProdutoEstoque('${p.id}')"><i class="ri-shopping-cart-line"></i></button>
@@ -328,6 +554,9 @@ function renderizarEstoque() {
 
     corpo.innerHTML = html;
     renderizarHistoricoMovimentacoes();
+    if (document.getElementById('painel-inventario-geral') && !document.getElementById('painel-inventario-geral').classList.contains('hidden')) {
+        renderizarInventarioGeral();
+    }
 
     const faltas = lista
         .filter(i => (parseInt(i.qtd) || 0) <= 2)
@@ -380,9 +609,9 @@ function limparFormEstoque() {
         'observacao-revisao',
         'imagem',
         'imagem-url',
+        'loc-cadastrado',
         'loc-corredor',
-        'loc-caixa',
-        'loc-prateleira'
+        'loc-caixa'
     ];
 
     ids.forEach(id => {
@@ -630,20 +859,20 @@ function renderizarModalProdutoDetalhes() {
             </div>
             <div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-                    <span style="font-size:11px; font-weight:800; color:var(--primary); background:rgba(16,185,129,0.10); border:1px solid rgba(16,185,129,0.15); padding:5px 10px; border-radius:999px;">${produtoModalAtual.codigo || 'Sem código'}</span>
-                    <span style="font-size:11px; font-weight:800; color:#1d4ed8; background:rgba(59,130,246,0.10); border:1px solid rgba(59,130,246,0.15); padding:5px 10px; border-radius:999px;">${imagens.length} foto(s)</span>
-                    <span style="font-size:11px; font-weight:800; color:${statusBase.cor}; background:${statusBase.fundo}; border:1px solid transparent; padding:5px 10px; border-radius:999px;">${statusBase.label}</span>
+                    <span style="font-size:11px; font-weight:700; color:var(--primary); background:rgba(16,185,129,0.10); border:1px solid rgba(16,185,129,0.15); padding:5px 10px; border-radius:999px;">${produtoModalAtual.codigo || 'Sem código'}</span>
+                    <span style="font-size:11px; font-weight:700; color:#1d4ed8; background:rgba(59,130,246,0.10); border:1px solid rgba(59,130,246,0.15); padding:5px 10px; border-radius:999px;">${imagens.length} foto(s)</span>
+                    <span style="font-size:11px; font-weight:700; color:${statusBase.cor}; background:${statusBase.fundo}; border:1px solid transparent; padding:5px 10px; border-radius:999px;">${statusBase.label}</span>
                 </div>
                 <h2 style="margin:0 0 8px 0; font-size:24px; line-height:1.1; color:var(--text-main);">${obterNomeProdutoEstoque(produtoModalAtual)}</h2>
                 <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Marca: ${produtoModalAtual.marca || 'Não informada'} • Fornecedor: ${produtoModalAtual.fornecedor || 'Não informado'}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px;">
-                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Quantidade</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">${parseInt(produtoModalAtual.qtd) || 0}</div></div>
-                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Preço</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.repasse) || 0).toFixed(2)}</div></div>
-                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Custo médio</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">${custoHtml}</div></div>
-                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase;">Envio</div><div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.taxa_envio) || 0).toFixed(2)}</div></div>
+                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none;">Quantidade</div><div style="font-size:22px; font-weight:700; color:var(--text-main); margin-top:6px;">${parseInt(produtoModalAtual.qtd) || 0}</div></div>
+                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none;">Preço</div><div style="font-size:22px; font-weight:700; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.repasse) || 0).toFixed(2)}</div></div>
+                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none;">Custo médio</div><div style="font-size:22px; font-weight:700; color:var(--text-main); margin-top:6px;">${custoHtml}</div></div>
+                    <div style="padding:14px; border-radius:16px; border:1px solid var(--border-color); background:var(--bg-body);"><div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none;">Envio</div><div style="font-size:22px; font-weight:700; color:var(--text-main); margin-top:6px;">R$ ${(parseFloat(produtoModalAtual.taxa_envio) || 0).toFixed(2)}</div></div>
                 </div>
                 <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;"><button type="button" class="btn btn-secondary" onclick="imprimirEtiquetaProduto(produtoModalAtual)"><i class="ri-barcode-line"></i> Imprimir etiqueta</button><button type="button" class="btn btn-secondary" onclick="transferirLocalizacaoProduto(produtoModalAtual.id)"><i class="ri-route-line"></i> Transferir localização</button></div><div style="padding:16px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-body);">
-                    <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:8px;">Compatibilidade</div>
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none; margin-bottom:8px;">Compatibilidade</div>
                     <div style="font-size:14px; color:var(--text-main); line-height:1.5;">${compatibilidade}</div>
                     <div style="margin-top:14px; font-size:13px; color:var(--text-muted);"><b>Localização:</b> ${produtoModalAtual.localizacao?.corredor || '--'} ${produtoModalAtual.localizacao?.caixa || '--'} ${produtoModalAtual.localizacao?.prateleira || '--'}</div>
                     <div style="margin-top:10px; font-size:13px; color:var(--text-muted);"><b>Revisão sugerida:</b> ${parseInt(produtoModalAtual.intervalo_revisao_dias) ? `${parseInt(produtoModalAtual.intervalo_revisao_dias)} dias` : 'Não configurada'}</div>
@@ -651,12 +880,12 @@ function renderizarModalProdutoDetalhes() {
                     ${produtoModalAtual.observacao_revisao ? `<div style="margin-top:10px; font-size:13px; color:var(--text-muted);"><b>Observação técnica:</b> ${produtoModalAtual.observacao_revisao}</div>` : ''}
                 </div>
                 <div style="padding:16px; border-radius:18px; border:1px solid var(--border-color); background:var(--bg-body); margin-top:14px;">
-                    <div style="font-size:11px; color:var(--text-muted); font-weight:800; text-transform:uppercase; margin-bottom:10px;">Produtos relacionados</div>
+                    <div style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:none; margin-bottom:10px;">Produtos relacionados</div>
                     ${relacionados.length ? `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;">${relacionados.map(item => `
                         <div style="border:1px solid var(--border-color); border-radius:14px; padding:12px; background:var(--bg-card);">
                             <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">${item.codigo || 'Sem código'}</div>
-                            <div style="font-size:14px; font-weight:800; color:var(--text-main); line-height:1.35; margin-bottom:8px;">${obterNomeProdutoEstoque(item)}</div>
-                            <div style="font-size:13px; color:var(--primary); font-weight:800; margin-bottom:10px;">R$ ${(parseFloat(item.repasse) || 0).toFixed(2)}</div>
+                            <div style="font-size:14px; font-weight:700; color:var(--text-main); line-height:1.35; margin-bottom:8px;">${obterNomeProdutoEstoque(item)}</div>
+                            <div style="font-size:13px; color:var(--primary); font-weight:700; margin-bottom:10px;">R$ ${(parseFloat(item.repasse) || 0).toFixed(2)}</div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalProdutoDetalhesPorId('${item.id}')">Ver</button>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="abrirVendaProdutoEstoque('${item.id}')">Adicionar</button>
@@ -713,6 +942,9 @@ async function salvarProduto() {
             return quantidadeAtual > 0 ? ((totalAnterior + totalNovo) / quantidadeAtual) : custoEntrada;
         })()
         : custoEntrada;
+    const localSelecionado = obterLocalCadastradoPorId(document.getElementById('loc-cadastrado')?.value || '');
+    const rua = document.getElementById('loc-corredor')?.value?.trim() || '';
+    const localFisico = document.getElementById('loc-caixa')?.value?.trim() || '';
 
     const produto = {
         marca: marca,
@@ -734,9 +966,13 @@ async function salvarProduto() {
         exige_base_troca: !!document.getElementById('exige-base-troca')?.checked,
         status_base_troca: document.getElementById('status-base-troca')?.value || 'NORMAL',
         localizacao: {
-            corredor: document.getElementById('loc-corredor')?.value?.trim() || '',
-            caixa: document.getElementById('loc-caixa')?.value?.trim() || '',
-            prateleira: document.getElementById('loc-prateleira')?.value?.trim() || ''
+            localId: localSelecionado?.id || '',
+            rua,
+            local: localFisico,
+            posicao: localFisico,
+            corredor: rua,
+            caixa: localFisico,
+            prateleira: ''
         },
         timestamp: Date.now()
     };
@@ -792,9 +1028,10 @@ function carregarParaEdicao(p) {
     document.getElementById('sugestoes-produto').value = normalizarSugestoesProduto(p.sugestoes_produtos || []).join(', ');
     document.getElementById('observacao-revisao').value = p.observacao_revisao || '';
     document.getElementById('exige-base-troca').checked = !!p.exige_base_troca;
-    document.getElementById('loc-corredor').value = p.localizacao?.corredor || '';
-    document.getElementById('loc-caixa').value = p.localizacao?.caixa || '';
-    document.getElementById('loc-prateleira').value = p.localizacao?.prateleira || '';
+    const localizacaoProduto = obterLocalizacaoProduto(p);
+    document.getElementById('loc-cadastrado').value = p.localizacao?.localId || '';
+    document.getElementById('loc-corredor').value = localizacaoProduto.rua || '';
+    document.getElementById('loc-caixa').value = localizacaoProduto.local || localizacaoProduto.posicao || '';
 
     const imagemCampo = document.getElementById('imagem');
     const imagemUrl = document.getElementById('imagem-url');
@@ -911,7 +1148,7 @@ function renderizarCatalogo() {
         const imagens = normalizarImagensProduto(p);
         const imagem = imagens[0] || '';
         const nomeProduto = obterNomeProdutoEstoque(p);
-        return `<div class="card" style="padding:16px; border-radius:18px; cursor:pointer;" onclick="abrirModalProdutoDetalhesPorId('${p.id}')"><div style="height:180px; border-radius:14px; overflow:hidden; background:var(--bg-body); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">${imagem ? `<img src="${imagem}" alt="${nomeProduto}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="ri-image-line" style="font-size:36px; color:var(--text-muted);"></i>`}</div><div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">Marca: ${p.marca || 'Não informada'}</div><div style="font-size:15px; font-weight:800; color:var(--text-main); margin-bottom:6px;">${nomeProduto}</div><div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Código: ${p.codigo || 'Sem código'}</div><div style="font-size:22px; font-weight:800; color:var(--primary); margin-bottom:10px;">R$ ${(parseFloat(p.repasse) || 0).toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); line-height:1.5;">${(p.compatibilidade || []).slice(0, 3).join(', ') || 'Sem aplicação informada'}</div><div style="margin-top:12px; font-size:12px; font-weight:700; color:var(--primary);">Toque para ver mais detalhes</div></div>`;
+        return `<div class="card" style="padding:16px; border-radius:18px; cursor:pointer;" onclick="abrirModalProdutoDetalhesPorId('${p.id}')"><div style="height:180px; border-radius:14px; overflow:hidden; background:var(--bg-body); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">${imagem ? `<img src="${imagem}" alt="${nomeProduto}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="ri-image-line" style="font-size:36px; color:var(--text-muted);"></i>`}</div><div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">Marca: ${p.marca || 'Não informada'}</div><div style="font-size:15px; font-weight:700; color:var(--text-main); margin-bottom:6px;">${nomeProduto}</div><div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Código: ${p.codigo || 'Sem código'}</div><div style="font-size:22px; font-weight:700; color:var(--primary); margin-bottom:10px;">R$ ${(parseFloat(p.repasse) || 0).toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); line-height:1.5;">${(p.compatibilidade || []).slice(0, 3).join(', ') || 'Sem aplicação informada'}</div><div style="margin-top:12px; font-size:12px; font-weight:700; color:var(--primary);">Toque para ver mais detalhes</div></div>`;
     }).join('');
     if (!filtrada.length) {
         grid.innerHTML = '<div class="card" style="padding:24px; text-align:center; color:var(--text-muted);">Nenhum produto encontrado no catálogo.</div>';

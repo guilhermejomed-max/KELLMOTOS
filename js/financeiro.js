@@ -1,4 +1,4 @@
-﻿let chartF = null;
+let chartF = null;
 let listaItensNF = [];
 let clienteExtratoAtual = null;
 let fiadoManualEdicaoId = null;
@@ -239,7 +239,7 @@ function atualizarKPIs() {
                     <span class="status-badge bg-green">R$ ${item[1].lucro.toFixed(2)}</span>
                 </div>
             `).join('') : '<div class="dashboard-empty-state">Sem vendas suficientes para curva ABC.</div>'}
-            <div style="margin:14px 0 8px; font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Peças paradas há mais de 6 meses</div>
+            <div style="margin:14px 0 8px; font-size:11px; font-weight:700; color:var(--text-muted); text-transform:none;">Peças paradas há mais de 6 meses</div>
             ${itensParados.slice(0, 3).map(item => `
                 <div class="dashboard-list-row">
                     <span>${obterNomeProdutoFinanceiro(item)}</span>
@@ -398,8 +398,8 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
         else totalDevendo += valor;
 
         const statusBadge = v.pagamento_efetivado
-            ? `<span style="color:#059669; font-weight:bold; background:#d1fae5; padding:2px 6px; border-radius:4px; font-size:10px;">PAGO</span>`
-            : `<span style="color:#dc2626; font-weight:bold; background:#fee2e2; padding:2px 6px; border-radius:4px; font-size:10px;">ABERTO</span>`;
+            ? `<span style="color:#059669; font-weight:700; background:#d1fae5; padding:2px 6px; border-radius:4px; font-size:10px;">PAGO</span>`
+            : `<span style="color:#dc2626; font-weight:700; background:#fee2e2; padding:2px 6px; border-radius:4px; font-size:10px;">ABERTO</span>`;
 
         const podeSelecionar = !v.pagamento_efetivado;
 
@@ -407,7 +407,7 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
         <tr style="border-bottom:1px solid #eee;">
             <td style="padding:6px; font-size:11px;">${v.data}<br><span style="color:#999; font-size:9px;">${v.hora}</span></td>
             <td style="padding:6px; font-size:11px; color:#334155;">${v.peca}</td>
-            <td style="padding:6px; text-align:right; font-size:11px; font-weight:bold;">R$ <span class="blur-sensitive">${valor.toFixed(2)}</span></td>
+            <td style="padding:6px; text-align:right; font-size:11px; font-weight:700;">R$ <span class="blur-sensitive">${valor.toFixed(2)}</span></td>
             <td style="padding:6px; text-align:center;">${statusBadge}</td>
             <td style="padding:6px; text-align:center;">
                 ${podeSelecionar ? `<input type="checkbox" class="checkbox-liquidacao" data-venda-id="${v.id}" data-valor="${valor.toFixed(2)}" onchange="atualizarResumoLiquidacao()">` : '-'}
@@ -421,27 +421,27 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
     const saldoFinal = cl.debito > 0 ? cl.debito : totalDevendo;
 
     document.getElementById('extrato-visualizacao').innerHTML = `
-        <div style="padding:20px; font-family:'Plus Jakarta Sans', sans-serif; width:100%; box-sizing:border-box;">
+        <div style="padding:20px; font-family:'Inter', 'Segoe UI', Arial, sans-serif; width:100%; box-sizing:border-box;">
 
             <div style="text-align:center; margin-bottom:20px; border-bottom:2px solid #0f172a; padding-bottom:15px;">
-                <h2 style="margin:0; color:#0f172a; font-size:22px; text-transform:uppercase; letter-spacing:-0.5px;">${configEmpresa.nome}</h2>
+                <h2 style="margin:0; color:#0f172a; font-size:22px; text-transform:none; letter-spacing:0;">${configEmpresa.nome}</h2>
                 <div style="font-size:11px; color:#64748b; margin-top:5px; line-height:1.4;">
                     ${configEmpresa.endereco ? configEmpresa.endereco + ' • ' : ''}
                     CNPJ: ${configEmpresa.cnpj || 'Não Informado'}<br>
                     Tel: ${configEmpresa.telefone || 'Não Informado'}
                 </div>
-                <div style="margin-top:10px; font-weight:800; font-size:12px; color:#0f172a; border:1px solid #0f172a; display:inline-block; padding:4px 12px; border-radius:20px; text-transform:uppercase;">
+                <div style="margin-top:10px; font-weight:700; font-size:12px; color:#0f172a; border:1px solid #0f172a; display:inline-block; padding:4px 12px; border-radius:20px; text-transform:none;">
                     Extrato de Débitos / Promissória
                 </div>
             </div>
 
             <div data-html2canvas-ignore="true" class="no-print" style="display:flex; gap:5px; margin-bottom:20px; background:#f1f5f9; padding:8px; border-radius:8px; align-items:flex-end; border:1px solid #e2e8f0;">
                 <div style="flex:1;">
-                    <label style="font-size:9px; font-weight:bold; color:#64748b; display:block;">DE:</label>
+                    <label style="font-size:9px; font-weight:700; color:#64748b; display:block;">DE:</label>
                     <input type="date" id="filtro-extrato-inicio" class="input-style" style="margin:0; padding:4px; height:28px; font-size:11px;" value="${dataInicio}">
                 </div>
                 <div style="flex:1;">
-                    <label style="font-size:9px; font-weight:bold; color:#64748b; display:block;">ATÉ:</label>
+                    <label style="font-size:9px; font-weight:700; color:#64748b; display:block;">ATÉ:</label>
                     <input type="date" id="filtro-extrato-fim" class="input-style" style="margin:0; padding:4px; height:28px; font-size:11px;" value="${dataFim}">
                 </div>
                 <button class="btn btn-primary" style="padding:0 10px; height:28px; font-size:11px;" onclick="aplicarFiltroExtrato()">Filtrar</button>
@@ -450,19 +450,19 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
             <div style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:20px;">
                 <table style="width:100%; font-size:11px; border-collapse:collapse;">
                     <tr>
-                        <td style="color:#64748b; font-weight:bold; width:80px; padding-bottom:4px;">CLIENTE:</td>
-                        <td style="font-weight:bold; color:#0f172a; font-size:13px; padding-bottom:4px;">${cl.nome}</td>
+                        <td style="color:#64748b; font-weight:700; width:80px; padding-bottom:4px;">CLIENTE:</td>
+                        <td style="font-weight:700; color:#0f172a; font-size:13px; padding-bottom:4px;">${cl.nome}</td>
                     </tr>
                     <tr>
-                        <td style="color:#64748b; font-weight:bold; padding-bottom:4px;">CPF:</td>
+                        <td style="color:#64748b; font-weight:700; padding-bottom:4px;">CPF:</td>
                         <td style="color:#334155; padding-bottom:4px;">${cl.cpf || 'Não informado'}</td>
                     </tr>
                     <tr>
-                        <td style="color:#64748b; font-weight:bold; padding-bottom:4px;">CONTATO:</td>
+                        <td style="color:#64748b; font-weight:700; padding-bottom:4px;">CONTATO:</td>
                         <td style="color:#334155; padding-bottom:4px;">${cl.telefone || 'Não informado'}</td>
                     </tr>
                     <tr>
-                        <td style="color:#64748b; font-weight:bold;">ENDEREÇO:</td>
+                        <td style="color:#64748b; font-weight:700;">ENDEREÇO:</td>
                         <td style="color:#334155;">${cl.endereco || 'Não informado'}</td>
                     </tr>
                 </table>
@@ -470,16 +470,16 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
 
             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
                 <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
-                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:uppercase;">Total Comprado</small>
-                    <div style="font-size:12px; font-weight:800; color:#334155;">R$ <span class="blur-sensitive">${totalComprado.toFixed(2)}</span></div>
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:none;">Total Comprado</small>
+                    <div style="font-size:12px; font-weight:700; color:#334155;">R$ <span class="blur-sensitive">${totalComprado.toFixed(2)}</span></div>
                 </div>
                 <div style="background:#f0fdf4; padding:8px; border-radius:6px; border:1px solid #bbf7d0; text-align:center;">
-                    <small style="color:#15803d; font-weight:700; font-size:8px; text-transform:uppercase;">Total Pago</small>
-                    <div style="font-size:12px; font-weight:800; color:#166534;">R$ <span class="blur-sensitive">${totalPago.toFixed(2)}</span></div>
+                    <small style="color:#15803d; font-weight:700; font-size:8px; text-transform:none;">Total Pago</small>
+                    <div style="font-size:12px; font-weight:700; color:#166534;">R$ <span class="blur-sensitive">${totalPago.toFixed(2)}</span></div>
                 </div>
                 <div style="background:#fef2f2; padding:8px; border-radius:6px; border:1px solid #fecaca; text-align:center;">
-                    <small style="color:#b91c1c; font-weight:700; font-size:8px; text-transform:uppercase;">Em Aberto</small>
-                    <div style="font-size:14px; font-weight:800; color:#dc2626;">R$ <span class="blur-sensitive">${saldoFinal.toFixed(2)}</span></div>
+                    <small style="color:#b91c1c; font-weight:700; font-size:8px; text-transform:none;">Em Aberto</small>
+                    <div style="font-size:14px; font-weight:700; color:#dc2626;">R$ <span class="blur-sensitive">${saldoFinal.toFixed(2)}</span></div>
                 </div>
             </div>
 
@@ -521,7 +521,7 @@ function abrirExtratoCompleto(id, dataInicio = "", dataFim = "") {
                 <div style="display:flex; justify-content:center; margin-top:10px;">
                     <div style="text-align:center; width:70%;">
                         <div style="border-top:1px dashed #0f172a; margin-bottom:5px;"></div>
-                        <span style="font-size:11px; font-weight:bold; color:#0f172a; text-transform:uppercase;">${cl.nome}</span><br>
+                        <span style="font-size:11px; font-weight:700; color:#0f172a; text-transform:none;">${cl.nome}</span><br>
                         <span style="font-size:9px; color:#64748b;">Assinatura do Responsável / Devedor</span>
                     </div>
                 </div>
@@ -712,9 +712,9 @@ function abrirPainelCliente(id) {
     box.style.display = 'block';
     box.innerHTML = `
         <div class="form-grid-3">
-            <div class="modal-subtle-box"><div class="modal-section-title">Cliente</div><div style="font-weight:800; color:var(--text-main);">${cliente.nome || '--'}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${cliente.telefone || 'Sem telefone'}</div></div>
-            <div class="modal-subtle-box"><div class="modal-section-title">Total comprado</div><div style="font-weight:800; color:var(--text-main);">R$ ${totalComprado.toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${compras.length} compra(s)</div></div>
-            <div class="modal-subtle-box"><div class="modal-section-title">Fiado atual</div><div style="font-weight:800; color:${(parseFloat(cliente.debito) || 0) > 0 ? '#b91c1c' : 'var(--text-main)'};">R$ ${(parseFloat(cliente.debito) || 0).toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">CPF: ${cliente.cpf || '--'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Cliente</div><div style="font-weight:700; color:var(--text-main);">${cliente.nome || '--'}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${cliente.telefone || 'Sem telefone'}</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Total comprado</div><div style="font-weight:700; color:var(--text-main);">R$ ${totalComprado.toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${compras.length} compra(s)</div></div>
+            <div class="modal-subtle-box"><div class="modal-section-title">Fiado atual</div><div style="font-weight:700; color:${(parseFloat(cliente.debito) || 0) > 0 ? '#b91c1c' : 'var(--text-main)'};">R$ ${(parseFloat(cliente.debito) || 0).toFixed(2)}</div><div style="font-size:12px; color:var(--text-muted); margin-top:6px;">CPF: ${cliente.cpf || '--'}</div></div>
         </div>
         <div class="form-grid-2" style="margin-top:16px;">
             <div class="modal-subtle-box">
