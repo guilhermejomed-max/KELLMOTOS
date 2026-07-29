@@ -408,7 +408,567 @@
                                 <span>Revisões próximas</span>
                                 <strong id="kpi-revisoes-proximas">0</strong>
                             </div>
-                            <div class="dashboard-mini-stat…10341 tokens truncated…                        <thead><tr><th>Rua</th><th>Local</th><th style="text-align:right">Ações</th></tr></thead>
+                            <div class="dashboard-mini-stat">
+                                <span>Base pendente</span>
+                                <strong id="kpi-base-pendente">0</strong>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" style="width:100%; margin-top:20px;" onclick="gerarRelatorioGeral()"><i class="ri-file-chart-line"></i> Baixar DRE PDF</button>
+                    </div>
+
+                    <div class="card dashboard-side-card">
+                        <div class="dashboard-card-header">
+                            <div>
+                                <h3>Ações rápidas</h3>
+                                <p>Atalhos do dia a dia.</p>
+                            </div>
+                        </div>
+                        <div class="dashboard-actions-grid">
+                            <button class="btn btn-secondary" onclick="mudarTab('estoque')"><i class="ri-add-circle-line"></i> Cadastrar produto</button>
+                            <button class="btn btn-secondary" onclick="mudarTab('vendas')"><i class="ri-cash-line"></i> Abrir vendas</button>
+                            <button class="btn btn-secondary" onclick="mudarTab('boleto')"><i class="ri-bill-line"></i> Ver fiado</button>
+                            <button class="btn btn-secondary" onclick="mudarTab('catalogo')"><i class="ri-smartphone-line"></i> Mostrar catálogo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-estoque" class="hidden">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <input type="text" id="busca" class="input-style" style="max-width:400px;" placeholder="Buscar..." onkeyup="renderizarEstoque()">
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="toggleInventarioGeral()"><i class="ri-clipboard-line"></i> Modo inventário</button>
+                    <button class="btn btn-secondary" onclick="exportarEstoqueCSV()">Exportar estoque</button>
+                    <button class="btn btn-primary" onclick="toggleFormCadastro()">+ Novo</button>
+                </div>
+            </div>
+            <div class="card hidden inventory-card" id="painel-inventario-geral">
+                <div class="inventory-header">
+                    <div>
+                        <span class="section-chip">Modo inventário</span>
+                        <h3>Contagem geral do estoque</h3>
+                        <p class="section-subtitle">Conte todos os itens por Rua e Local, confira a diferença e aplique o ajuste no estoque.</p>
+                    </div>
+                    <div class="inventory-actions">
+                        <button class="btn btn-secondary" onclick="exportarInventarioGeralCSV()"><i class="ri-file-download-line"></i> Exportar</button>
+                        <button class="btn btn-primary" onclick="aplicarInventarioGeral()"><i class="ri-check-double-line"></i> Aplicar contagem</button>
+                    </div>
+                </div>
+                <div class="inventory-summary">
+                    <div><span>Itens no estoque</span><strong id="inv-geral-total-itens">0</strong></div>
+                    <div><span>Itens contados</span><strong id="inv-geral-total-contados">0</strong></div>
+                    <div><span>Diferença total</span><strong id="inv-geral-diferenca-total">0</strong></div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin:16px 0;">
+                    <input id="busca-inventario-geral" class="input-style" placeholder="Buscar produto, código, rua ou local" style="max-width:360px; margin:0;" oninput="renderizarInventarioGeral()">
+                    <select id="filtro-local-inventario" class="input-style" style="max-width:280px; margin:0;" onchange="renderizarInventarioGeral()"></select>
+                </div>
+                <div class="table-container inventory-table">
+                    <table>
+                        <thead><tr><th>Produto</th><th>Rua / Local</th><th>Sistema</th><th>Contagem</th><th>Diferença</th><th>Ações</th></tr></thead>
+                        <tbody id="corpo-inventario-geral"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Inventário e movimentação</h3>
+                        <p>Conte o físico, ajuste com motivo e acompanhe o histórico do item.</p>
+                    </div>
+                </div>
+                <div class="form-grid-4">
+                    <div>
+                        <label class="input-label">Produto</label>
+                        <input id="inventario-busca-produto" class="input-style" placeholder="Código, nome ou moto" oninput="buscarProdutoInventario()">
+                        <div id="inventario-sugestoes" class="modal-subtle-box" style="display:none; margin-top:8px; max-height:180px; overflow:auto;"></div>
+                    </div>
+                    <div>
+                        <label class="input-label">Qtd no sistema</label>
+                        <input id="inventario-qtd-sistema" class="input-style" readonly placeholder="0">
+                    </div>
+                    <div>
+                        <label class="input-label">Qtd contada</label>
+                        <input id="inventario-qtd-fisica" type="number" class="input-style" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="input-label">Motivo do ajuste</label>
+                        <input id="inventario-motivo" class="input-style" placeholder="Ex: contagem física, perda, correção">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px;">
+                    <div id="inventario-resumo" style="font-size:13px; color:var(--text-muted);">Selecione um produto para começar a contagem.</div>
+                    <button class="btn btn-primary" onclick="aplicarContagemInventario()">Aplicar contagem</button>
+                </div>
+                <div class="table-container" style="margin-top:16px;">
+                    <table>
+                        <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Motivo</th><th>Impacto</th></tr></thead>
+                        <tbody id="corpo-historico-movimentacoes"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card hidden product-form-card" id="form-cadastro">
+                <div class="form-card-header">
+                    <div>
+                        <span class="section-chip">Cadastro inteligente</span>
+                        <h3 id="form-cadastro-titulo">Novo produto</h3>
+                        <p class="section-subtitle">Cadastre peças com imagem, aplicação e preços de forma mais visual.</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="toggleFormCadastro()">Fechar</button>
+                </div>
+                <input type="hidden" id="edit-id">
+                <div class="product-form-layout">
+                    <div class="product-image-panel">
+                        <label class="input-label">Imagens do produto</label>
+                        <div class="image-upload-box" onclick="document.getElementById('imagem-produto').click()">
+                            <input id="imagem-produto" type="file" accept="image/*" multiple onchange="previewImagemProduto(event)">
+                            <img id="preview-imagem-produto" alt="Prévia principal do produto" style="display:none;">
+                            <div id="imagem-placeholder" class="image-upload-placeholder">
+                                <i class="ri-image-add-line"></i>
+                                <strong>Adicionar imagens</strong>
+                                <span>Toque para selecionar uma ou mais fotos da peça</span>
+                            </div>
+                        </div>
+                        <div id="contador-imagens-produto" style="margin-top:10px; font-size:12px; color:var(--text-muted); font-weight:700;">Nenhuma imagem selecionada</div>
+                        <div id="preview-imagens-produto-lista" style="display:none; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin-top:12px;"></div>
+                        <div style="display:flex; gap:10px; margin-top:12px; align-items:center;">
+                            <input id="imagem-url" class="input-style" placeholder="ou cole a URL de uma imagem" style="margin:0;">
+                            <button type="button" class="btn btn-secondary" onclick="adicionarImagemPorURL()">Adicionar URL</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="product-form-grid">
+                            <div>
+                                <label class="input-label">Marca</label>
+                                <input id="marca" class="input-style" placeholder="Ex: Honda" oninput="atualizarModeloProduto()">
+                            </div>
+                            <div>
+                                <label class="input-label">Nome da peça</label>
+                                <input id="nome-peca" class="input-style" placeholder="Ex: Pastilha de freio" oninput="atualizarModeloProduto()">
+                            </div>
+                            <div>
+                                <label class="input-label">Descrição do produto</label>
+                                <input id="modelo" class="input-style" placeholder="Nome final do produto" readonly>
+                            </div>
+                            <div>
+                                <label class="input-label">Código</label>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <input id="codigo" class="input-style" placeholder="Código interno" style="margin:0;">
+                                    <button type="button" class="btn btn-secondary" style="white-space:nowrap;" onclick="abrirScannerCodigo('entrada')"><i class="ri-qr-scan-2-line"></i> Ler</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="input-label">Quantidade</label>
+                                <input id="qtd" type="number" class="input-style" placeholder="Qtd">
+                            </div>
+                            <div>
+                                <label class="input-label">Custo</label>
+                                <input id="compra" type="number" class="input-style" placeholder="Custo" oninput="calcularSugerido()">
+                            </div>
+                            <div>
+                                <label class="input-label">Envio</label>
+                                <input id="taxa_envio" type="number" class="input-style" placeholder="Envio">
+                            </div>
+                            <div>
+                                <label class="input-label">Preço de venda</label>
+                                <input id="repasse" type="number" class="input-style" placeholder="Venda">
+                            </div>
+                        </div>
+                        <div class="product-form-grid" style="margin-top:14px;">
+                            <div style="grid-column:1 / -1;">
+                                <label class="input-label">Local cadastrado</label>
+                                <select id="loc-cadastrado" class="input-style" onchange="aplicarLocalSelecionadoProduto()"></select>
+                            </div>
+                            <div>
+                                <label class="input-label">Rua</label>
+                                <input id="loc-corredor" class="input-style" placeholder="Ex: Rua 1">
+                            </div>
+                            <div>
+                                <label class="input-label">Local</label>
+                                <input id="loc-caixa" class="input-style" placeholder="Ex: A-1">
+                            </div>
+                        </div>
+                        <div class="product-form-grid" style="margin-top:14px;">
+                            <div>
+                                <label class="input-label">Fornecedor</label>
+                                <input id="fornecedor" class="input-style" placeholder="Ex: Mahle / Distribuidor">
+                            </div>
+                            <div>
+                                <label class="input-label">Intervalo de revisão (dias)</label>
+                                <input id="intervalo-revisao-dias" type="number" class="input-style" placeholder="Ex: 180">
+                            </div>
+                            <div>
+                                <label class="input-label">Status da base de troca</label>
+                                <select id="status-base-troca" class="input-style">
+                                    <option value="NORMAL">Normal</option>
+                                    <option value="BASE_PENDENTE">Base de troca pendente</option>
+                                    <option value="AGUARDANDO_RETIFICA">Aguardando retífica</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:10px; padding-top:24px;">
+                                <input id="exige-base-troca" type="checkbox" style="width:18px; height:18px;">
+                                <label for="exige-base-troca" style="font-size:13px; color:var(--text-main); font-weight:700;">Exige devolução da peça velha</label>
+                            </div>
+                        </div>
+                        <div style="margin-top:14px;">
+                            <label class="input-label">Produtos relacionados</label>
+                            <input id="sugestoes-produto" class="input-style" placeholder="Informe códigos separados por vírgula para sugerir no balcão e catálogo">
+                        </div>
+                        <div>
+                            <label class="input-label">Observação de revisão</label>
+                            <textarea id="observacao-revisao" class="input-style" placeholder="Ex: troca de óleo, junta, retentores ou revisão preventiva" style="min-height:78px; resize:vertical;"></textarea>
+                        </div>
+                        <div class="product-highlight-row">
+                            <div class="product-highlight-card">
+                                <span>Preço sugerido</span>
+                                <strong id="sugestao-preco-label">R$ 0,00</strong>
+                            </div>
+                            <div class="product-highlight-card">
+                                <span>Status</span>
+                                <strong id="produto-modo-label">Novo cadastro</strong>
+                            </div>
+                        </div>
+                        <label class="input-label">Compatibilidade com motos</label>
+                        <input id="busca-moto-cadastro" class="input-style" placeholder="Pesquisar modelo da moto" style="margin-bottom:10px;" oninput="renderizarListaMotos()">
+                        <div id="moto-selector-list" class="moto-selector-list"></div>
+                        <div class="form-actions-row">
+                            <button class="btn btn-secondary" onclick="limparFormEstoque()">Limpar</button>
+                            <button class="btn btn-primary" id="btn-salvar-produto" onclick="salvarProduto()">Salvar produto</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="table-container product-table"><table><thead><tr><th>Produto</th><th>Aplicação</th><th>Qtd</th><th>Preço</th><th style="text-align: right">Ações</th></tr></thead><tbody id="corpo-estoque"></tbody></table></div>
+        </div>
+
+        <div id="sec-vendas" class="hidden">
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input id="venda-codigo-input" class="input-style" placeholder="Digite ou leia o código do produto" style="max-width:340px; margin:0;">
+                    <button class="btn btn-primary" onclick="venderPorCodigoManual()"><i class="ri-shopping-cart-line"></i> Adicionar por código</button>
+                    <button class="btn btn-secondary" onclick="adicionarProdutoPorCodigoRapido()"><i class="ri-flashlight-line"></i> Balcão rápido</button>
+                    <button class="btn btn-secondary" onclick="abrirScannerCodigo('venda')"><i class="ri-qr-scan-2-line"></i> Ler pela câmera</button>
+                </div>
+                <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">Use `Enter` no código para abrir quantidade ou `Balcão rápido` para adicionar 1 unidade direto ao carrinho.</div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Consulta balcão</h3>
+                        <p>Consulte preço, estoque, localização e aplicação sem abrir uma venda.</p>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input id="consulta-balcao-input" class="input-style" placeholder="Digite código, nome ou moto" style="max-width:420px; margin:0;">
+                    <button class="btn btn-secondary" onclick="consultarProdutoBalcao()">Consultar</button>
+                    <button class="btn btn-secondary" onclick="abrirScannerCodigo('consulta')"><i class="ri-qr-scan-2-line"></i> Ler pela câmera</button>
+                </div>
+                <div id="consulta-balcao-resultado" class="modal-subtle-box" style="margin-top:14px; color:var(--text-muted);">Nenhuma consulta realizada ainda.</div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                    <div>
+                        <h3 style="margin:0;">Carrinho / Atendimento</h3>
+                        <small style="color:var(--text-muted);">Adicione várias peças e finalize como venda ou orçamento.</small>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" onclick="exportarVendasCSV()">Exportar vendas</button>
+                        <button class="btn btn-secondary" onclick="limparCarrinhoVenda()">Limpar carrinho</button>
+                        <button class="btn btn-primary" onclick="abrirModalCliente()">Fechar atendimento</button>
+                    </div>
+                </div>
+                <div id="painel-carrinho-vazio" style="padding:18px; border:1px dashed var(--border-color); border-radius:16px; color:var(--text-muted); text-align:center;">Nenhum item no carrinho.</div>
+                <div class="table-container" id="painel-carrinho-tabela" style="margin-top:12px; display:none;"><table><thead><tr><th>Produto</th><th>Qtd</th><th>Unitário</th><th>Total</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-carrinho-venda"></tbody></table></div>
+                <div id="painel-sugestoes-carrinho" style="display:none; margin-top:16px;"></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
+                    <div style="font-size:13px; color:var(--text-muted);">Itens: <b id="total-itens-carrinho">0</b></div>
+                    <div style="font-size:22px; font-weight:700; color:var(--primary);">Total: <span id="total-carrinho-venda">R$ 0,00</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="table-container"><table><thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Valor</th><th style="text-align: right">Recibo</th></tr></thead><tbody id="corpo-vendas"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="sec-orcamentos" class="hidden">
+            <div class="orcamentos-hero card">
+                <div>
+                    <span class="section-chip"><i class="ri-file-list-3-line"></i> Central de orçamentos</span>
+                    <h2>Propostas que viram vendas</h2>
+                    <p>Organize os atendimentos, acompanhe a validade e transforme um orçamento aprovado em venda sem redigitar os itens.</p>
+                </div>
+                <button class="btn btn-primary" onclick="abrirNovoOrcamento()"><i class="ri-add-line"></i> Novo orçamento</button>
+            </div>
+            <div class="orcamentos-kpis">
+                <div class="card orcamento-kpi"><span>Em aberto</span><strong id="orc-kpi-abertos">0</strong><small>aguardando retorno</small></div>
+                <div class="card orcamento-kpi"><span>Valor em propostas</span><strong id="orc-kpi-valor">R$ 0,00</strong><small>orçamentos em aberto</small></div>
+                <div class="card orcamento-kpi"><span>Vencem hoje</span><strong id="orc-kpi-vencendo">0</strong><small>precisam de atenção</small></div>
+                <div class="card orcamento-kpi"><span>Convertidos</span><strong id="orc-kpi-convertidos">0</strong><small>histórico da base</small></div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div class="orcamentos-toolbar">
+                    <div>
+                        <h3>Orçamentos em andamento</h3>
+                        <p>Acompanhe, edite, imprima ou converta quando o cliente aprovar.</p>
+                    </div>
+                    <div class="orcamentos-filtros">
+                        <input id="orcamentos-busca" class="input-style" placeholder="Buscar cliente, número ou item" oninput="renderizarOrcamentos()">
+                        <select id="orcamentos-status" class="input-style" onchange="renderizarOrcamentos()"><option value="ABERTOS">Em aberto</option><option value="TODOS">Todos</option></select>
+                    </div>
+                </div>
+                <div class="table-container" style="margin-top:16px;"><table><thead><tr><th>#</th><th>Cliente</th><th>Itens</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-orcamentos"></tbody></table></div>
+            </div>
+            <div class="card">
+                <div class="dashboard-card-header"><div><h3>Histórico de conversões</h3><p>Orçamentos que já foram concluídos como venda.</p></div></div>
+                <div class="table-container"><table><tbody id="corpo-historico-orcamentos"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="sec-servicos" class="hidden">
+            <div class="card" style="margin-bottom:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Nova ordem de serviço</h3>
+                        <p>Registre entrada, diagnóstico, peças usadas e andamento da oficina.</p>
+                    </div>
+                </div>
+                <div class="form-grid-3">
+                    <input id="os-cliente" class="input-style" placeholder="Cliente">
+                    <input id="os-veiculo" class="input-style" placeholder="Moto / motor / veículo">
+                    <input id="os-placa" class="input-style" placeholder="Placa ou identificação">
+                    <input id="os-km" type="number" class="input-style" placeholder="KM atual">
+                    <input id="os-previsao" type="date" class="input-style">
+                    <select id="os-status" class="input-style">
+                        <option value="ABERTA">Aberta</option>
+                        <option value="EM_ANDAMENTO">Em andamento</option>
+                        <option value="AGUARDANDO_PECA">Aguardando peça</option>
+                        <option value="FINALIZADA">Finalizada</option>
+                    </select>
+                </div>
+                <textarea id="os-diagnostico" class="input-style" placeholder="Diagnóstico / problema relatado" style="min-height:90px; margin-top:12px;"></textarea>
+                <textarea id="os-servico" class="input-style" placeholder="Serviço executado / plano de ação" style="min-height:90px; margin-top:12px;"></textarea>
+                <input id="os-pecas" class="input-style" placeholder="Peças usadas ou sugeridas (separe por vírgula)" style="margin-top:12px;">
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
+                    <button class="btn btn-secondary" onclick="limparFormularioOS()">Limpar</button>
+                    <button class="btn btn-primary" onclick="salvarOrdemServico()">Salvar O.S.</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Nº</th><th>Cliente</th><th>Veículo</th><th>Status</th><th>Previsão</th><th style="text-align:right;">Ações</th></tr></thead>
+                        <tbody id="corpo-os"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-catalogo" class="hidden">
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <input id="catalogo-busca" class="input-style" placeholder="Buscar produto, código ou aplicação" style="max-width:420px; margin:0;" oninput="renderizarCatalogo()">
+                    <span style="font-size:12px; color:var(--text-muted);">Visual pensado para mostrar ao cliente no celular.</span>
+                </div>
+            </div>
+            <div id="catalogo-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px;"></div>
+        </div>
+
+        <div id="sec-ecommerce" class="hidden">
+            <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+                    <div>
+                        <h3 style="margin:0 0 6px 0;">Anúncios semi-automáticos</h3>
+                        <p style="margin:0; color:var(--text-muted); max-width:680px;">Gere um rascunho de anúncio com título, descrição, preço, estoque e fotos do produto. Você revisa tudo antes de publicar no marketplace.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <span class="status-badge bg-green">Modo seguro</span>
+                        <span class="status-badge" style="background:rgba(59,130,246,0.12); color:#1d4ed8;">Sem envio automático</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card" id="card-calc-eco" style="display:none;">
+                <h3 id="label-peca-eco"></h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <input id="calc_emb" class="input-style" value="2.50" placeholder="Emb">
+                    <input id="calc_taxa_site" class="input-style" value="16.5" placeholder="Taxa%">
+                    <input id="calc_taxa_fixa" class="input-style" value="6.00" placeholder="Fixo">
+                    <input id="calc_frete" class="input-style" value="0" placeholder="Frete">
+                    <input id="calc_brinde" class="input-style" value="0" placeholder="Brinde">
+                    <input id="calc_margem_alvo" class="input-style" placeholder="Margem %" oninput="executarCalculoOnline()">
+                </div>
+                <input id="calc_venda" class="input-style" readonly style="margin-top:10px; font-weight:700;">
+                <button class="btn btn-primary" style="margin-top:10px;" onclick="salvarPrecoOnline()">Salvar</button>
+            </div>
+            <div class="table-container"><table><thead><tr><th>Produto</th><th>Custo</th><th>Balcão</th><th>Online</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-ecommerce"></tbody></table></div>
+        </div>
+
+        <div id="sec-despesas" class="hidden">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button class="btn btn-primary" id="tab-desp-simples" onclick="mudarAbaDespesa('simples')">Simples</button>
+                <button class="btn btn-secondary" id="tab-desp-nf" onclick="mudarAbaDespesa('nf')">Nota Fiscal</button>
+            </div>
+            <div id="view-desp-simples" class="card">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <input id="desp-fornecedor" class="input-style" placeholder="Fornecedor">
+                    <input id="desp-valor" type="number" class="input-style" placeholder="Valor">
+                </div>
+                <input id="desp-descricao" class="input-style" placeholder="Descrição" style="margin-top:10px;">
+                <input id="desp-data" type="date" class="input-style" style="margin-top:10px;">
+                <button class="btn btn-danger" style="width:100%; margin-top:10px;" onclick="salvarDespesa()">Registrar</button>
+            </div>
+            <div id="view-desp-nf" style="display:none;" class="card">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <input id="nf-numero" class="input-style" placeholder="Nº NF">
+                    <input id="nf-valor-total" type="number" class="input-style" placeholder="Valor Total">
+                    <input id="nf-fornecedor" class="input-style" placeholder="Fornecedor">
+                    <input id="nf-data" type="date" class="input-style">
+                </div>
+                <div style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+                    <input id="nf-busca-prod" class="input-style" placeholder="Buscar produto..." onkeyup="buscarProdParaNF()">
+                    <div id="nf-sugestoes" style="display:none; background:#fff; border:1px solid #eee; max-height:100px; overflow-y:auto;"></div>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:10px; margin-top:10px;">
+                        <input type="hidden" id="nf-prod-id">
+                        <input id="nf-prod-nome" class="input-style" placeholder="Nome">
+                        <input id="nf-prod-qtd" type="number" class="input-style" placeholder="Qtd">
+                        <input id="nf-prod-custo" type="number" class="input-style" placeholder="Custo">
+                        <input id="nf-prod-venda" type="number" class="input-style" placeholder="Venda">
+                    </div>
+                    <button class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="addProdutoNaListaNF()">+ Item</button>
+                </div>
+                <div class="table-container" style="margin-top:10px;"><table><thead><tr><th>Item</th><th>Qtd</th><th>Total</th><th>X</th></tr></thead><tbody id="nf-lista-itens"></tbody></table></div>
+                <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="finalizarEntradaNF()">Finalizar Entrada</button>
+            </div>
+            <div class="card" style="margin-top:20px;">
+                <div style="display:flex; justify-content:space-between;"><h3>Histórico</h3><strong id="total-despesas-mes">R$ 0,00</strong></div>
+                <div class="table-container"><table><thead><tr><th>Data</th><th>Fornecedor</th><th>Valor</th><th>X</th></tr></thead><tbody id="corpo-despesas"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="sec-boleto" class="hidden">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                <h3>Fiado / Boletos</h3>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="exportarClientesCSV()">Exportar clientes</button>
+                    <button class="btn btn-primary" onclick="toggleModalCadastroCliente()">+ Cliente</button>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Lançamento manual no fiado</h3>
+                        <p>Escolha o cliente e informe item, quantidade e valor sem passar pela tela de vendas.</p>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:2fr 2fr 1fr 1fr; gap:10px; margin-top:14px;">
+                    <select id="boleto-manual-cliente" class="input-style"></select>
+                    <input id="boleto-manual-item" class="input-style" placeholder="Item / serviço">
+                    <input id="boleto-manual-qtd" type="number" min="1" step="1" class="input-style" placeholder="Qtd">
+                    <input id="boleto-manual-valor" type="number" min="0" step="0.01" class="input-style" placeholder="Valor unitário">
+                </div>
+                <button class="btn btn-primary" style="margin-top:12px;" onclick="registrarFiadoManual()">Lançar no fiado</button>
+            </div>
+            <div class="card">
+                <div class="table-container"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Dívida</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-boletos"></tbody></table></div>
+            </div>
+            <h3 style="margin-top:30px;">Histórico</h3>
+            <div class="table-container"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead><tbody id="corpo-historico-pagamentos"></tbody></table></div>
+            <div class="card" style="margin-top:20px;">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Painel do cliente</h3>
+                        <p>Histórico completo de compras, revisões e próximos retornos.</p>
+                    </div>
+                </div>
+                <div id="painel-cliente-vazio" class="dashboard-empty-state">Selecione um cliente no fiado para abrir o painel detalhado.</div>
+                <div id="painel-cliente-detalhes" style="display:none;"></div>
+            </div>
+        </div>
+
+        <div id="sec-reposicao" class="hidden">
+            <div class="card">
+                <h3>Relatório de Faltas</h3>
+                <div id="lista-reposicao-txt" style="background:#eee; padding:15px; border-radius:10px; white-space: pre-wrap;"></div>
+                <button class="btn btn-danger" style="margin-top:10px;" onclick="enviarWhatsapp()">Enviar WhatsApp</button>
+            </div>
+        </div>
+
+        <div id="sec-funcionarios" class="hidden">
+            <div class="card">
+                <h3>Equipe</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <input id="func-nome" class="input-style" placeholder="Nome">
+                    <input id="func-sobrenome" class="input-style" placeholder="Sobrenome">
+                </div>
+                <select id="func-nivel" class="input-style"><option value="JUNIOR">JUNIOR</option><option value="PLENO">PLENO</option><option value="SENIOR">SENIOR</option></select>
+                <div class="modal-section-title">Permissões por ação</div>
+                <div id="acoes-permissao-equipe" class="form-grid-3 modal-subtle-box" style="margin-top:10px;">
+                    <label><input type="checkbox" class="acao-permissao-check" value="ver_custo"> Ver custo</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="editar_preco"> Editar preço</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="excluir_orcamento"> Excluir orçamento</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="ajustar_estoque"> Ajustar estoque</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="publicar_anuncio"> Publicar anúncio</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="gerenciar_equipe"> Gerenciar equipe</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="ver_auditoria"> Ver auditoria</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="gerenciar_os"> Gerenciar O.S.</label>
+                    <label><input type="checkbox" class="acao-permissao-check" value="exportar_relatorios"> Exportar relatórios</label>
+                </div>
+                <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="salvarFuncionario()">Autorizar</button>
+                <div id="lista-funcionarios" style="margin-top:20px;"></div>
+            </div>
+        </div>
+
+        <div id="sec-auditoria" class="hidden">
+            <div class="card">
+                <div class="dashboard-card-header">
+                    <div>
+                        <h3>Auditoria do sistema</h3>
+                        <p>Quem alterou preço, estoque, cliente, orçamento e configurações.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <input id="auditoria-busca" class="input-style" placeholder="Buscar ação, usuário ou coleção" style="max-width:260px; margin:0;" oninput="renderizarAuditoria()">
+                        <button class="btn btn-secondary" onclick="exportarAuditoriaCSV()">Exportar CSV</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Data</th><th>Usuário</th><th>Coleção</th><th>Ação</th><th>Detalhes</th></tr></thead>
+                        <tbody id="corpo-auditoria"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-motos" class="hidden">
+            <div class="card">
+                <div style="display:flex; gap:10px;"><input id="nova-moto" class="input-style" placeholder="Modelo"><button class="btn btn-primary" onclick="salvarMoto()">Adicionar</button></div>
+                <div id="lista-motos-gerencia" style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
+            </div>
+        </div>
+
+        <div id="sec-locais" class="hidden">
+            <div class="card">
+                <div class="form-card-header">
+                    <div>
+                        <span class="section-chip">Cadastro de local</span>
+                        <h3 style="margin:10px 0 0;">Ruas e locais</h3>
+                        <p class="section-subtitle">Cadastre os endereços físicos onde as peças ficam no estoque.</p>
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div class="field-group">
+                        <label class="field-label">Rua</label>
+                        <input id="local-rua" class="input-style" placeholder="Ex: Rua 1">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Local</label>
+                        <input id="local-posicao" class="input-style" placeholder="Ex: A-1">
+                    </div>
+                </div>
+                <button class="btn btn-primary" style="margin-top:12px;" onclick="salvarLocalEstoque()"><i class="ri-save-3-line"></i> Salvar local</button>
+                <div class="table-container" style="margin-top:20px;">
+                    <table>
+                        <thead><tr><th>Rua</th><th>Local</th><th style="text-align:right">Ações</th></tr></thead>
                         <tbody id="lista-locais-gerencia"></tbody>
                     </table>
                 </div>
