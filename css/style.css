@@ -102,8 +102,10 @@ textarea {
 .orcamentos-toolbar p { margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 .orcamentos-filtros { display:flex; gap:10px; flex-wrap:wrap; }
 .orcamentos-filtros .input-style { width:auto; min-width:190px; margin:0; }
+.novo-orcamento-campos { display:grid; grid-template-columns:2fr 1fr; gap:12px; }
+.novo-orcamento-acoes-linhas { display:flex; justify-content:flex-start; margin-top:12px; }
 @media (max-width: 900px) { .orcamentos-kpis { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .orcamentos-hero { align-items:flex-start; flex-direction:column; padding:22px; } .orcamentos-hero .btn { width:100%; } .orcamentos-kpis { grid-template-columns:1fr; } .orcamentos-filtros, .orcamentos-filtros .input-style { width:100%; } }
+@media (max-width: 640px) { .orcamentos-hero { align-items:flex-start; flex-direction:column; padding:22px; } .orcamentos-hero .btn { width:100%; } .orcamentos-kpis, .novo-orcamento-campos { grid-template-columns:1fr; } .orcamentos-filtros, .orcamentos-filtros .input-style { width:100%; } .novo-orcamento-acoes-linhas .btn { width:100%; } }
 
 /* Scrollbar Premium */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
