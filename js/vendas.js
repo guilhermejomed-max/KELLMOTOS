@@ -1172,6 +1172,17 @@ function imprimirOrcamento(id) {
                 </table>
             </div>
 
+            <div style="display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-bottom:20px;">
+                <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:none;">Modelo da moto</small>
+                    <div style="font-size:12px; font-weight:700; color:#334155; margin-top:3px;">${orcamento.modelo_moto || 'Não informado'}</div>
+                </div>
+                <div style="background:#fff; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                    <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:none;">Ano da moto</small>
+                    <div style="font-size:12px; font-weight:700; color:#334155; margin-top:3px;">${orcamento.ano_moto || 'Não informado'}</div>
+                </div>
+            </div>
+
             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
                 <div style="background:#fff; padding:8px; border-radius:6px; border:1px solid #e2e8f0; text-align:center;">
                     <small style="color:#64748b; font-weight:700; font-size:8px; text-transform:none;">Total de itens</small>
@@ -1494,7 +1505,7 @@ function renderizarOrcamentos() {
     const visiveis = lista.filter(o => {
         const status = o.status || 'ABERTO';
         const correspondeStatus = filtroStatus === 'TODOS' || status === filtroStatus || (filtroStatus === 'ABERTOS' && status !== 'VENDIDO');
-        const texto = [o.numero, o.cliente, o.peca, resumoItensVenda(normalizarItensDocumento(o))].join(' ').toLowerCase();
+        const texto = [o.numero, o.cliente, o.modelo_moto, o.ano_moto, o.peca, resumoItensVenda(normalizarItensDocumento(o))].join(' ').toLowerCase();
         return correspondeStatus && (!busca || texto.includes(busca));
     });
     const abertosVisiveis = visiveis.filter(v => (v.status || 'ABERTO') !== 'VENDIDO');
@@ -1536,14 +1547,18 @@ function renderizarOrcamentos() {
 }
 
 function abrirNovoOrcamento() {
-    itensNovoOrcamento = Array.from({ length: 10 }, () => ({ nome: '', qtd: 1, unitario: 0 }));
+    itensNovoOrcamento = [{ nome: '', qtd: 1, unitario: 0 }];
     const hoje = new Date().toISOString().slice(0, 10);
     const data = document.getElementById('novo-orcamento-data');
     const cliente = document.getElementById('novo-orcamento-cliente');
+    const modeloMoto = document.getElementById('novo-orcamento-modelo-moto');
+    const anoMoto = document.getElementById('novo-orcamento-ano-moto');
     const nomeLoja = document.getElementById('novo-orcamento-loja');
     const infoLoja = document.getElementById('novo-orcamento-loja-info');
     if (data) data.value = hoje;
     if (cliente) cliente.value = '';
+    if (modeloMoto) modeloMoto.value = '';
+    if (anoMoto) anoMoto.value = '';
     if (nomeLoja) nomeLoja.innerText = configEmpresa?.nome || 'KELL MOTOS';
     if (infoLoja) infoLoja.innerText = [configEmpresa?.endereco, configEmpresa?.telefone, configEmpresa?.cnpj ? `CNPJ: ${configEmpresa.cnpj}` : ''].filter(Boolean).join(' • ') || 'Informações da loja';
     renderizarItensNovoOrcamento();
@@ -1575,7 +1590,7 @@ function renderizarItensNovoOrcamento() {
     corpo.innerHTML = itensNovoOrcamento.map((item, indice) => {
         const subtotal = (parseFloat(item.qtd) || 0) * (parseFloat(item.unitario) || 0);
         const nome = String(item.nome || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        return `<tr><td><input class="input-style" style="margin:0; min-width:220px;" placeholder="Descreva o item ou serviço" value="${nome}" oninput="atualizarItemNovoOrcamento(${indice}, 'nome', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="1" step="1" value="${item.qtd || 1}" oninput="atualizarItemNovoOrcamento(${indice}, 'qtd', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="0" step="0.01" value="${item.unitario || 0}" oninput="atualizarItemNovoOrcamento(${indice}, 'unitario', this.value)"></td><td id="novo-orc-subtotal-${indice}" style="text-align:right; font-weight:700;">R$ ${subtotal.toFixed(2)}</td></tr>`;
+        return `<tr><td><input class="input-style" style="margin:0; min-width:220px;" placeholder="Descreva o item ou serviço" value="${nome}" oninput="atualizarItemNovoOrcamento(${indice}, 'nome', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="1" step="1" value="${item.qtd || 1}" oninput="atualizarItemNovoOrcamento(${indice}, 'qtd', this.value)"></td><td><input class="input-style" style="margin:0;" type="number" min="0" step="0.01" value="${item.unitario || 0}" oninput="atualizarItemNovoOrcamento(${indice}, 'unitario', this.value)"></td><td id="novo-orc-subtotal-${indice}" style="text-align:right; font-weight:700;">R$ ${subtotal.toFixed(2)}</td><td style="text-align:center;"><button type="button" class="btn btn-sm btn-secondary" title="Remover linha" aria-label="Remover linha" onclick="removerItemNovoOrcamento(${indice})"><i class="ri-delete-bin-line"></i></button></td></tr>`;
     }).join('');
     atualizarTotaisNovoOrcamento();
 }
@@ -1593,13 +1608,16 @@ function atualizarTotaisNovoOrcamento() {
 async function salvarNovoOrcamento() {
     const cliente = document.getElementById('novo-orcamento-cliente')?.value.trim();
     const data = document.getElementById('novo-orcamento-data')?.value;
+    const modeloMoto = document.getElementById('novo-orcamento-modelo-moto')?.value.trim() || '';
+    const anoMoto = document.getElementById('novo-orcamento-ano-moto')?.value.trim() || '';
     const itensValidos = itensNovoOrcamento.filter(item => String(item.nome || '').trim() && (parseFloat(item.qtd) || 0) > 0);
     if (!cliente) return alert('Informe o nome do cliente.');
     if (!data) return alert('Informe a data do orçamento.');
+    if (anoMoto && !/^\d{4}$/.test(anoMoto)) return alert('Informe o ano da moto com quatro dígitos.');
     if (!itensValidos.length) return alert('Adicione pelo menos um item com descrição e quantidade.');
     const itens = itensValidos.map(item => ({ id: '', produtoId: '', nome: String(item.nome).trim(), qtd: parseFloat(item.qtd), unitario: parseFloat(item.unitario) || 0, total: (parseFloat(item.qtd) || 0) * (parseFloat(item.unitario) || 0), origem: 'ORCAMENTO_MANUAL' }));
     const total = itens.reduce((soma, item) => soma + item.total, 0);
-    const payload = { numero: gerarNumeroOrcamento(), tipo: 'ORCAMENTO', status: 'ABERTO', cliente, clienteId: '', itens, peca: resumoItensVenda(itens), produtoId: '', qtd: itens.reduce((soma, item) => soma + item.qtd, 0), venda: total, unitario: itens.length === 1 ? itens[0].unitario : 0, pagamento: 'A DEFINIR', data: data.split('-').reverse().join('/'), data_referencia: data, hora: new Date().toLocaleTimeString('pt-BR'), timestamp: Date.now(), origem: 'ORCAMENTO_MANUAL', operador: auth.currentUser?.email || 'SISTEMA' };
+    const payload = { numero: gerarNumeroOrcamento(), tipo: 'ORCAMENTO', status: 'ABERTO', cliente, clienteId: '', modelo_moto: modeloMoto, ano_moto: anoMoto, itens, peca: resumoItensVenda(itens), produtoId: '', qtd: itens.reduce((soma, item) => soma + item.qtd, 0), venda: total, unitario: itens.length === 1 ? itens[0].unitario : 0, pagamento: 'A DEFINIR', data: data.split('-').reverse().join('/'), data_referencia: data, hora: new Date().toLocaleTimeString('pt-BR'), timestamp: Date.now(), origem: 'ORCAMENTO_MANUAL', operador: auth.currentUser?.email || 'SISTEMA' };
     try {
         const doc = await db.collection('vendas_kell').add(payload);
         if (typeof registrarAuditoria === 'function') registrarAuditoria('VENDAS', doc.id, 'ORCAMENTO_CRIADO', { numero: payload.numero, cliente, valor: total });
