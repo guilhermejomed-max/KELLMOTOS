@@ -1720,8 +1720,9 @@ function gerarCupom(v) {
     document.getElementById('cp-pgto').innerText = v.pagamento;
     document.getElementById('cp-operador').innerText = (v.operador || 'sis').split('@')[0];
     document.getElementById('qrcode-venda').innerHTML = '';
-    const telefoneLoja = String(configEmpresa.telefone || '(11) 4707-6377').trim();
-    new QRCode(document.getElementById('qrcode-venda'), { text: telefoneLoja, width: 80, height: 80 });
+    const telefoneLoja = String(configEmpresa.telefone || '(11) 4707-6377').replace(/\D/g, '');
+    const telefoneWhatsApp = telefoneLoja.startsWith('55') ? telefoneLoja : `55${telefoneLoja}`;
+    new QRCode(document.getElementById('qrcode-venda'), { text: `https://wa.me/${telefoneWhatsApp}`, width: 80, height: 80 });
     const wrapper = document.getElementById('cupom-wrapper');
     const element = document.getElementById('cupom-print');
     wrapper.style.display = 'flex';
