@@ -1720,7 +1720,8 @@ function gerarCupom(v) {
     document.getElementById('cp-pgto').innerText = v.pagamento;
     document.getElementById('cp-operador').innerText = (v.operador || 'sis').split('@')[0];
     document.getElementById('qrcode-venda').innerHTML = '';
-    new QRCode(document.getElementById('qrcode-venda'), { text: 'PED-' + v.numero, width: 80, height: 80 });
+    const telefoneLoja = String(configEmpresa.telefone || '(11) 4707-6377').trim();
+    new QRCode(document.getElementById('qrcode-venda'), { text: telefoneLoja, width: 80, height: 80 });
     const wrapper = document.getElementById('cupom-wrapper');
     const element = document.getElementById('cupom-print');
     wrapper.style.display = 'flex';
